@@ -1006,7 +1006,7 @@ function RequestInterviewModal({ candidate, onClose }: { candidate: CandidatePro
                 🌍 Times in your timezone: 
                 {loadingTimezone ? (
                   <span className="flex items-center gap-2">
-                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block" />
                     <span className="text-blue-700">Loading timezone...</span>
                   </span>
                 ) : (

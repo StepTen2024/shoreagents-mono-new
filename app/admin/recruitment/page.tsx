@@ -30,7 +30,8 @@ import {
   XCircle,
   User,
   Phone,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -205,6 +206,9 @@ export default function AdminRecruitmentPage() {
   const [interviewForNotes, setInterviewForNotes] = useState<InterviewRequest | null>(null)
   const [adminNotesText, setAdminNotesText] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
+  
+  // Completing state
+  const [completing, setCompleting] = useState(false)
   
   // Finalize Hire Modal State (consolidated with confirm acceptance)
   const [confirmAcceptanceModalOpen, setConfirmAcceptanceModalOpen] = useState(false)
@@ -519,10 +523,11 @@ export default function AdminRecruitmentPage() {
 
     setSavingNotes(true)
     try {
+      // API will add timestamp automatically
       const response = await fetch(`/api/admin/recruitment/interviews/${interviewForNotes.id}/notes`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: adminNotesText })
+        body: JSON.stringify({ notes: adminNotesText.trim() })
       })
 
       const data = await response.json()
@@ -1479,8 +1484,10 @@ export default function AdminRecruitmentPage() {
                               variant="default" 
                               size="sm"
                               className="bg-emerald-600 hover:bg-emerald-700"
+                              disabled={completing}
                               onClick={async (e) => {
                                 e.stopPropagation()
+                                setCompleting(true)
                                 try {
                                   const response = await fetch(`/api/admin/recruitment/interviews/${interview.id}/complete`, {
                                     method: 'PATCH'
@@ -1493,14 +1500,25 @@ export default function AdminRecruitmentPage() {
                                   }
                                 } catch (error) {
                                   toast({ title: "Error", description: "Failed to mark interview as complete", variant: "destructive" })
+                                } finally {
+                                  setCompleting(false)
                                 }
                               }}
                             >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Mark as Completed
+                              {completing ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Completing...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Mark as Completed
+                                </>
+                              )}
                             </Button>
                           )}
-                          {(status === 'completed' || status === 'hire-requested') && (
+                          {status === 'hire-requested' && (
                             <Button 
                               variant="default" 
                               size="sm" 
@@ -1565,6 +1583,8 @@ export default function AdminRecruitmentPage() {
                             ? 'bg-purple-500/10'
                             : status === 'completed'
                             ? 'bg-green-500/10'
+                            : status === 'rejected'
+                            ? 'bg-red-500/10'
                             : 'bg-gray-500/10'
                         }`}>
                           {status === 'pending' && (
@@ -1598,8 +1618,7 @@ export default function AdminRecruitmentPage() {
                                   Client has requested to hire this candidate. Click "Send Offer" to proceed.
                                 </p>
                                 {interview.clientPreferredStart && (
-                                  <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                                    <p className="text-xs font-medium text-orange-300 mb-1">Client's Preferred Start Date:</p>
+                                  <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                                     <p className="text-sm font-semibold text-orange-200">
                                       📅 {new Date(interview.clientPreferredStart).toLocaleDateString('en-US', {
                                         weekday: 'long',
@@ -1663,7 +1682,7 @@ export default function AdminRecruitmentPage() {
                               <div>
                                 <p className="font-semibold text-green-300">Interview Complete</p>
                                 <p className="text-sm text-green-400/80 mt-1">
-                                  Interview completed. Ready to send job offer when you're ready.
+                                  Interview completed. Waiting for client to either reject candidate or request to hire.
                                 </p>
                               </div>
                             </div>
@@ -1675,6 +1694,17 @@ export default function AdminRecruitmentPage() {
                                 <p className="font-semibold text-gray-300">Interview Cancelled</p>
                                 <p className="text-sm text-gray-400/80 mt-1">
                                   This interview has been cancelled by the admin.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {status === 'rejected' && (
+                            <div className="flex items-start gap-3">
+                              <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="font-semibold text-red-300">Candidate Rejected by Client</p>
+                                <p className="text-sm text-red-400/80 mt-1">
+                                  The client has decided not to move forward with this candidate.
                                 </p>
                               </div>
                             </div>
@@ -2195,21 +2225,19 @@ export default function AdminRecruitmentPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-700">
-                {/* Add Notes - Show for pending, scheduled, or completed interviews */}
-                {(modalStatus === 'pending' || modalStatus === 'scheduled' || modalStatus === 'completed') && (
-                  <Button 
-                    variant="outline" 
-                    className="border-slate-600 text-slate-300 hover:bg-slate-800 min-w-[120px]"
-                    onClick={() => {
-                      setInterviewForNotes(selectedInterview)
-                      setAdminNotesText('')
-                      setAdminNotesModalOpen(true)
-                    }}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Add Notes
-                  </Button>
-                )}
+                {/* Add Notes - Show for all statuses */}
+                <Button 
+                  variant="outline" 
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800 min-w-[120px]"
+                  onClick={() => {
+                    setInterviewForNotes(selectedInterview)
+                    setAdminNotesText('')
+                    setAdminNotesModalOpen(true)
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Add Notes
+                </Button>
                 
                 {/* Schedule - Show for pending interviews */}
                 {modalStatus === 'pending' && (
@@ -2237,7 +2265,9 @@ export default function AdminRecruitmentPage() {
                   <Button 
                     variant="default" 
                     className="flex-1 min-w-[180px] bg-emerald-600 hover:bg-emerald-700"
+                    disabled={completing}
                     onClick={async () => {
+                      setCompleting(true)
                       try {
                         const response = await fetch(`/api/admin/recruitment/interviews/${selectedInterview.id}/complete`, {
                           method: 'PATCH'
@@ -2251,11 +2281,22 @@ export default function AdminRecruitmentPage() {
                         }
                       } catch (error) {
                         toast({ title: "Error", description: "Failed to mark interview as complete", variant: "destructive" })
+                      } finally {
+                        setCompleting(false)
                       }
                     }}
                   >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Completed
+                    {completing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Completing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Mark as Completed
+                      </>
+                    )}
                   </Button>
                 )}
 

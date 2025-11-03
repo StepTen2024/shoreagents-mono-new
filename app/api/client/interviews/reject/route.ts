@@ -44,12 +44,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    // Append reject reason to existing client notes
+    const existingNotes = interview.clientNotes?.trim() || ''
+    const updatedClientNotes = existingNotes 
+      ? `${existingNotes}\n\n${rejectReason}` 
+      : rejectReason
+
     // Update interview status to REJECTED
     const updatedInterview = await prisma.interview_requests.update({
       where: { id: interviewRequestId },
       data: {
         status: 'REJECTED',
-        clientNotes: rejectReason, // Store reject reason in clientNotes
+        clientNotes: updatedClientNotes, // Append reject reason to clientNotes
         updatedAt: new Date()
       }
     })

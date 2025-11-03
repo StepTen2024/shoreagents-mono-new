@@ -55,13 +55,11 @@ export default function ClientInterviewsPage() {
   const [selectedInterview, setSelectedInterview] = useState<InterviewRequest | null>(null)
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false)
-  const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   
   // Form states
   const [cancelReason, setCancelReason] = useState('')
   const [rescheduleNotes, setRescheduleNotes] = useState('')
-  const [completionNotes, setCompletionNotes] = useState('')
   const [additionalNotes, setAdditionalNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -446,20 +444,6 @@ export default function ClientInterviewsPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-4 border-t border-gray-200">
-                      {/* Mark as Completed - Show for scheduled interviews */}
-                      {interview.status === 'SCHEDULED' && (
-                        <button
-                          onClick={() => {
-                            setSelectedInterview(interview)
-                            setCompleteModalOpen(true)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:shadow-lg font-medium transition-all flex items-center gap-2 text-sm"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Mark Complete
-                        </button>
-                      )}
-
                       {/* Request Reschedule - Show for pending or scheduled */}
                       {(interview.status === 'PENDING' || interview.status === 'SCHEDULED') && (
                         <button
@@ -637,68 +621,6 @@ export default function ClientInterviewsPage() {
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Sending...' : 'Send Request'}
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mark as Complete Modal */}
-      <Dialog open={completeModalOpen} onOpenChange={setCompleteModalOpen}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900">Mark Interview as Completed</DialogTitle>
-            <DialogDescription className="text-gray-600">
-              Confirm that the interview has been completed and optionally add feedback.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="completionNotes" className="text-gray-900">Feedback / Notes (Optional)</Label>
-              <Textarea
-                id="completionNotes"
-                value={completionNotes}
-                onChange={(e) => setCompletionNotes(e.target.value)}
-                placeholder="How did the interview go? Any feedback?"
-                rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setCompleteModalOpen(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={submitting}
-                onClick={async () => {
-                  if (!selectedInterview) return
-                  setSubmitting(true)
-                  try {
-                    const response = await fetch(`/api/client/interviews/${selectedInterview.id}/complete`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ notes: completionNotes })
-                    })
-                    if (response.ok) {
-                      toast({ title: "Success", description: "Interview marked as completed" })
-                      setCompleteModalOpen(false)
-                      setCompletionNotes('')
-                      fetchInterviews()
-                    } else {
-                      throw new Error('Failed to mark complete')
-                    }
-                  } catch (error) {
-                    toast({ title: "Error", description: "Failed to mark interview as complete", variant: "destructive" })
-                  } finally {
-                    setSubmitting(false)
-                  }
-                }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Saving...' : 'Mark as Completed'}
               </button>
             </div>
           </div>

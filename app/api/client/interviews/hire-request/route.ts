@@ -64,6 +64,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Append hire request notes to existing client notes
+    const existingNotes = interviewRequest.clientNotes?.trim() || ''
+    const updatedClientNotes = notes 
+      ? (existingNotes ? `${existingNotes}\n\n${notes}` : notes)
+      : existingNotes
+
     // Update interview request status to HIRE_REQUESTED
     await prisma.interview_requests.update({
       where: { id: interviewRequestId },
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
         hireRequestedBy: 'client',
         hireRequestedAt: new Date(),
         clientPreferredStart: preferredStartDate ? new Date(preferredStartDate) : null,
-        clientNotes: notes ? `${interviewRequest.clientNotes || ''}\n\nHire Request Notes: ${notes}` : interviewRequest.clientNotes,
+        clientNotes: updatedClientNotes,
         workSchedule: workSchedule || null,
         updatedAt: new Date()
       }

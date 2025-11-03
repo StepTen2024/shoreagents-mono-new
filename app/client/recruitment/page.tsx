@@ -46,7 +46,8 @@ import {
   XCircle,
   MessageSquare,
   CalendarClock,
-  User
+  User,
+  Mail
 } from "lucide-react"
 
 // Types
@@ -140,14 +141,16 @@ export default function RecruitmentPage() {
   // Interview Management Modals
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false)
-  const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
+  const [undoCancelModalOpen, setUndoCancelModalOpen] = useState(false)
   
   // Form states for interview management
   const [cancelReason, setCancelReason] = useState('')
   const [rescheduleNotes, setRescheduleNotes] = useState('')
-  const [completionNotes, setCompletionNotes] = useState('')
+  const [reschedulePreferredTimes, setReschedulePreferredTimes] = useState<string[]>(['', ''])
+  const [clientTimezone, setClientTimezone] = useState<string>('Australia/Brisbane')
   const [additionalNotes, setAdditionalNotes] = useState('')
+  const [undoCancelNotes, setUndoCancelNotes] = useState('')
   const [interviewSubmitting, setInterviewSubmitting] = useState(false)
   
   // Filters
@@ -200,6 +203,22 @@ export default function RecruitmentPage() {
       fetchInterviews()
     }
   }, [activeTab])
+
+  // Fetch client timezone on mount
+  useEffect(() => {
+    async function fetchClientTimezone() {
+      try {
+        const response = await fetch('/api/client/profile')
+        const data = await response.json()
+        if (data.profile?.timezone) {
+          setClientTimezone(data.profile.timezone)
+        }
+      } catch (error) {
+        console.error('Failed to fetch client timezone:', error)
+      }
+    }
+    fetchClientTimezone()
+  }, [])
 
   async function fetchJobRequests() {
     try {
@@ -269,18 +288,22 @@ export default function RecruitmentPage() {
     try {
       setHireRequestingId(selectedInterview.id)
       
+      // Format hire notes with timestamp
+      const timestamp = new Date().toLocaleString('en-US')
+      const noteText = hireData.hireNotes || "Client would like to hire this candidate"
+      const formattedNotes = `[${timestamp}] Hire Request Notes: ${noteText}`
+      
       const response = await fetch("/api/client/interviews/hire-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           interviewRequestId: selectedInterview.id,
           preferredStartDate: hireData.preferredStartDate,
-          notes: hireData.hireNotes || "Client would like to hire this candidate",
+          notes: formattedNotes,
           workSchedule: {
             workDays: hireData.workDays,
             workStartTime: hireData.workStartTime,
-            isMonToFri: hireData.isMonToFri,
-            clientTimezone: "Australia/Brisbane" // TODO: Get from client profile
+            isMonToFri: hireData.isMonToFri
           }
         })
       })
@@ -328,19 +351,27 @@ export default function RecruitmentPage() {
     try {
       setRejectingId(selectedInterview.id)
       
+      // Format rejection reason with timestamp
+      const timestamp = new Date().toLocaleString('en-US')
+      const formattedReason = `[${timestamp}] Rejection Reason: ${rejectData.rejectReason.trim()}`
+      
       const response = await fetch("/api/client/interviews/reject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           interviewRequestId: selectedInterview.id,
-          rejectReason: rejectData.rejectReason
+          rejectReason: formattedReason
         })
       })
 
       const data = await response.json()
 
       if (data.success) {
-        alert("✅ Rejection sent to admin successfully!")
+        toast({
+          title: "✅ Candidate Rejected Successfully",
+          description: "The admin team has been notified of your decision. Thank you for your feedback.",
+          duration: 5000,
+        })
         setRejectModalOpen(false)
         setRejectData({ rejectReason: '' })
         setSelectedInterview(null)
@@ -351,7 +382,11 @@ export default function RecruitmentPage() {
       }
     } catch (error) {
       console.error('❌ Error sending rejection:', error)
-      alert(`Failed to send rejection: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast({
+        title: "Error",
+        description: `Failed to send rejection: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      })
     } finally {
       setRejectingId(null)
     }
@@ -603,18 +638,21 @@ export default function RecruitmentPage() {
             setCancelModalOpen={setCancelModalOpen}
             rescheduleModalOpen={rescheduleModalOpen}
             setRescheduleModalOpen={setRescheduleModalOpen}
-            completeModalOpen={completeModalOpen}
-            setCompleteModalOpen={setCompleteModalOpen}
             notesModalOpen={notesModalOpen}
             setNotesModalOpen={setNotesModalOpen}
+            undoCancelModalOpen={undoCancelModalOpen}
+            setUndoCancelModalOpen={setUndoCancelModalOpen}
             cancelReason={cancelReason}
             setCancelReason={setCancelReason}
             rescheduleNotes={rescheduleNotes}
             setRescheduleNotes={setRescheduleNotes}
-            completionNotes={completionNotes}
-            setCompletionNotes={setCompletionNotes}
+            reschedulePreferredTimes={reschedulePreferredTimes}
+            setReschedulePreferredTimes={setReschedulePreferredTimes}
+            clientTimezone={clientTimezone}
             additionalNotes={additionalNotes}
             setAdditionalNotes={setAdditionalNotes}
+            undoCancelNotes={undoCancelNotes}
+            setUndoCancelNotes={setUndoCancelNotes}
             interviewSubmitting={interviewSubmitting}
             setInterviewSubmitting={setInterviewSubmitting}
             fetchInterviews={fetchInterviews}
@@ -1556,18 +1594,21 @@ function InterviewsTab({
   setCancelModalOpen,
   rescheduleModalOpen,
   setRescheduleModalOpen,
-  completeModalOpen,
-  setCompleteModalOpen,
   notesModalOpen,
   setNotesModalOpen,
+  undoCancelModalOpen,
+  setUndoCancelModalOpen,
   cancelReason,
   setCancelReason,
   rescheduleNotes,
   setRescheduleNotes,
-  completionNotes,
-  setCompletionNotes,
+  reschedulePreferredTimes,
+  setReschedulePreferredTimes,
+  clientTimezone,
   additionalNotes,
   setAdditionalNotes,
+  undoCancelNotes,
+  setUndoCancelNotes,
   interviewSubmitting,
   setInterviewSubmitting,
   fetchInterviews,
@@ -1609,10 +1650,13 @@ function InterviewsTab({
       REJECTED: <XCircle className="h-3 w-3 mr-1" />
     }
 
+    // Format status text: replace underscores/hyphens with spaces
+    const displayStatus = status.replace(/[_-]/g, ' ')
+    
     return (
       <Badge variant="outline" className={`${styles[status] || 'bg-gray-100 text-gray-800 border-gray-300'} flex items-center`}>
         {icons[status] || <AlertCircle className="h-3 w-3 mr-1" />}
-        {status}
+        {displayStatus}
       </Badge>
     )
   }
@@ -1716,7 +1760,13 @@ function InterviewsTab({
                 interview.status === 'PENDING' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-yellow-500' :
                 interview.status === 'SCHEDULED' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-l-blue-500' :
                 interview.status === 'COMPLETED' ? 'bg-gradient-to-br from-green-50 to-green-100 border-l-green-500' :
+                (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED') ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-l-orange-500' :
+                (interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT') ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-l-indigo-500' :
+                (interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED') ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-emerald-500' :
+                (interview.status === 'OFFER_DECLINED' || interview.status === 'OFFER-DECLINED') ? 'bg-gradient-to-br from-red-50 to-red-100 border-l-red-500' :
                 interview.status === 'HIRED' ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-l-purple-500' :
+                interview.status === 'REJECTED' ? 'bg-gradient-to-br from-red-50 to-red-100 border-l-red-500' :
+                interview.status === 'CANCELLED' ? 'bg-gradient-to-br from-gray-50 to-gray-100 border-l-gray-500' :
                 'bg-gradient-to-br from-gray-50 to-gray-100 border-l-gray-500'
               }`}>
                 {interview.status === 'PENDING' && (
@@ -1784,7 +1834,83 @@ function InterviewsTab({
                       </h3>
                       <p className="text-sm text-green-800 leading-relaxed">
                         Great work! The interview with <span className="font-semibold">{interview.candidateFirstName}</span> has been completed. 
-                        Our team will review and get back to you with next steps.
+                        You can now request to hire this candidate or reject them below.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {(interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED') && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-orange-200 flex items-center justify-center">
+                        <UserCheck className="h-6 w-6 text-orange-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-orange-900 mb-2">
+                        Hire Request Submitted
+                      </h3>
+                      <p className="text-sm text-orange-800 leading-relaxed">
+                        Your hire request for <span className="font-semibold">{interview.candidateFirstName}</span> has been submitted to our admin team. 
+                        They will send a formal job offer to the candidate and notify you once they respond.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {(interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT') && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-indigo-200 flex items-center justify-center">
+                        <Mail className="h-6 w-6 text-indigo-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-indigo-900 mb-2">
+                        Job Offer Sent 📧
+                      </h3>
+                      <p className="text-sm text-indigo-800 leading-relaxed">
+                        A formal job offer has been sent to <span className="font-semibold">{interview.candidateFirstName}</span>. 
+                        We're waiting for their response. You'll be notified once they respond.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {(interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED') && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-emerald-200 flex items-center justify-center">
+                        <CheckCircle2 className="h-6 w-6 text-emerald-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-emerald-900 mb-2">
+                        Offer Accepted! 🎉
+                      </h3>
+                      <p className="text-sm text-emerald-800 leading-relaxed">
+                        Great news! <span className="font-semibold">{interview.candidateFirstName}</span> has accepted your job offer. 
+                        They are now completing their onboarding process.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {(interview.status === 'OFFER_DECLINED' || interview.status === 'OFFER-DECLINED') && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-red-200 flex items-center justify-center">
+                        <XCircle className="h-6 w-6 text-red-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-red-900 mb-2">
+                        Offer Declined
+                      </h3>
+                      <p className="text-sm text-red-800 leading-relaxed">
+                        Unfortunately, <span className="font-semibold">{interview.candidateFirstName}</span> has declined the job offer. 
+                        Our team will reach out to discuss alternative candidates.
                       </p>
                     </div>
                   </div>
@@ -1807,6 +1933,44 @@ function InterviewsTab({
                     </div>
                   </div>
                 )}
+
+                {interview.status === 'REJECTED' && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-red-200 flex items-center justify-center">
+                        <XCircle className="h-6 w-6 text-red-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-red-900 mb-2">
+                        Candidate Rejected
+                      </h3>
+                      <p className="text-sm text-red-800 leading-relaxed">
+                        You have declined to move forward with <span className="font-semibold">{interview.candidateFirstName}</span>. 
+                        The admin team has been notified of your decision.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {interview.status === 'CANCELLED' && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                        <XCircle className="h-6 w-6 text-gray-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">
+                        Interview Cancelled
+                      </h3>
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        You have cancelled the interview with <span className="font-semibold">{interview.candidateFirstName}</span>. 
+                        The interview request has been closed.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Your Preferred Times */}
@@ -1825,45 +1989,107 @@ function InterviewsTab({
                 </div>
               </div>
 
-              {/* Your Notes */}
-              {interview.clientNotes && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">Your Notes:</span>
-                  </div>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 whitespace-pre-wrap">
-                    {interview.clientNotes}
-                  </p>
-                </div>
-              )}
+              {/* Combined Notes (Client + Admin) */}
+              {(() => {
+                const clientNotes = interview.clientNotes || '';
+                const adminNotes = interview.adminNotes || '';
+                
+                if (!clientNotes && !adminNotes) return null;
 
-              {/* Admin Notes */}
-              {interview.adminNotes && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">Admin Notes:</span>
+                // Parse notes and combine them
+                const parseNotes = (notesText: string, type: 'client' | 'admin') => {
+                  if (!notesText) return [];
+                  
+                  // Split by timestamp pattern: [date] text
+                  const entries = notesText.split(/\n\n(?=\[)/);
+                  
+                  return entries.map(entry => {
+                    const match = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+                    if (match) {
+                      const [, timestamp, content] = match;
+                      try {
+                        const date = new Date(timestamp);
+                        return { timestamp, content: content.trim(), type, date, rawText: entry };
+                      } catch {
+                        return { timestamp, content: content.trim(), type, date: new Date(0), rawText: entry };
+                      }
+                    }
+                    return { timestamp: '', content: entry.trim(), type, date: new Date(0), rawText: entry };
+                  }).filter(e => e.content);
+                };
+
+                const clientEntries = parseNotes(clientNotes, 'client');
+                const adminEntries = parseNotes(adminNotes, 'admin');
+                const allEntries = [...clientEntries, ...adminEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+                if (allEntries.length === 0) return null;
+
+                return (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">Notes</span>
+                    </div>
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                      {allEntries.map((entry, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`p-3 rounded border ${
+                            entry.type === 'client' 
+                              ? 'bg-blue-50 border-blue-200' 
+                              : 'bg-purple-50 border-purple-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                entry.type === 'client'
+                                  ? 'bg-blue-100 text-blue-700 border-blue-300'
+                                  : 'bg-purple-100 text-purple-700 border-purple-300'
+                              }`}
+                            >
+                              {entry.type === 'client' ? 'Client' : 'Admin'}
+                            </Badge>
+                            {entry.timestamp && (
+                              <span className="text-xs text-gray-500">{entry.timestamp}</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{entry.content}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-200 whitespace-pre-wrap">
-                    {interview.adminNotes}
-                  </p>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4 border-t border-gray-200">
-                {/* Mark as Completed - Show for scheduled interviews */}
-                {interview.status === 'SCHEDULED' && (
+                {/* Hire Request - Show for completed interviews */}
+                {interview.status === 'COMPLETED' && (
                   <button
                     onClick={() => {
                       setSelectedInterview(interview)
-                      setCompleteModalOpen(true)
+                      setHireModalOpen(true)
                     }}
-                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg hover:shadow-lg font-medium transition-all flex items-center gap-2 text-sm"
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg font-medium transition-all flex items-center gap-2 text-sm"
                   >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Mark Complete
+                    <UserCheck className="h-4 w-4" />
+                    Request to Hire
+                  </button>
+                )}
+
+                {/* Reject - Show for completed interviews */}
+                {interview.status === 'COMPLETED' && (
+                  <button
+                    onClick={() => {
+                      setSelectedInterview(interview)
+                      setRejectModalOpen(true)
+                    }}
+                    className="px-4 py-2.5 bg-white border-2 border-red-300 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-400 hover:text-red-700 font-semibold transition-all flex items-center gap-2 text-sm"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject Candidate
                   </button>
                 )}
 
@@ -1881,20 +2107,18 @@ function InterviewsTab({
                   </button>
                 )}
 
-                {/* Add Notes - Show for any active interview */}
-                {(interview.status === 'PENDING' || interview.status === 'SCHEDULED') && (
-                  <button
-                    onClick={() => {
-                      setSelectedInterview(interview)
-                      setAdditionalNotes('')
-                      setNotesModalOpen(true)
-                    }}
-                    className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-all flex items-center gap-2 text-sm"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Add Notes
-                  </button>
-                )}
+                {/* Add Notes - Show for all statuses */}
+                <button
+                  onClick={() => {
+                    setSelectedInterview(interview)
+                    setAdditionalNotes('')
+                    setNotesModalOpen(true)
+                  }}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-all flex items-center gap-2 text-sm"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Add Notes
+                </button>
 
                 {/* Cancel Interview - Show for pending or scheduled */}
                 {(interview.status === 'PENDING' || interview.status === 'SCHEDULED') && (
@@ -1909,6 +2133,21 @@ function InterviewsTab({
                     Cancel
                   </button>
                 )}
+
+                {/* Undo Cancel Request - Show for cancelled interviews */}
+                      {interview.status === 'CANCELLED' && (
+                        <button
+                          onClick={() => {
+                            setSelectedInterview(interview)
+                            setUndoCancelNotes('')
+                            setUndoCancelModalOpen(true)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg font-medium transition-all flex items-center gap-2 text-sm"
+                        >
+                          <CalendarCheck className="h-4 w-4" />
+                          Undo Cancel Request
+                        </button>
+                      )}
               </div>
 
             </div>
@@ -1918,20 +2157,17 @@ function InterviewsTab({
 
       {/* Hire Modal */}
       <Dialog open={hireModalOpen} onOpenChange={setHireModalOpen}>
-        <DialogContent className="bg-white text-gray-900 max-w-lg">
+        <DialogContent className="bg-white text-gray-900 max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900">
-              Request to Hire Candidate
-            </DialogTitle>
+            <DialogTitle className="text-gray-900">Request to Hire Candidate</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Provide details about the hire request for the admin team
+              Provide details about the hire request for the admin team.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-6 py-4 max-h-[500px] overflow-y-auto">
+          <div className="space-y-4">
             {/* Preferred Start Date */}
             <div>
-              <Label htmlFor="preferredStartDate" className="text-gray-900 font-medium mb-2 block">
+              <Label htmlFor="preferredStartDate" className="text-gray-900">
                 Preferred Start Date *
               </Label>
               <Input
@@ -1940,7 +2176,7 @@ function InterviewsTab({
                 value={hireData.preferredStartDate}
                 onChange={(e) => setHireData({ ...hireData, preferredStartDate: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
-                className="bg-white text-gray-900 border-gray-300"
+                className="mt-2 bg-white text-gray-900 border-gray-300"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -1949,15 +2185,12 @@ function InterviewsTab({
             </div>
 
             {/* Work Schedule Section */}
-            <div className="border-t pt-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="h-5 w-5 text-blue-600" />
-                <Label className="text-gray-900 font-semibold text-base">Work Schedule</Label>
-              </div>
-
+            <div>
+              <Label className="text-gray-900">Work Schedule</Label>
+              
               {/* Work Days */}
-              <div className="space-y-3 mb-4">
-                <Label className="text-gray-900 font-medium">Work Days *</Label>
+              <div className="space-y-2 mt-2">
+                <Label className="text-gray-900 text-sm">Work Days *</Label>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1988,11 +2221,11 @@ function InterviewsTab({
               </div>
 
               {/* Start Time */}
-              <div>
-                <Label htmlFor="workStartTime" className="text-gray-900 font-medium mb-2 block">
-                  Work Start Time (Your Timezone) *
+              <div className="mt-3">
+                <Label htmlFor="workStartTime" className="text-gray-900 text-sm">
+                  Work Start Time *
                 </Label>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mt-2">
                   <Input
                     id="workStartTime"
                     type="time"
@@ -2010,24 +2243,12 @@ function InterviewsTab({
                     })()}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Times will be converted to Philippines timezone (Manila)
-                </p>
-              </div>
-
-              {/* Timezone Display */}
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mt-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-900">Your Timezone:</span>
-                  <span className="text-blue-700">Brisbane (AEST)</span>
-                </div>
               </div>
             </div>
             
             {/* Additional Notes */}
-            <div className="border-t pt-4">
-              <Label htmlFor="hireNotes" className="text-gray-900 font-medium mb-2 block">
+            <div>
+              <Label htmlFor="hireNotes" className="text-gray-900">
                 Additional Notes (Optional)
               </Label>
               <Textarea
@@ -2035,110 +2256,82 @@ function InterviewsTab({
                 value={hireData.hireNotes}
                 onChange={(e) => setHireData({ ...hireData, hireNotes: e.target.value })}
                 placeholder="Any additional information for the admin (e.g., salary offer, benefits, role details, etc.)"
-                className="bg-white text-gray-900 border-gray-300"
                 rows={4}
+                className="mt-2 bg-white text-gray-900 border-gray-300"
               />
             </div>
-          </div>
-
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setHireModalOpen(false)
-                setHireData({ 
-                  preferredStartDate: '', 
-                  hireNotes: '',
-                  isMonToFri: true,
-                  workStartTime: '09:00',
-                  workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-                })
-              }}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleHireRequest}
-              disabled={!hireData.preferredStartDate || hireRequestingId !== null}
-              className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-            >
-              {hireRequestingId ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Send Hire Request
-                </>
-              )}
-            </Button>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setHireModalOpen(false)
+                  setHireData({ 
+                    preferredStartDate: '', 
+                    hireNotes: '',
+                    isMonToFri: true,
+                    workStartTime: '09:00',
+                    workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+                  })
+                }}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleHireRequest}
+                disabled={!hireData.preferredStartDate || hireRequestingId !== null}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {hireRequestingId ? 'Sending...' : 'Send Hire Request'}
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Reject Modal */}
       <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
-        <DialogContent className="bg-white text-gray-900 max-w-lg">
+        <DialogContent className="max-w-md bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900">
-              Reject Candidate
-            </DialogTitle>
+            <DialogTitle className="text-gray-900">Reject Candidate</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Please provide a reason for rejecting this candidate
+              Please provide a reason for rejecting this candidate.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="rejectReason" className="text-gray-900 font-medium mb-2 block">
-                Rejection Reason *
-              </Label>
+              <Label htmlFor="rejectReason" className="text-gray-900">Rejection Reason</Label>
               <Textarea
                 id="rejectReason"
                 value={rejectData.rejectReason}
                 onChange={(e) => setRejectData({ rejectReason: e.target.value })}
                 placeholder="Please explain why this candidate is not a good fit..."
-                className="bg-white text-gray-900 border-gray-300"
-                rows={5}
+                rows={4}
+                className="mt-2 bg-white text-gray-900 border-gray-300"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
                 This will be sent to the admin team for their records
               </p>
             </div>
-          </div>
-
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setRejectModalOpen(false)
-                setRejectData({ rejectReason: '' })
-              }}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRejectRequest}
-              disabled={!rejectData.rejectReason.trim() || rejectingId !== null}
-              className="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
-            >
-              {rejectingId ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Confirm Rejection
-                </>
-              )}
-            </Button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setRejectModalOpen(false)
+                  setRejectData({ rejectReason: '' })
+                }}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!rejectData.rejectReason.trim() || rejectingId !== null}
+                onClick={handleRejectRequest}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {rejectingId ? 'Rejecting...' : 'Reject Candidate'}
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -2208,52 +2401,214 @@ function InterviewsTab({
       {/* Request Reschedule Modal */}
       <Dialog open={rescheduleModalOpen} onOpenChange={(open) => {
         setRescheduleModalOpen(open)
-        if (!open) setRescheduleNotes('')
+        if (!open) {
+          setRescheduleNotes('')
+          setReschedulePreferredTimes(['', ''])
+        }
       }}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
+        <DialogContent className="max-w-lg w-full bg-white text-gray-900 max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-gray-900">Request Reschedule</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Send a note to the admin team requesting a reschedule for this interview.
+              Provide new preferred times for rescheduling this interview.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Preferred Times */}
             <div>
-              <Label htmlFor="rescheduleNotes" className="text-gray-900">Reschedule Request Notes</Label>
+              <Label className="text-gray-900 font-medium mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                New Preferred Interview Times
+              </Label>
+              <p className="text-xs text-gray-600 mb-2">
+                Provide 2-3 new time options that work for you. We'll check availability and confirm.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-blue-900 font-medium">
+                  🌍 Times in your timezone: <span className="font-bold">{(() => {
+                    const tzMap: Record<string, string> = {
+                      'Australia/Sydney': 'Sydney Time (AEDT)',
+                      'Australia/Melbourne': 'Melbourne Time (AEDT)',
+                      'Australia/Brisbane': 'Brisbane Time (AEST)',
+                      'Australia/Adelaide': 'Adelaide Time (ACDT)',
+                      'Australia/Perth': 'Perth Time (AWST)',
+                      'America/New_York': 'Eastern Time (ET)',
+                      'America/Chicago': 'Central Time (CT)',
+                      'America/Denver': 'Mountain Time (MT)',
+                      'America/Los_Angeles': 'Pacific Time (PT)',
+                      'Pacific/Auckland': 'New Zealand Time (NZDT)',
+                    }
+                    return tzMap[clientTimezone] || clientTimezone
+                  })()}</span>
+                </p>
+              </div>
+              <div className="space-y-3">
+                {reschedulePreferredTimes.map((time: string, index: number) => {
+                  const parseTimeSlot = (t: string) => {
+                    if (!t) return { date: '', hour: 9, minute: 0, ampm: 'AM' }
+                    const [datePart, timePart] = t.split('T')
+                    const [hourStr, minuteStr] = timePart.split(':')
+                    const hour24 = parseInt(hourStr)
+                    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24
+                    const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                    return { date: datePart, hour: hour12, minute: parseInt(minuteStr), ampm }
+                  }
+                  
+                  const buildTimeSlot = (date: string, hour: number, minute: number, ampm: string) => {
+                    const hour24 = ampm === 'PM' ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour)
+                    return `${date}T${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+                  }
+
+                  const parsed = parseTimeSlot(time)
+                  return (
+                    <div key={index} className="flex gap-1.5 items-center">
+                      <input
+                        type="date"
+                        value={parsed.date}
+                        onChange={(e) => {
+                          const newTime = buildTimeSlot(e.target.value, parsed.hour, parsed.minute, parsed.ampm)
+                          const updated = [...reschedulePreferredTimes]
+                          updated[index] = newTime
+                          setReschedulePreferredTimes(updated)
+                        }}
+                        className="flex-1 min-w-0 px-2 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 bg-white text-sm"
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <select
+                        value={parsed.hour}
+                        onChange={(e) => {
+                          const newTime = buildTimeSlot(parsed.date, parseInt(e.target.value), parsed.minute, parsed.ampm)
+                          const updated = [...reschedulePreferredTimes]
+                          updated[index] = newTime
+                          setReschedulePreferredTimes(updated)
+                        }}
+                        className="w-16 px-1 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 bg-white text-sm"
+                      >
+                        {Array.from({length: 12}, (_, i) => i + 1).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={parsed.minute}
+                        onChange={(e) => {
+                          const newTime = buildTimeSlot(parsed.date, parsed.hour, parseInt(e.target.value), parsed.ampm)
+                          const updated = [...reschedulePreferredTimes]
+                          updated[index] = newTime
+                          setReschedulePreferredTimes(updated)
+                        }}
+                        className="w-16 px-1 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 bg-white text-sm"
+                      >
+                        {[0, 15, 30, 45].map(m => (
+                          <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={parsed.ampm}
+                        onChange={(e) => {
+                          const newTime = buildTimeSlot(parsed.date, parsed.hour, parsed.minute, e.target.value)
+                          const updated = [...reschedulePreferredTimes]
+                          updated[index] = newTime
+                          setReschedulePreferredTimes(updated)
+                        }}
+                        className="w-16 px-1 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 bg-white text-sm"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                      {index > 1 && (
+                        <button
+                          onClick={() => setReschedulePreferredTimes(reschedulePreferredTimes.filter((_: string, i: number) => i !== index))}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+                {reschedulePreferredTimes.length < 5 && (
+                  <button
+                    onClick={() => setReschedulePreferredTimes([...reschedulePreferredTimes, ''])}
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-medium text-sm"
+                  >
+                    + Add Another Time Option
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Notes (Optional) */}
+            <div>
+              <Label htmlFor="rescheduleNotes" className="text-gray-900">Additional Notes (Optional)</Label>
               <Textarea
                 id="rescheduleNotes"
                 value={rescheduleNotes}
                 onChange={(e) => setRescheduleNotes(e.target.value)}
                 placeholder="E.g., Can we move this to next week? I have a conflict..."
-                rows={4}
+                rows={3}
                 className="mt-2 bg-white text-gray-900 border-gray-300"
               />
             </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setRescheduleModalOpen(false)
                   setRescheduleNotes('')
+                  setReschedulePreferredTimes(['', ''])
                 }}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
               >
                 Cancel
               </button>
               <button
-                disabled={interviewSubmitting || !rescheduleNotes.trim()}
+                disabled={interviewSubmitting || !reschedulePreferredTimes.filter((t: string) => t.trim() !== '').length}
                 onClick={async () => {
                   if (!selectedInterview) return
+                  
+                  // Filter out empty times
+                  const times = reschedulePreferredTimes.filter((t: string) => t.trim() !== '')
+                  if (times.length === 0) {
+                    toast({ title: "Error", description: "Please provide at least one preferred time", variant: "destructive" })
+                    return
+                  }
+
                   setInterviewSubmitting(true)
                   try {
+                    // Format times with timezone information
+                    const timesWithTimezone = times.map((time: string) => ({
+                      datetime: time,
+                      timezone: clientTimezone,
+                      timezoneDisplay: (() => {
+                        const tzMap: Record<string, string> = {
+                          'Australia/Sydney': 'Sydney Time (AEDT)',
+                          'Australia/Melbourne': 'Melbourne Time (AEDT)',
+                          'Australia/Brisbane': 'Brisbane Time (AEST)',
+                          'Australia/Adelaide': 'Adelaide Time (ACDT)',
+                          'Australia/Perth': 'Perth Time (AWST)',
+                          'America/New_York': 'Eastern Time (ET)',
+                          'America/Chicago': 'Central Time (CT)',
+                          'America/Denver': 'Mountain Time (MT)',
+                          'America/Los_Angeles': 'Pacific Time (PT)',
+                          'Pacific/Auckland': 'New Zealand Time (NZDT)',
+                        }
+                        return tzMap[clientTimezone] || clientTimezone
+                      })()
+                    }))
+
                     const response = await fetch(`/api/client/interviews/${selectedInterview.id}/reschedule-request`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ notes: rescheduleNotes })
+                      body: JSON.stringify({ 
+                        notes: rescheduleNotes || undefined,
+                        preferred_times: timesWithTimezone
+                      })
                     })
                     if (response.ok) {
-                      toast({ title: "Success", description: "Reschedule request sent to admin team" })
+                      toast({ title: "Success", description: "Reschedule request sent to admin team with new preferred times" })
                       setRescheduleModalOpen(false)
                       setRescheduleNotes('')
+                      setReschedulePreferredTimes(['', ''])
                       fetchInterviews()
                     } else {
                       throw new Error('Failed to send request')
@@ -2267,68 +2622,6 @@ function InterviewsTab({
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Sending...' : 'Send Request'}
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mark as Complete Modal */}
-      <Dialog open={completeModalOpen} onOpenChange={setCompleteModalOpen}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900">Mark Interview as Completed</DialogTitle>
-            <DialogDescription className="text-gray-600">
-              Confirm that the interview has been completed and optionally add feedback.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="completionNotes" className="text-gray-900">Feedback / Notes (Optional)</Label>
-              <Textarea
-                id="completionNotes"
-                value={completionNotes}
-                onChange={(e) => setCompletionNotes(e.target.value)}
-                placeholder="How did the interview go? Any feedback?"
-                rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setCompleteModalOpen(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                disabled={interviewSubmitting}
-                onClick={async () => {
-                  if (!selectedInterview) return
-                  setInterviewSubmitting(true)
-                  try {
-                    const response = await fetch(`/api/client/interviews/${selectedInterview.id}/complete`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ notes: completionNotes })
-                    })
-                    if (response.ok) {
-                      toast({ title: "Success", description: "Interview marked as completed" })
-                      setCompleteModalOpen(false)
-                      setCompletionNotes('')
-                      fetchInterviews()
-                    } else {
-                      throw new Error('Failed to mark complete')
-                    }
-                  } catch (error) {
-                    toast({ title: "Error", description: "Failed to mark interview as complete", variant: "destructive" })
-                  } finally {
-                    setInterviewSubmitting(false)
-                  }
-                }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {interviewSubmitting ? 'Saving...' : 'Mark as Completed'}
               </button>
             </div>
           </div>
@@ -2369,10 +2662,11 @@ function InterviewsTab({
                   if (!selectedInterview) return
                   setInterviewSubmitting(true)
                   try {
+                    // API will add timestamp automatically
                     const response = await fetch(`/api/client/interviews/${selectedInterview.id}/notes`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ notes: additionalNotes })
+                      body: JSON.stringify({ notes: additionalNotes.trim() })
                     })
                     if (response.ok) {
                       toast({ title: "Success", description: "Notes updated successfully" })
@@ -2390,6 +2684,86 @@ function InterviewsTab({
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Adding...' : 'Add Notes'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Cancel Request Modal */}
+      <Dialog open={undoCancelModalOpen} onOpenChange={(open) => {
+        setUndoCancelModalOpen(open)
+        if (!open) setUndoCancelNotes('')
+      }}>
+        <DialogContent className="max-w-md bg-white text-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Reopen Interview Request</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Add optional notes about reopening this interview request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="undoCancelNotes" className="text-gray-900">Reopening Notes (Optional)</Label>
+              <Textarea
+                id="undoCancelNotes"
+                value={undoCancelNotes}
+                onChange={(e) => setUndoCancelNotes(e.target.value)}
+                placeholder="Add any notes about why you're reopening this interview..."
+                rows={4}
+                className="mt-2 bg-white text-gray-900 border-gray-300"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setUndoCancelModalOpen(false)
+                  setUndoCancelNotes('')
+                }}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={interviewSubmitting}
+                onClick={async () => {
+                  if (!selectedInterview) return
+                  
+                  setInterviewSubmitting(true)
+                  try {
+                    // Undo the cancellation with optional notes
+                    const response = await fetch(`/api/client/interviews/${selectedInterview.id}/undo-cancel`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        notes: undoCancelNotes.trim() || undefined 
+                      })
+                    })
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to undo cancellation')
+                    }
+                    
+                    toast({ 
+                      title: "Success", 
+                      description: "Interview request has been reopened and set to pending status" 
+                    })
+                    setUndoCancelModalOpen(false)
+                    setUndoCancelNotes('')
+                    fetchInterviews()
+                  } catch (error) {
+                    toast({ 
+                      title: "Error", 
+                      description: "Failed to undo cancellation", 
+                      variant: "destructive" 
+                    })
+                  } finally {
+                    setInterviewSubmitting(false)
+                  }
+                }}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {interviewSubmitting ? 'Reopening...' : 'Reopen Interview'}
               </button>
             </div>
           </div>

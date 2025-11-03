@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function POST(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -14,11 +14,10 @@ export async function POST(
     }
 
     const { id } = await params
-    const body = await request.json()
-    const { notes, preferred_times } = body
+    const body = await request.json().catch(() => ({}))
+    const { notes } = body
 
-    console.log(`📅 [CLIENT] Reschedule request for interview ${id}`)
-    console.log(`🔑 Session user ID: ${session.user.id}`)
+    console.log(`🔄 [CLIENT] Undoing cancellation for interview ${id}`)
 
     // Fetch existing interview
     const existing = await prisma.interview_requests.findUnique({
@@ -29,7 +28,10 @@ export async function POST(
       return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
     }
 
-    console.log(`🔑 Interview clientUserId: ${existing.clientUserId}`)
+    // Verify it's currently cancelled
+    if (existing.status !== 'CANCELLED') {
+      return NextResponse.json({ error: 'Interview is not cancelled' }, { status: 400 })
+    }
 
     // Fetch the client user who created the interview and the current session user
     const [interviewCreator, sessionClientUser] = await Promise.all([
@@ -54,49 +56,41 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    console.log(`✅ Authorization successful: Same company (${sessionClientUser.companyId})`)
-
-    // Prepare update data
+    // Append undo cancellation note to client notes with timestamp
     const timestamp = new Date().toLocaleString('en-US')
     const trimmedNotes = notes ? notes.trim() : ''
-    const existingClientNotes = existing.clientNotes?.trim() || ''
-    const rescheduleNote = trimmedNotes 
-      ? (existingClientNotes ? `\n\n[${timestamp}] Reschedule Request: ${trimmedNotes}` : `[${timestamp}] Reschedule Request: ${trimmedNotes}`)
-      : (existingClientNotes ? `\n\n[${timestamp}] Reschedule Request: New preferred times provided` : `[${timestamp}] Reschedule Request: New preferred times provided`)
-    const updatedClientNotes = existingClientNotes + rescheduleNote
+    const existingNotes = existing.clientNotes?.trim() || ''
+    
+    // Create undo note with optional custom notes
+    const undoNote = trimmedNotes 
+      ? `[${timestamp}] Reopening Reason: ${trimmedNotes}` 
+      : `[${timestamp}] Cancellation undone - Interview reopened by client`
+    const updatedClientNotes = existingNotes 
+      ? `${existingNotes}\n\n${undoNote}` 
+      : undoNote
 
-    // Update interview with reschedule request in client notes and optionally update preferred times
-    const updateData: any = {
-      clientNotes: updatedClientNotes,
-      updatedAt: new Date()
-    }
-
-    // If new preferred times are provided, update them
-    if (preferred_times && Array.isArray(preferred_times) && preferred_times.length > 0) {
-      updateData.preferredTimes = preferred_times
-    }
-
+    // Update interview status back to PENDING and add note
     const interview = await prisma.interview_requests.update({
-      where: { 
-        id
-      },
-      data: updateData
+      where: { id },
+      data: {
+        status: 'PENDING',
+        clientNotes: updatedClientNotes,
+        updatedAt: new Date()
+      }
     })
 
-    console.log(`✅ [CLIENT] Reschedule request sent: ${id}`)
+    console.log(`✅ [CLIENT] Interview cancellation undone: ${id}`)
 
     return NextResponse.json({ 
       success: true, 
       interview 
     })
   } catch (error) {
-    console.error('❌ [CLIENT] Error sending reschedule request:', error)
+    console.error('❌ [CLIENT] Error undoing cancellation:', error)
     return NextResponse.json(
-      { error: 'Failed to send reschedule request' },
+      { error: 'Failed to undo cancellation' },
       { status: 500 }
     )
   }
 }
-
-
 

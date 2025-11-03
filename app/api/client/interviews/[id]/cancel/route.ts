@@ -51,13 +51,24 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Update interview status to CANCELLED and add cancellation reason to client notes
+    // Update interview status to CANCELLED and append cancellation reason to client notes
+    const timestamp = new Date().toLocaleString('en-US')
     const trimmedReason = reason ? reason.trim() : ''
+    const existingNotes = existing.clientNotes?.trim() || ''
+    
+    // Append cancellation note with timestamp to existing notes
+    const cancellationNote = trimmedReason 
+      ? `[${timestamp}] Cancellation Reason: ${trimmedReason}` 
+      : `[${timestamp}] Interview cancelled by client`
+    const updatedClientNotes = existingNotes 
+      ? `${existingNotes}\n\n${cancellationNote}` 
+      : cancellationNote
+    
     const interview = await prisma.interview_requests.update({
       where: { id },
       data: {
         status: 'CANCELLED',
-        clientNotes: trimmedReason ? `${trimmedReason}\n\n(Cancelled by client)` : 'Cancelled by client',
+        clientNotes: updatedClientNotes,
         updatedAt: new Date()
       }
     })
