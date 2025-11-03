@@ -1,35 +1,102 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
 
-# dependencies
-/node_modules
+# Testing
+/coverage
 
-# next.js
+# Next.js
 /.next/
 /out/
-
-# production
 /build
+.next
+out
 
-# debug
+# Production
+/dist
+build/
+
+# Misc
+.DS_Store
+*.pem
+.idea
+.vscode/
+*.swp
+*.swo
+*~
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 
-# env files
-.env*
+# Local env files
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
+# TypeScript
 *.tsbuildinfo
-next-env.d.ts.env.local
+next-env.d.ts
+dist/
 
-/lib/generated/prisma
-.env
-server-output.log
+# Electron
+/electron/dist
+/electron/build
+/electron-builder.yml
+*.exe
+*.dmg
+*.AppImage
+*.snap
 
-# MCP configuration (contains API tokens)
-mcp-config.json
-test-n8n-connection.js
+# Prisma
+/prisma/migrations/**/migration.sql.tmp
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+

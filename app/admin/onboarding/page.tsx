@@ -87,126 +87,130 @@ export default function AdminOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3"></div>
+          <div className="grid gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-24 bg-muted rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Staff Onboarding Management
-          </h1>
-          <p className="text-slate-400">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Staff Onboarding Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Review and verify staff onboarding submissions
           </p>
         </div>
-
-        {/* Filters */}
-        <Tabs value={filter} onValueChange={setFilter} className="mb-6">
-          <TabsList className="bg-slate-800">
-            <TabsTrigger value="all">All Staff</TabsTrigger>
-            <TabsTrigger value="pending">Pending Review</TabsTrigger>
-            <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
-            <TabsTrigger value="complete">Complete</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Staff List */}
-        <Card className="bg-slate-800 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Staff Members</CardTitle>
-            <CardDescription className="text-slate-400">
-              {staffList.length} staff member{staffList.length !== 1 ? "s" : ""}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {staffList.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No staff members found</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-700">
-                    <TableHead className="text-slate-300">Name</TableHead>
-                    <TableHead className="text-slate-300">Email</TableHead>
-                    <TableHead className="text-slate-300">Progress</TableHead>
-                    <TableHead className="text-slate-300">Status</TableHead>
-                    <TableHead className="text-slate-300">Pending Review</TableHead>
-                    <TableHead className="text-slate-300">Last Updated</TableHead>
-                    <TableHead className="text-slate-300">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {staffList.map((staff) => {
-                    const pending = getPendingSections(staff.onboarding)
-                    return (
-                      <TableRow key={staff.id} className="border-slate-700">
-                        <TableCell className="text-white font-medium">
-                          {staff.name}
-                        </TableCell>
-                        <TableCell className="text-slate-300">
-                          {staff.email}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 bg-slate-700 rounded-full h-2">
-                              <div
-                                className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full transition-all"
-                                style={{ width: `${staff.onboarding?.completionPercent || 0}%` }}
-                              />
-                            </div>
-                            <span className="text-slate-300 text-sm">
-                              {staff.onboarding?.completionPercent || 0}%
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(
-                            staff.onboarding?.completionPercent || 0,
-                            staff.onboarding?.isComplete || false
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {pending > 0 ? (
-                            <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {pending} section{pending !== 1 ? "s" : ""}
-                            </Badge>
-                          ) : (
-                            <span className="text-slate-500 text-sm">None</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-slate-400 text-sm">
-                          {staff.onboarding?.updatedAt
-                            ? new Date(staff.onboarding.updatedAt).toLocaleDateString()
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            onClick={() => router.push(`/admin/onboarding/${staff.id}`)}
-                            size="sm"
-                            className="bg-purple-600 hover:bg-purple-700"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Filters */}
+      <Tabs value={filter} onValueChange={setFilter}>
+        <TabsList>
+          <TabsTrigger value="all">All Staff</TabsTrigger>
+          <TabsTrigger value="pending">Pending Review</TabsTrigger>
+          <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
+          <TabsTrigger value="complete">Complete</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Staff List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Staff Members</CardTitle>
+          <CardDescription>
+            {staffList.length} staff member{staffList.length !== 1 ? "s" : ""}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {staffList.length === 0 ? (
+            <div className="text-center py-12">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <p className="text-muted-foreground">No staff members found</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Pending Review</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staffList.map((staff) => {
+                  const pending = getPendingSections(staff.onboarding)
+                  return (
+                    <TableRow key={staff.id}>
+                      <TableCell className="font-medium">
+                        {staff.name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {staff.email}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-muted rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full transition-all"
+                              style={{ width: `${staff.onboarding?.completionPercent || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {staff.onboarding?.completionPercent || 0}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(
+                          staff.onboarding?.completionPercent || 0,
+                          staff.onboarding?.isComplete || false
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {pending > 0 ? (
+                          <Badge variant="outline" className="border-yellow-500 text-yellow-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {pending} section{pending !== 1 ? "s" : ""}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">None</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {staff.onboarding?.updatedAt
+                          ? new Date(staff.onboarding.updatedAt).toLocaleDateString()
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          onClick={() => router.push(`/admin/onboarding/${staff.id}`)}
+                          size="sm"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
