@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -151,7 +152,22 @@ function buildTimeSlot(date: string, hour: number, minute: number, ampm: string)
 }
 
 export default function AdminRecruitmentPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('candidates')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Initialize activeTab from URL or default to 'candidates'
+  const tabFromUrl = searchParams.get('tab') as TabType | null
+  const initialTab = (tabFromUrl && ['candidates', 'job-requests', 'interviews'].includes(tabFromUrl)) 
+    ? tabFromUrl 
+    : 'candidates'
+  
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab)
+  
+  // Function to change tab and update URL
+  const changeTab = (tab: TabType) => {
+    setActiveTab(tab)
+    router.push(`/admin/recruitment?tab=${tab}`, { scroll: false })
+  }
   
   // Candidates State
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -1081,7 +1097,7 @@ export default function AdminRecruitmentPage() {
         <div className="flex items-center gap-2 border-b border-border pb-4 mb-6">
           <Button
             variant={activeTab === 'candidates' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('candidates')}
+            onClick={() => changeTab('candidates')}
             className="gap-2"
           >
             <Users className="h-4 w-4" />
@@ -1090,7 +1106,7 @@ export default function AdminRecruitmentPage() {
           </Button>
           <Button
             variant={activeTab === 'job-requests' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('job-requests')}
+            onClick={() => changeTab('job-requests')}
             className="gap-2"
           >
             <Briefcase className="h-4 w-4" />
@@ -1099,7 +1115,7 @@ export default function AdminRecruitmentPage() {
           </Button>
           <Button
             variant={activeTab === 'interviews' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('interviews')}
+            onClick={() => changeTab('interviews')}
             className="gap-2"
           >
             <Calendar className="h-4 w-4" />
@@ -1398,6 +1414,8 @@ export default function AdminRecruitmentPage() {
                                   ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50 hover:bg-yellow-500/30'
                                   : status === 'scheduled'
                                   ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 hover:bg-blue-500/30'
+                                  : status === 'reschedule-requested'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
                                   : status === 'hire-requested'
                                   ? 'bg-orange-500/20 text-orange-300 border-orange-500/50 hover:bg-orange-500/30'
                                   : status === 'offer-sent'
@@ -1459,7 +1477,7 @@ export default function AdminRecruitmentPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Full
                           </Button>
-                          {status === 'pending' && (
+                          {(status === 'pending' || status === 'reschedule-requested') && (
                             <Button 
                               variant="default" 
                               size="sm"
@@ -1476,7 +1494,7 @@ export default function AdminRecruitmentPage() {
                               }}
                             >
                               <Calendar className="h-4 w-4 mr-2" />
-                              Schedule
+                              {status === 'reschedule-requested' ? 'Reschedule' : 'Schedule'}
                             </Button>
                           )}
                           {status === 'scheduled' && (
@@ -1571,6 +1589,8 @@ export default function AdminRecruitmentPage() {
                             ? 'bg-yellow-500/10'
                             : status === 'scheduled'
                             ? 'bg-blue-500/10'
+                            : status === 'reschedule-requested'
+                            ? 'bg-amber-500/10'
                             : status === 'hire-requested'
                             ? 'bg-orange-500/10'
                             : status === 'offer-sent'
@@ -1605,6 +1625,17 @@ export default function AdminRecruitmentPage() {
                                 <p className="font-semibold text-blue-300">Interview Scheduled</p>
                                 <p className="text-sm text-blue-400/80 mt-1">
                                   Interview has been scheduled. Waiting for completion.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {status === 'reschedule-requested' && (
+                            <div className="flex items-start gap-3">
+                              <Calendar className="h-5 w-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="font-semibold text-amber-300">Reschedule Requested</p>
+                                <p className="text-sm text-amber-400/80 mt-1">
+                                  Client has requested to reschedule this interview. Please coordinate a new time.
                                 </p>
                               </div>
                             </div>
@@ -1786,17 +1817,149 @@ export default function AdminRecruitmentPage() {
                         </div>
                         )}
 
-                        {/* Client Notes */}
-                        {interview.client_notes && (
-                          <div>
-                            <h4 className="text-base font-semibold text-foreground mb-2">
-                              Client Notes
-                            </h4>
-                            <p className="text-sm bg-muted/50 p-3 rounded border">
-                              {interview.client_notes}
-                            </p>
-                          </div>
-                        )}
+                        {/* Combined Notes (Admin + Client) */}
+                        {(() => {
+                          const adminNotes = interview.adminNotes || '';
+                          const clientNotes = interview.clientNotes || interview.client_notes || '';
+                          
+                          if (!adminNotes && !clientNotes) return null;
+
+                          // Parse notes and combine them
+                          const parseNotes = (notesText: string, type: 'admin' | 'client') => {
+                            if (!notesText) return [];
+                            
+                            // Split by timestamp pattern - supports both () and [] and plain timestamps
+                            const entries = notesText.split(/\n\n(?=[\(\[]|\d)/);
+                            
+                            return entries.map(entry => {
+                              // NEW FORMAT WITH STATUS: (Status Label) timestamp - content
+                              const newFormatMatch = entry.match(/^\(([^\)]+)\)\s+([^-]+)\s+-\s+([\s\S]*)$/);
+                              if (newFormatMatch) {
+                                const [, statusLabel, timestamp, content] = newFormatMatch;
+                                try {
+                                  const date = new Date(timestamp.trim());
+                                  return { 
+                                    timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                                    content: content.trim(), 
+                                    type, 
+                                    date, 
+                                    rawText: entry 
+                                  };
+                                } catch {
+                                  return { 
+                                    timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                                    content: content.trim(), 
+                                    type, 
+                                    date: new Date(0), 
+                                    rawText: entry 
+                                  };
+                                }
+                              }
+                              
+                              // PLAIN FORMAT: timestamp - content (no status label)
+                              const plainFormatMatch = entry.match(/^([^-\(\[]+)\s+-\s+([\s\S]*)$/);
+                              if (plainFormatMatch) {
+                                const [, timestamp, content] = plainFormatMatch;
+                                try {
+                                  const date = new Date(timestamp.trim());
+                                  return { 
+                                    timestamp: timestamp.trim(), 
+                                    content: content.trim(), 
+                                    type, 
+                                    date, 
+                                    rawText: entry 
+                                  };
+                                } catch {
+                                  return { 
+                                    timestamp: timestamp.trim(), 
+                                    content: content.trim(), 
+                                    type, 
+                                    date: new Date(0), 
+                                    rawText: entry 
+                                  };
+                                }
+                              }
+                              
+                              // OLD FORMAT WITH BRACKETS: [Status Label] timestamp - content
+                              const oldNewFormatMatch = entry.match(/^\[([^\]]+)\]\s+([^-]+)\s+-\s+([\s\S]*)$/);
+                              if (oldNewFormatMatch) {
+                                const [, statusLabel, timestamp, content] = oldNewFormatMatch;
+                                try {
+                                  const date = new Date(timestamp.trim());
+                                  return { 
+                                    timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                                    content: content.trim(), 
+                                    type, 
+                                    date, 
+                                    rawText: entry 
+                                  };
+                                } catch {
+                                  return { 
+                                    timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                                    content: content.trim(), 
+                                    type, 
+                                    date: new Date(0), 
+                                    rawText: entry 
+                                  };
+                                }
+                              }
+                              
+                              // OLDEST FORMAT: [timestamp] content
+                              const oldFormatMatch = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+                              if (oldFormatMatch) {
+                                const [, timestamp, content] = oldFormatMatch;
+                                try {
+                                  const date = new Date(timestamp);
+                                  return { timestamp, content: content.trim(), type, date, rawText: entry };
+                                } catch {
+                                  return { timestamp, content: content.trim(), type, date: new Date(0), rawText: entry };
+                                }
+                              }
+                              return { timestamp: '', content: entry.trim(), type, date: new Date(0), rawText: entry };
+                            }).filter(e => e.content);
+                          };
+
+                          const adminEntries = parseNotes(adminNotes, 'admin');
+                          const clientEntries = parseNotes(clientNotes, 'client');
+                          const allEntries = [...adminEntries, ...clientEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+                          if (allEntries.length === 0) return null;
+
+                          return (
+                            <div>
+                              <h4 className="text-base font-semibold text-foreground mb-2">Notes</h4>
+                              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                {allEntries.map((entry, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className={`p-3 rounded border text-sm ${
+                                      entry.type === 'admin' 
+                                        ? 'bg-purple-500/10 border-purple-500/30' 
+                                        : 'bg-blue-500/10 border-blue-500/30'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Badge 
+                                        variant="outline" 
+                                        className={`text-xs ${
+                                          entry.type === 'admin'
+                                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+                                            : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
+                                        }`}
+                                      >
+                                        {entry.type === 'admin' ? 'Admin' : 'Client'}
+                                      </Badge>
+                                      {entry.timestamp && (
+                                        <span className="text-xs text-muted-foreground">{entry.timestamp}</span>
+                                      )}
+                                    </div>
+                                    <p className="text-foreground whitespace-pre-wrap">{entry.content}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                       </div>
 
@@ -2163,13 +2326,86 @@ export default function AdminRecruitmentPage() {
                 const parseNotes = (notesText: string, type: 'admin' | 'client') => {
                   if (!notesText) return [];
                   
-                  // Split by timestamp pattern: [date] text
-                  const entries = notesText.split(/\n\n(?=\[)/);
+                  // Split by timestamp pattern - supports both () and [] and plain timestamps
+                  const entries = notesText.split(/\n\n(?=[\(\[]|\d)/);
                   
                   return entries.map(entry => {
-                    const match = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
-                    if (match) {
-                      const [, timestamp, content] = match;
+                    // NEW FORMAT WITH STATUS: (Status Label) timestamp - content
+                    const newFormatMatch = entry.match(/^\(([^\)]+)\)\s+([^-]+)\s+-\s+([\s\S]*)$/);
+                    if (newFormatMatch) {
+                      const [, statusLabel, timestamp, content] = newFormatMatch;
+                      try {
+                        const date = new Date(timestamp.trim());
+                        return { 
+                          timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date, 
+                          rawText: entry 
+                        };
+                      } catch {
+                        return { 
+                          timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date: new Date(0), 
+                          rawText: entry 
+                        };
+                      }
+                    }
+                    
+                    // PLAIN FORMAT: timestamp - content (no status label)
+                    const plainFormatMatch = entry.match(/^([^-\(\[]+)\s+-\s+([\s\S]*)$/);
+                    if (plainFormatMatch) {
+                      const [, timestamp, content] = plainFormatMatch;
+                      try {
+                        const date = new Date(timestamp.trim());
+                        return { 
+                          timestamp: timestamp.trim(), 
+                          content: content.trim(), 
+                          type, 
+                          date, 
+                          rawText: entry 
+                        };
+                      } catch {
+                        return { 
+                          timestamp: timestamp.trim(), 
+                          content: content.trim(), 
+                          type, 
+                          date: new Date(0), 
+                          rawText: entry 
+                        };
+                      }
+                    }
+                    
+                    // OLD FORMAT WITH BRACKETS: [Status Label] timestamp - content
+                    const oldNewFormatMatch = entry.match(/^\[([^\]]+)\]\s+([^-]+)\s+-\s+([\s\S]*)$/);
+                    if (oldNewFormatMatch) {
+                      const [, statusLabel, timestamp, content] = oldNewFormatMatch;
+                      try {
+                        const date = new Date(timestamp.trim());
+                        return { 
+                          timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date, 
+                          rawText: entry 
+                        };
+                      } catch {
+                        return { 
+                          timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date: new Date(0), 
+                          rawText: entry 
+                        };
+                      }
+                    }
+                    
+                    // OLDEST FORMAT: [timestamp] content
+                    const oldFormatMatch = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+                    if (oldFormatMatch) {
+                      const [, timestamp, content] = oldFormatMatch;
                       try {
                         const date = new Date(timestamp);
                         return { timestamp, content: content.trim(), type, date, rawText: entry };
@@ -2239,8 +2475,8 @@ export default function AdminRecruitmentPage() {
                   Add Notes
                 </Button>
                 
-                {/* Schedule - Show for pending interviews */}
-                {modalStatus === 'pending' && (
+                {/* Schedule - Show for pending and reschedule-requested interviews */}
+                {(modalStatus === 'pending' || modalStatus === 'reschedule-requested') && (
                   <Button 
                     variant="default" 
                     className="flex-1 min-w-[150px] bg-blue-600 hover:bg-blue-700"
@@ -2256,7 +2492,7 @@ export default function AdminRecruitmentPage() {
                     }}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
-                    Schedule
+                    {modalStatus === 'reschedule-requested' ? 'Reschedule' : 'Schedule'}
                   </Button>
                 )}
 

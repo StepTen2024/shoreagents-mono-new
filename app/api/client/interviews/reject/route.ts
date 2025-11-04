@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
 
     const { interviewRequestId, rejectReason } = await req.json()
 
-    if (!interviewRequestId || !rejectReason) {
+    if (!interviewRequestId) {
       return NextResponse.json(
-        { error: 'Interview request ID and reject reason are required' },
+        { error: 'Interview request ID is required' },
         { status: 400 }
       )
     }

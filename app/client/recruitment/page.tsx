@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -47,7 +47,8 @@ import {
   MessageSquare,
   CalendarClock,
   User,
-  Mail
+  Mail,
+  RotateCcw
 } from "lucide-react"
 
 // Types
@@ -90,7 +91,7 @@ interface InterviewRequest {
   bpocCandidateId: string
   preferredTimes: (string | PreferredTime)[]
   clientNotes: string | null
-  status: 'PENDING' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'HIRED' | 'HIRE-REQUESTED' | 'HIRE_REQUESTED' | 'OFFER-SENT' | 'OFFER_SENT' | 'OFFER-ACCEPTED' | 'OFFER_ACCEPTED' | 'OFFER-DECLINED' | 'OFFER_DECLINED' | 'REJECTED'
+  status: 'PENDING' | 'SCHEDULED' | 'RESCHEDULE_REQUESTED' | 'COMPLETED' | 'CANCELLED' | 'HIRED' | 'HIRE-REQUESTED' | 'HIRE_REQUESTED' | 'OFFER-SENT' | 'OFFER_SENT' | 'OFFER-ACCEPTED' | 'OFFER_ACCEPTED' | 'OFFER-DECLINED' | 'OFFER_DECLINED' | 'REJECTED'
   createdAt: string
   updatedAt: string
   scheduledTime: string | null
@@ -104,8 +105,22 @@ type TabType = 'talent-pool' | 'job-requests' | 'interviews'
 
 export default function RecruitmentPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<TabType>('talent-pool')
+  
+  // Initialize activeTab from URL or default to 'talent-pool'
+  const tabFromUrl = searchParams.get('tab') as TabType | null
+  const initialTab = (tabFromUrl && ['talent-pool', 'job-requests', 'interviews'].includes(tabFromUrl)) 
+    ? tabFromUrl 
+    : 'talent-pool'
+  
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab)
+  
+  // Function to change tab and update URL
+  const changeTab = (tab: TabType) => {
+    setActiveTab(tab)
+    router.push(`/client/recruitment?tab=${tab}`, { scroll: false })
+  }
   
   // Job Requests State
   const [showForm, setShowForm] = useState(false)
@@ -144,6 +159,7 @@ export default function RecruitmentPage() {
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [undoCancelModalOpen, setUndoCancelModalOpen] = useState(false)
+  const [undoRejectModalOpen, setUndoRejectModalOpen] = useState(false)
   
   // Form states for interview management
   const [cancelReason, setCancelReason] = useState('')
@@ -152,6 +168,7 @@ export default function RecruitmentPage() {
   const [clientTimezone, setClientTimezone] = useState<string>('Australia/Brisbane')
   const [additionalNotes, setAdditionalNotes] = useState('')
   const [undoCancelNotes, setUndoCancelNotes] = useState('')
+  const [undoRejectNotes, setUndoRejectNotes] = useState('')
   const [interviewSubmitting, setInterviewSubmitting] = useState(false)
   
   // Filters
@@ -292,7 +309,7 @@ export default function RecruitmentPage() {
       // Format hire notes with timestamp
       const timestamp = new Date().toLocaleString('en-US')
       const noteText = hireData.hireNotes || "Client would like to hire this candidate"
-      const formattedNotes = `[${timestamp}] Hire Request Notes: ${noteText}`
+      const formattedNotes = `(Hire Requested) ${timestamp} - ${noteText}`
       
       const response = await fetch("/api/client/interviews/hire-request", {
         method: "POST",
@@ -344,17 +361,17 @@ export default function RecruitmentPage() {
   }
 
   async function handleRejectRequest() {
-    if (!selectedInterview || !rejectData.rejectReason.trim()) {
-      alert("Please provide a reason for rejection")
-      return
-    }
+    if (!selectedInterview) return
     
     try {
       setRejectingId(selectedInterview.id)
       
       // Format rejection reason with timestamp
       const timestamp = new Date().toLocaleString('en-US')
-      const formattedReason = `[${timestamp}] Rejection Reason: ${rejectData.rejectReason.trim()}`
+      const reason = rejectData.rejectReason.trim()
+      const formattedReason = reason 
+        ? `(Rejected) ${timestamp} - ${reason}`
+        : `(Rejected) ${timestamp} - Candidate not selected`
       
       const response = await fetch("/api/client/interviews/reject", {
         method: "POST",
@@ -541,7 +558,7 @@ export default function RecruitmentPage() {
       <div className="flex gap-2">
         <button
           onClick={() => {
-            setActiveTab('talent-pool')
+            changeTab('talent-pool')
             setShowForm(false)
           }}
           className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
@@ -555,7 +572,9 @@ export default function RecruitmentPage() {
           <Badge className={activeTab === 'talent-pool' ? 'bg-white/30 text-white border border-white/50' : 'bg-blue-100 text-blue-700 border border-blue-200'}>{candidates.length}</Badge>
         </button>
         <button
-          onClick={() => setActiveTab('job-requests')}
+          onClick={() => {
+            changeTab('job-requests')
+          }}
           className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
             activeTab === 'job-requests'
               ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
@@ -569,7 +588,9 @@ export default function RecruitmentPage() {
           )}
         </button>
         <button
-          onClick={() => setActiveTab('interviews')}
+          onClick={() => {
+            changeTab('interviews')
+          }}
           className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
             activeTab === 'interviews'
               ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
@@ -654,6 +675,8 @@ export default function RecruitmentPage() {
             setNotesModalOpen={setNotesModalOpen}
             undoCancelModalOpen={undoCancelModalOpen}
             setUndoCancelModalOpen={setUndoCancelModalOpen}
+            undoRejectModalOpen={undoRejectModalOpen}
+            setUndoRejectModalOpen={setUndoRejectModalOpen}
             cancelReason={cancelReason}
             setCancelReason={setCancelReason}
             rescheduleNotes={rescheduleNotes}
@@ -665,6 +688,8 @@ export default function RecruitmentPage() {
             setAdditionalNotes={setAdditionalNotes}
             undoCancelNotes={undoCancelNotes}
             setUndoCancelNotes={setUndoCancelNotes}
+            undoRejectNotes={undoRejectNotes}
+            setUndoRejectNotes={setUndoRejectNotes}
             interviewSubmitting={interviewSubmitting}
             setInterviewSubmitting={setInterviewSubmitting}
             fetchInterviews={fetchInterviews}
@@ -706,21 +731,21 @@ function TalentPoolTab({
       {/* Search and Filter Bar */}
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Search by skills, role, or keywords..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors ${
+          className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${
             showFilters
-              ? 'bg-blue-600 text-white'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+              : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'
           }`}
         >
           <Filter className="w-5 h-5" />
@@ -735,55 +760,41 @@ function TalentPoolTab({
 
       {/* Advanced Filters Panel */}
       {showFilters && (
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
+        <div className="p-6 bg-white rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-bold text-gray-900 text-lg">Advanced Filters</h3>
             <button
               onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
             >
               Clear all
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Skills Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-900 mb-3">
                 Skills
               </label>
-              <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2 bg-white">
+              <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50">
                 {availableSkills.slice(0, 20).map((skill: string) => (
-                  <label key={skill} className="flex items-center gap-2 py-1 hover:bg-gray-50 px-2 rounded">
+                  <label key={skill} className="flex items-center gap-2 py-2 hover:bg-white px-2 rounded-lg transition-colors">
                     <input
                       type="checkbox"
                       checked={selectedSkills.includes(skill)}
                       onChange={() => toggleSkill(skill)}
                       className="rounded text-blue-600"
                     />
-                    <span className="text-sm">{skill}</span>
+                    <span className="text-sm text-gray-800">{skill}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            {/* Location Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
-              </label>
-              <input
-                type="text"
-                placeholder="City or Country"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
             {/* Experience Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-900 mb-3">
                 Min. Experience: {minExperience} years
               </label>
               <input
@@ -798,7 +809,7 @@ function TalentPoolTab({
 
             {/* Cultural Fit Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-900 mb-3">
                 Min. Cultural Fit: {minCulturalFit}%
               </label>
               <input
@@ -814,8 +825,8 @@ function TalentPoolTab({
           </div>
 
           {/* DISC Type Filter */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mt-6">
+            <label className="block text-sm font-semibold text-gray-900 mb-3">
               Personality Type (DISC)
             </label>
             <div className="flex gap-2">
@@ -823,10 +834,10 @@ function TalentPoolTab({
                 <button
                   key={type}
                   onClick={() => toggleDiscType(type)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-xl font-semibold transition-all ${
                     selectedDiscTypes.includes(type)
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   {type}
@@ -839,18 +850,71 @@ function TalentPoolTab({
 
       {/* Candidates Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden animate-pulse">
+              {/* Gradient Header */}
+              <div className="h-32 bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-300" />
+              
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                {/* Avatar and Name */}
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-gray-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-32 bg-gray-200 rounded" />
+                    <div className="h-4 w-24 bg-gray-200 rounded" />
+                  </div>
+                </div>
+                
+                {/* Bio */}
+                <div className="space-y-2">
+                  <div className="h-3 w-full bg-gray-200 rounded" />
+                  <div className="h-3 w-5/6 bg-gray-200 rounded" />
+                </div>
+                
+                {/* Skills */}
+                <div className="flex flex-wrap gap-2">
+                  <div className="h-6 w-16 bg-gray-200 rounded-full" />
+                  <div className="h-6 w-20 bg-gray-200 rounded-full" />
+                  <div className="h-6 w-24 bg-gray-200 rounded-full" />
+                </div>
+                
+                {/* Stats */}
+                <div className="flex items-center gap-4 pt-2">
+                  <div className="h-4 w-20 bg-gray-200 rounded" />
+                  <div className="h-4 w-24 bg-gray-200 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : candidates.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-gray-500 text-lg">No candidates found matching your criteria</p>
-          <button
-            onClick={clearFilters}
-            className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Clear filters
-          </button>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border border-gray-200 shadow-sm">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-200/30 to-blue-200/30 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-200/30 to-cyan-200/30 rounded-full blur-3xl" />
+          
+          <div className="relative py-16 px-8 text-center">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 mb-6">
+              <UserSearch className="h-12 w-12 text-indigo-600" />
+            </div>
+            
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent mb-3">
+              No Candidates Found
+            </h3>
+            
+            <p className="text-slate-600 text-base max-w-md mx-auto mb-6 leading-relaxed">
+              We couldn't find any candidates matching your search criteria. Try adjusting your filters or clearing them to see all available talent.
+            </p>
+            
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl font-semibold transition-all"
+            >
+              <X className="h-4 w-4" />
+              Clear All Filters
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -858,7 +922,7 @@ function TalentPoolTab({
             <CandidateCard
               key={candidate.id}
               candidate={candidate}
-              onClick={() => router.push(`/client/talent-pool/${candidate.id}`)}
+              onClick={() => router.push(`/client/talent-pool/${candidate.id}?returnTo=recruitment&tab=talent-pool`)}
             />
           ))}
         </div>
@@ -879,34 +943,26 @@ function CandidateCard({ candidate, onClick }: { candidate: Candidate; onClick: 
   return (
     <div
       onClick={onClick}
-      className="relative bg-white rounded-2xl shadow-lg transition-all duration-500 cursor-pointer border border-gray-100 hover:border-transparent hover:-translate-y-2 overflow-hidden group"
+      className="relative bg-white rounded-2xl shadow-sm transition-all duration-500 cursor-pointer border border-gray-100 hover:border-transparent hover:-translate-y-2 overflow-hidden group flex flex-col"
     >
       <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl blur-sm -z-10"></div>
       
-      <div className={`h-1.5 bg-gradient-to-r ${getGradient()} relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-      </div>
-
       <div className={`relative bg-gradient-to-br ${getGradient()} p-6 text-white overflow-hidden`}>
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
         
         <div className="relative z-10">
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {candidate.avatar ? (
-                <div className="relative">
-                  <img
-                    src={candidate.avatar}
-                    alt={candidate.firstName}
-                    className="w-20 h-20 rounded-2xl border-3 border-white/30 shadow-2xl backdrop-blur-sm ring-4 ring-white/20 group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-3 border-white shadow-lg animate-pulse"></div>
-                </div>
+                <img
+                  src={candidate.avatar}
+                  alt={candidate.firstName}
+                  className="w-20 h-20 rounded-full border-4 border-white shadow-2xl object-cover"
+                />
               ) : (
-                <div className="relative w-20 h-20 rounded-2xl border-3 border-white/30 shadow-2xl backdrop-blur-sm bg-white/20 flex items-center justify-center text-3xl font-bold ring-4 ring-white/20 group-hover:scale-105 transition-transform duration-300">
+                <div className="w-20 h-20 rounded-full border-4 border-white shadow-2xl bg-white/20 flex items-center justify-center text-3xl font-bold">
                   {candidate.firstName[0]}
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-3 border-white shadow-lg animate-pulse"></div>
                 </div>
               )}
               <div>
@@ -918,7 +974,7 @@ function CandidateCard({ candidate, onClick }: { candidate: Candidate; onClick: 
             </div>
             
             {candidate.leaderboardScore && candidate.leaderboardScore > 50 && (
-              <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30 shadow-lg">
+              <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/30">
                 <div className="flex items-center gap-1.5">
                   <Award className="w-4 h-4 text-yellow-300" />
                   <span className="text-sm font-bold">{candidate.leaderboardScore}</span>
@@ -926,72 +982,65 @@ function CandidateCard({ candidate, onClick }: { candidate: Candidate; onClick: 
               </div>
             )}
           </div>
-
-          <div className="flex items-center gap-2 text-sm text-white/95 backdrop-blur-sm bg-white/10 rounded-lg px-3 py-1.5 w-fit">
-            <MapPin className="w-4 h-4" />
-            <span className="font-medium">{candidate.location}</span>
-          </div>
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 flex flex-col flex-1">
         {candidate.bio && (
-          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 mb-5">
+          <p className="text-sm text-gray-800 group-hover:text-white leading-relaxed line-clamp-2 mb-5 transition-colors duration-300">
             {candidate.bio}
           </p>
         )}
 
         <div className="flex flex-wrap gap-2 mb-5">
           {candidate.culturalFitScore && candidate.culturalFitScore >= 60 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 rounded-lg text-xs font-semibold border border-emerald-200 shadow-sm">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 group-hover:bg-white/20 group-hover:backdrop-blur-sm group-hover:text-white rounded-lg text-xs font-semibold border border-emerald-200 group-hover:border-white/30 transition-all duration-300">
               <Star className="w-3.5 h-3.5 fill-current" />
               <span>{candidate.culturalFitScore}% Match</span>
             </div>
           )}
           {candidate.discType && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg text-xs font-semibold border border-blue-200 shadow-sm">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 group-hover:bg-white/20 group-hover:backdrop-blur-sm group-hover:text-white rounded-lg text-xs font-semibold border border-blue-200 group-hover:border-white/30 transition-all duration-300">
               <Zap className="w-3.5 h-3.5" />
               <span>DISC: {candidate.discType}</span>
             </div>
           )}
           {candidate.typingWpm && candidate.typingWpm >= 40 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200 shadow-sm">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 group-hover:bg-white/20 group-hover:backdrop-blur-sm group-hover:text-white rounded-lg text-xs font-semibold border border-purple-200 group-hover:border-white/30 transition-all duration-300">
               <TrendingUp className="w-3.5 h-3.5" />
               <span>{candidate.typingWpm} WPM</span>
             </div>
           )}
         </div>
 
-        <div className="mb-5">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span className="w-8 h-px bg-gradient-to-r from-blue-400 to-transparent"></span>
+        <div className="mb-5 flex-1">
+          <p className="text-xs font-bold text-gray-600 group-hover:text-white/90 uppercase tracking-wider mb-3 transition-colors duration-300">
             Top Skills
           </p>
           <div className="flex flex-wrap gap-2">
             {candidate.skills.slice(0, 5).map((skill, index) => (
               <span
                 key={index}
-                className="px-3 py-1.5 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700 rounded-lg text-xs font-semibold border border-gray-200 hover:border-blue-300 transition-all duration-200"
+                className="px-3 py-1.5 bg-gray-50 text-gray-800 group-hover:bg-white/20 group-hover:backdrop-blur-sm group-hover:text-white rounded-lg text-xs font-semibold border border-gray-200 group-hover:border-white/30 transition-all duration-300"
               >
                 {skill}
               </span>
             ))}
             {candidate.skills.length > 5 && (
-              <span className="px-3 py-1.5 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-500 rounded-lg text-xs font-semibold border border-gray-200">
+              <span className="px-3 py-1.5 bg-gray-50 text-gray-800 group-hover:bg-white/20 group-hover:backdrop-blur-sm group-hover:text-white rounded-lg text-xs font-semibold border border-gray-200 group-hover:border-white/30 transition-all duration-300">
                 +{candidate.skills.length - 5} more
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 mb-5">
-          <Award className="w-4 h-4 text-blue-500" />
+        <div className="flex items-center gap-2 text-sm text-gray-800 group-hover:text-white bg-gray-50 group-hover:bg-white/20 group-hover:backdrop-blur-sm rounded-lg px-3 py-2 mb-5 border border-gray-200 group-hover:border-white/30 transition-all duration-300">
+          <Award className="w-4 h-4 text-blue-500 group-hover:text-white transition-colors duration-300" />
           <span className="font-semibold">{candidate.experienceYears}</span>
           <span>years of experience</span>
         </div>
 
-        <button className="relative w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold rounded-xl overflow-hidden group-hover:scale-[1.02] transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+        <button className="relative w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold rounded-xl transition-all duration-300 mt-auto">
           <span className="relative flex items-center justify-center gap-2">
             View Full Profile
             <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
@@ -1506,29 +1555,76 @@ function JobRequestsTab({
   // Job Requests List
   if (loading) {
     return (
-          <div className="text-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading job requests...</p>
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-xl border shadow-sm p-6 animate-pulse">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1 space-y-3">
+                {/* Title */}
+                <div className="h-6 w-64 bg-gray-200 rounded" />
+                
+                {/* Badges */}
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-20 bg-gray-200 rounded-full" />
+                  <div className="h-6 w-32 bg-gray-200 rounded-full" />
+                  <div className="h-6 w-28 bg-gray-200 rounded-full" />
+                </div>
+              </div>
+              
+              {/* Date */}
+              <div className="h-5 w-32 bg-gray-200 rounded" />
+            </div>
+            
+            {/* Description */}
+            <div className="space-y-2 mb-4">
+              <div className="h-4 w-full bg-gray-200 rounded" />
+              <div className="h-4 w-5/6 bg-gray-200 rounded" />
+              <div className="h-4 w-4/6 bg-gray-200 rounded" />
+            </div>
+            
+            {/* Footer with requirements */}
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <div className="h-4 w-48 bg-gray-200 rounded" />
+              <div className="flex flex-wrap gap-2">
+                <div className="h-6 w-24 bg-gray-200 rounded" />
+                <div className="h-6 w-20 bg-gray-200 rounded" />
+                <div className="h-6 w-28 bg-gray-200 rounded" />
+              </div>
+            </div>
           </div>
+        ))}
+      </div>
     )
   }
 
   if (jobRequests.length === 0) {
     return (
-          <div className="text-center py-12">
-            <Briefcase className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Job Requests Yet</h3>
-            <p className="text-gray-600 mb-6">
-              Create your first job request to find top talent from the BPOC platform
-            </p>
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Job Request
-            </Button>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border border-gray-200 shadow-sm">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-200/30 to-teal-200/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-teal-200/30 to-cyan-200/30 rounded-full blur-3xl" />
+        
+        <div className="relative py-16 px-8 text-center">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 mb-6">
+            <Briefcase className="h-12 w-12 text-emerald-600" />
           </div>
+          
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent mb-3">
+            No Job Requests Yet
+          </h3>
+          
+          <p className="text-slate-600 text-base max-w-md mx-auto mb-6 leading-relaxed">
+            Start your journey by creating your first job request. Connect with top talent from the BPOC platform and build your dream team.
+          </p>
+          
+          <button
+            onClick={() => setShowForm(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-semibold transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            Create Job Request
+          </button>
+        </div>
+      </div>
     )
   }
 
@@ -1612,6 +1708,8 @@ function InterviewsTab({
   setNotesModalOpen,
   undoCancelModalOpen,
   setUndoCancelModalOpen,
+  undoRejectModalOpen,
+  setUndoRejectModalOpen,
   cancelReason,
   setCancelReason,
   rescheduleNotes,
@@ -1623,16 +1721,21 @@ function InterviewsTab({
   setAdditionalNotes,
   undoCancelNotes,
   setUndoCancelNotes,
+  undoRejectNotes,
+  setUndoRejectNotes,
   interviewSubmitting,
   setInterviewSubmitting,
   fetchInterviews,
   toast
 }: any) {
+  const router = useRouter()
+  
   // Helper functions
   function getStatusBadge(status: InterviewRequest['status']) {
     const styles: Record<string, string> = {
       PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       SCHEDULED: 'bg-blue-100 text-blue-800 border-blue-300',
+      RESCHEDULE_REQUESTED: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       COMPLETED: 'bg-green-100 text-green-800 border-green-300',
       CANCELLED: 'bg-gray-100 text-gray-800 border-gray-300',
       HIRED: 'bg-purple-100 text-purple-800 border-purple-300',
@@ -1650,6 +1753,7 @@ function InterviewsTab({
     const icons: Record<string, React.ReactElement> = {
       PENDING: <Clock className="h-3 w-3 mr-1" />,
       SCHEDULED: <CalendarCheck className="h-3 w-3 mr-1" />,
+      RESCHEDULE_REQUESTED: <Calendar className="h-3 w-3 mr-1" />,
       COMPLETED: <CheckCircle2 className="h-3 w-3 mr-1" />,
       CANCELLED: <XCircle className="h-3 w-3 mr-1" />,
       HIRED: <UserCheck className="h-3 w-3 mr-1" />,
@@ -1718,8 +1822,60 @@ function InterviewsTab({
   }
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="space-y-6">
+        {/* Filter Skeleton */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse" />
+          ))}
+        </div>
+
+        {/* Interview Cards Skeleton */}
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-xl border shadow-sm overflow-hidden animate-pulse">
+              <div className="p-6 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4 flex-1">
+                    {/* Avatar */}
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-200 to-purple-300" />
+                    
+                    {/* Info */}
+                    <div className="flex-1 space-y-3">
+                      <div className="h-6 w-48 bg-gray-200 rounded" />
+                      <div className="h-5 w-64 bg-gray-200 rounded" />
+                      <div className="flex items-center gap-4">
+                        <div className="h-4 w-32 bg-gray-200 rounded" />
+                        <div className="h-4 w-28 bg-gray-200 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Status Badge */}
+                  <div className={`h-6 w-24 rounded-full ${
+                    i === 1 ? 'bg-green-200' : 
+                    i === 2 ? 'bg-blue-200' : 
+                    'bg-yellow-200'
+                  }`} />
+                </div>
+                
+                {/* Details */}
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <div className="h-4 w-full bg-gray-200 rounded" />
+                  <div className="h-4 w-5/6 bg-gray-200 rounded" />
+                </div>
+                
+                {/* Actions */}
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="h-10 w-32 bg-blue-200 rounded-lg" />
+                  <div className="h-10 w-32 bg-gray-200 rounded-lg" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -1747,6 +1903,7 @@ function InterviewsTab({
     { value: 'ALL', label: 'All', count: interviews.length },
     { value: 'PENDING', label: 'Pending', count: interviews.filter((i: InterviewRequest) => i.status === 'PENDING').length },
     { value: 'SCHEDULED', label: 'Scheduled', count: interviews.filter((i: InterviewRequest) => i.status === 'SCHEDULED').length },
+    { value: 'RESCHEDULE_REQUESTED', label: 'Reschedule Requested', count: interviews.filter((i: InterviewRequest) => i.status === 'RESCHEDULE_REQUESTED').length },
     { value: 'COMPLETED', label: 'Completed', count: interviews.filter((i: InterviewRequest) => i.status === 'COMPLETED').length },
     { value: 'HIRE_REQUESTED', label: 'Hire Requested', count: interviews.filter((i: InterviewRequest) => i.status === 'HIRE_REQUESTED' || i.status === 'HIRE-REQUESTED').length },
     { value: 'HIRED', label: 'Hired', count: interviews.filter((i: InterviewRequest) => i.status === 'HIRED').length },
@@ -1758,8 +1915,8 @@ function InterviewsTab({
     <div className="space-y-6">
       {/* Status Filter */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Filter className="h-4 w-4 text-slate-600" />
-        <span className="text-sm font-medium text-slate-700">Filter by status:</span>
+        <Filter className="w-5 h-5 text-gray-700" />
+        <span className="font-semibold text-gray-900">Filters</span>
         {statusOptions.map((option) => (
           <button
             key={option.value}
@@ -1776,13 +1933,38 @@ function InterviewsTab({
       </div>
 
       {filteredInterviews.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No {statusFilter !== 'ALL' ? statusFilter.toLowerCase() : ''} interviews found</h3>
-          <p className="text-gray-600">
-            Try selecting a different status filter
-          </p>
-        </Card>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border border-gray-200 shadow-sm">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-purple-200/30 to-pink-200/30 rounded-full blur-3xl" />
+          
+          <div className="relative py-16 px-8 text-center">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 mb-6">
+              <Calendar className="h-12 w-12 text-blue-600" />
+            </div>
+            
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent mb-3">
+              {statusFilter !== 'ALL' 
+                ? `No ${statusFilter.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())} Interviews` 
+                : 'No Interviews Yet'}
+            </h3>
+            
+            <p className="text-slate-600 text-base max-w-md mx-auto mb-6 leading-relaxed">
+              {statusFilter !== 'ALL' 
+                ? 'There are currently no interviews with this status. Try selecting a different filter to view other interviews.'
+                : 'Start your recruitment journey by requesting interviews with candidates from the talent pool.'}
+            </p>
+            
+            {statusFilter !== 'ALL' && (
+              <button
+                onClick={() => setStatusFilter('ALL')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all"
+              >
+                <Calendar className="h-4 w-4" />
+                View All Interviews
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           {filteredInterviews.map((interview: InterviewRequest) => (
@@ -1804,10 +1986,21 @@ function InterviewsTab({
                       <User className="h-6 w-6 text-white" />
                     </div>
                   )}
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {interview.candidateFirstName}
-                    </h3>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {interview.candidateFirstName}
+                      </h3>
+                      {interview.bpocCandidateId && (
+                        <button
+                          onClick={() => router.push(`/client/talent-pool/${interview.bpocCandidateId}?returnTo=recruitment&tab=interviews`)}
+                          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                          <UserSearch className="h-3 w-3" />
+                          View Profile
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">
                       Requested on {formatDate(interview.createdAt)}
                     </p>
@@ -1820,6 +2013,7 @@ function InterviewsTab({
               <div className={`rounded-lg p-6 border-l-4 shadow-sm ${
                 interview.status === 'PENDING' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-yellow-500' :
                 interview.status === 'SCHEDULED' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-l-blue-500' :
+                interview.status === 'RESCHEDULE_REQUESTED' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-yellow-500' :
                 interview.status === 'COMPLETED' ? 'bg-gradient-to-br from-green-50 to-green-100 border-l-green-500' :
                 (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED') ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-l-orange-500' :
                 (interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT') ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-l-indigo-500' :
@@ -1879,6 +2073,24 @@ function InterviewsTab({
                         </a>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {interview.status === 'RESCHEDULE_REQUESTED' && (
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-amber-200 flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-amber-700" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-amber-900 mb-2">
+                        Reschedule Requested
+                      </h3>
+                      <p className="text-sm text-amber-800 leading-relaxed">
+                        Your reschedule request has been submitted. Our team is coordinating a new interview time with <span className="font-semibold">{interview.candidateFirstName}</span>.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -2008,7 +2220,7 @@ function InterviewsTab({
                       </h3>
                       <p className="text-sm text-red-800 leading-relaxed">
                         You have declined to move forward with <span className="font-semibold">{interview.candidateFirstName}</span>. 
-                        The admin team has been notified of your decision.
+                        The admin team has been notified of your decision. If you'd like to reconsider, you can undo this rejection below.
                       </p>
                     </div>
                   </div>
@@ -2061,13 +2273,86 @@ function InterviewsTab({
                 const parseNotes = (notesText: string, type: 'client' | 'admin') => {
                   if (!notesText) return [];
                   
-                  // Split by timestamp pattern: [date] text
-                  const entries = notesText.split(/\n\n(?=\[)/);
+                  // Split by timestamp pattern - supports both () and [] and plain timestamps
+                  const entries = notesText.split(/\n\n(?=[\(\[]|\d)/);
                   
                   return entries.map(entry => {
-                    const match = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
-                    if (match) {
-                      const [, timestamp, content] = match;
+                    // NEW FORMAT WITH STATUS: (Status Label) timestamp - content
+                    const newFormatMatch = entry.match(/^\(([^\)]+)\)\s+([^-]+)\s+-\s+([\s\S]*)$/);
+                    if (newFormatMatch) {
+                      const [, statusLabel, timestamp, content] = newFormatMatch;
+                      try {
+                        const date = new Date(timestamp.trim());
+                        return { 
+                          timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date, 
+                          rawText: entry 
+                        };
+                      } catch {
+                        return { 
+                          timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date: new Date(0), 
+                          rawText: entry 
+                        };
+                      }
+                    }
+                    
+                    // PLAIN FORMAT: timestamp - content (no status label)
+                    const plainFormatMatch = entry.match(/^([^-\(\[]+)\s+-\s+([\s\S]*)$/);
+                    if (plainFormatMatch) {
+                      const [, timestamp, content] = plainFormatMatch;
+                      try {
+                        const date = new Date(timestamp.trim());
+                        return { 
+                          timestamp: timestamp.trim(), 
+                          content: content.trim(), 
+                          type, 
+                          date, 
+                          rawText: entry 
+                        };
+                      } catch {
+                        return { 
+                          timestamp: timestamp.trim(), 
+                          content: content.trim(), 
+                          type, 
+                          date: new Date(0), 
+                          rawText: entry 
+                        };
+                      }
+                    }
+                    
+                    // OLD FORMAT WITH BRACKETS: [Status Label] timestamp - content
+                    const oldNewFormatMatch = entry.match(/^\[([^\]]+)\]\s+([^-]+)\s+-\s+([\s\S]*)$/);
+                    if (oldNewFormatMatch) {
+                      const [, statusLabel, timestamp, content] = oldNewFormatMatch;
+                      try {
+                        const date = new Date(timestamp.trim());
+                        return { 
+                          timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date, 
+                          rawText: entry 
+                        };
+                      } catch {
+                        return { 
+                          timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                          content: content.trim(), 
+                          type, 
+                          date: new Date(0), 
+                          rawText: entry 
+                        };
+                      }
+                    }
+                    
+                    // OLDEST FORMAT: [timestamp] content
+                    const oldFormatMatch = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+                    if (oldFormatMatch) {
+                      const [, timestamp, content] = oldFormatMatch;
                       try {
                         const date = new Date(timestamp);
                         return { timestamp, content: content.trim(), type, date, rawText: entry };
@@ -2133,7 +2418,7 @@ function InterviewsTab({
                       setSelectedInterview(interview)
                       setHireModalOpen(true)
                     }}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium transition-all flex items-center gap-2 text-sm"
+                    className="px-4 py-2.5 bg-white border-2 border-green-300 text-green-600 rounded-lg hover:bg-green-50 hover:border-green-400 hover:text-green-700 font-semibold transition-all flex items-center gap-2 text-sm"
                   >
                     <UserCheck className="h-4 w-4" />
                     Request to Hire
@@ -2154,6 +2439,21 @@ function InterviewsTab({
                   </button>
                 )}
 
+                {/* Reconsider Candidate - Show for rejected interviews */}
+                {interview.status === 'REJECTED' && (
+                  <button
+                    onClick={() => {
+                      setSelectedInterview(interview)
+                      setUndoRejectNotes('')
+                      setUndoRejectModalOpen(true)
+                    }}
+                    className="px-4 py-2.5 bg-white border-2 border-emerald-400 text-emerald-600 rounded-lg hover:bg-emerald-50 hover:border-emerald-500 hover:text-emerald-700 font-semibold transition-all flex items-center gap-2 text-sm"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Reconsider Candidate
+                  </button>
+                )}
+
                 {/* Request Reschedule - Show for pending or scheduled */}
                 {(interview.status === 'PENDING' || interview.status === 'SCHEDULED') && (
                   <button
@@ -2168,18 +2468,20 @@ function InterviewsTab({
                   </button>
                 )}
 
-                {/* Add Notes - Show for all statuses */}
-                <button
-                  onClick={() => {
-                    setSelectedInterview(interview)
-                    setAdditionalNotes('')
-                    setNotesModalOpen(true)
-                  }}
-                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-all flex items-center gap-2 text-sm"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Add Notes
-                </button>
+                {/* Undo Cancel Request - Show for cancelled interviews */}
+                {interview.status === 'CANCELLED' && (
+                  <button
+                    onClick={() => {
+                      setSelectedInterview(interview)
+                      setUndoCancelNotes('')
+                      setUndoCancelModalOpen(true)
+                    }}
+                    className="px-4 py-2.5 bg-white border-2 border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 font-semibold transition-all flex items-center gap-2 text-sm"
+                  >
+                    <CalendarCheck className="h-4 w-4" />
+                    Undo Cancel Request
+                  </button>
+                )}
 
                 {/* Cancel Interview - Show for pending or scheduled */}
                 {(interview.status === 'PENDING' || interview.status === 'SCHEDULED') && (
@@ -2195,20 +2497,18 @@ function InterviewsTab({
                   </button>
                 )}
 
-                {/* Undo Cancel Request - Show for cancelled interviews */}
-                      {interview.status === 'CANCELLED' && (
-                        <button
-                          onClick={() => {
-                            setSelectedInterview(interview)
-                            setUndoCancelNotes('')
-                            setUndoCancelModalOpen(true)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium transition-all flex items-center gap-2 text-sm"
-                        >
-                          <CalendarCheck className="h-4 w-4" />
-                          Undo Cancel Request
-                        </button>
-                      )}
+                {/* Add Notes - Show for all statuses */}
+                <button
+                  onClick={() => {
+                    setSelectedInterview(interview)
+                    setAdditionalNotes('')
+                    setNotesModalOpen(true)
+                  }}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 font-medium transition-all flex items-center gap-2 text-sm"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Add Notes
+                </button>
               </div>
 
             </div>
@@ -2358,23 +2658,22 @@ function InterviewsTab({
           <DialogHeader>
             <DialogTitle className="text-gray-900">Reject Candidate</DialogTitle>
             <DialogDescription className="text-gray-600">
-              Please provide a reason for rejecting this candidate.
+              Optionally provide a reason for rejecting this candidate. Your feedback helps us improve our screening process.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="rejectReason" className="text-gray-900">Rejection Reason</Label>
+              <Label htmlFor="rejectReason" className="text-gray-900">Rejection Reason (Optional)</Label>
               <Textarea
                 id="rejectReason"
                 value={rejectData.rejectReason}
                 onChange={(e) => setRejectData({ rejectReason: e.target.value })}
-                placeholder="Please explain why this candidate is not a good fit..."
+                placeholder="e.g., Skills don't match requirements, communication concerns, cultural fit issues..."
                 rows={4}
                 className="mt-2 bg-white text-gray-900 border-gray-300"
-                required
               />
               <p className="text-xs text-gray-500 mt-1">
-                This will be sent to the admin team for their records
+                If no reason is provided, a default message will be recorded
               </p>
             </div>
             <div className="flex gap-3">
@@ -2388,7 +2687,7 @@ function InterviewsTab({
                 Cancel
               </button>
               <button
-                disabled={!rejectData.rejectReason.trim() || rejectingId !== null}
+                disabled={rejectingId !== null}
                 onClick={handleRejectRequest}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -2452,7 +2751,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
@@ -2682,7 +2981,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Sending...' : 'Send Request'}
               </button>
@@ -2744,7 +3043,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Adding...' : 'Add Notes'}
               </button>
@@ -2824,9 +3123,89 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Reopening...' : 'Reopen Interview'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reconsider Candidate Modal */}
+      <Dialog open={undoRejectModalOpen} onOpenChange={(open) => {
+        setUndoRejectModalOpen(open)
+        if (!open) setUndoRejectNotes('')
+      }}>
+        <DialogContent className="max-w-md bg-white text-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Reconsider Candidate</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              This will change the interview status back to Completed, allowing you to request to hire this candidate. Share your thoughts on reconsidering them.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="undoRejectNotes" className="text-gray-900">Reconsideration Notes (Optional)</Label>
+              <Textarea
+                id="undoRejectNotes"
+                value={undoRejectNotes}
+                onChange={(e) => setUndoRejectNotes(e.target.value)}
+                placeholder="Why are you reconsidering this candidate? (e.g., new position opened, team feedback, second thoughts...)"
+                rows={4}
+                className="mt-2 bg-white text-gray-900 border-gray-300"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setUndoRejectModalOpen(false)
+                  setUndoRejectNotes('')
+                }}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={interviewSubmitting}
+                onClick={async () => {
+                  if (!selectedInterview) return
+                  
+                  setInterviewSubmitting(true)
+                  try {
+                    // Undo the rejection with optional notes
+                    const response = await fetch(`/api/client/interviews/${selectedInterview.id}/undo-reject`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        notes: undoRejectNotes.trim() || undefined 
+                      })
+                    })
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to undo rejection')
+                    }
+                    
+                    toast({ 
+                      title: "✅ Candidate Reconsidered", 
+                      description: "The candidate is now back to Completed status. You can request to hire them again." 
+                    })
+                    setUndoRejectModalOpen(false)
+                    setUndoRejectNotes('')
+                    fetchInterviews()
+                  } catch (error) {
+                    toast({ 
+                      title: "Error", 
+                      description: "Failed to reconsider candidate", 
+                      variant: "destructive" 
+                    })
+                  } finally {
+                    setInterviewSubmitting(false)
+                  }
+                }}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold transition-all hover:from-emerald-700 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {interviewSubmitting ? 'Reconsidering...' : 'Reconsider Candidate'}
               </button>
             </div>
           </div>

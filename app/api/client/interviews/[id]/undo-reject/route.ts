@@ -14,10 +14,10 @@ export async function PATCH(
     }
 
     const { id } = await params
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { notes } = body
 
-    console.log(`📝 [CLIENT] Updating notes for interview ${id}`)
+    console.log(`🔄 [CLIENT] Undoing rejection for interview ${id}`)
 
     // Fetch existing interview
     const existing = await prisma.interview_requests.findUnique({
@@ -26,6 +26,11 @@ export async function PATCH(
 
     if (!existing) {
       return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
+    }
+
+    // Verify it's currently rejected
+    if (existing.status !== 'REJECTED') {
+      return NextResponse.json({ error: 'Interview is not rejected' }, { status: 400 })
     }
 
     // Fetch the client user who created the interview and the current session user
@@ -51,36 +56,41 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Append to existing client notes with timestamp
-    const timestamp = new Date().toLocaleString()
-    const trimmedNotes = notes.trim()
+    // Append reconsideration note to client notes with timestamp
+    const timestamp = new Date().toLocaleString('en-US')
+    const trimmedNotes = notes ? notes.trim() : ''
     const existingNotes = existing.clientNotes?.trim() || ''
-    const newNote = existingNotes ? `\n\n${timestamp} - ${trimmedNotes}` : `${timestamp} - ${trimmedNotes}`
-    const updatedClientNotes = existingNotes + newNote
+    
+    // Create reconsideration note with optional custom notes
+    const reconsiderNote = trimmedNotes 
+      ? `(Reconsidered) ${timestamp} - ${trimmedNotes}` 
+      : `(Reconsidered) ${timestamp} - Candidate reconsidered for hire`
+    const updatedClientNotes = existingNotes 
+      ? `${existingNotes}\n\n${reconsiderNote}` 
+      : reconsiderNote
 
-    // Update client notes
+    // Update interview status back to COMPLETED and add note
     const interview = await prisma.interview_requests.update({
       where: { id },
       data: {
+        status: 'COMPLETED',
         clientNotes: updatedClientNotes,
         updatedAt: new Date()
       }
     })
 
-    console.log(`✅ [CLIENT] Notes updated: ${id}`)
+    console.log(`✅ [CLIENT] Interview rejection undone: ${id}`)
 
     return NextResponse.json({ 
       success: true, 
       interview 
     })
   } catch (error) {
-    console.error('❌ [CLIENT] Error updating notes:', error)
+    console.error('❌ [CLIENT] Error undoing rejection:', error)
     return NextResponse.json(
-      { error: 'Failed to update notes' },
+      { error: 'Failed to undo rejection' },
       { status: 500 }
     )
   }
 }
-
-
 
