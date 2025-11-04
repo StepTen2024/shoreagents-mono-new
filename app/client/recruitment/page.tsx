@@ -124,6 +124,7 @@ export default function RecruitmentPage() {
   const [interviewsLoading, setInterviewsLoading] = useState(true)
   const [hireRequestingId, setHireRequestingId] = useState<string | null>(null)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('ALL')
   
   // Hire/Reject Modals
   const [hireModalOpen, setHireModalOpen] = useState(false)
@@ -491,91 +492,100 @@ export default function RecruitmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Recruitment</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                {activeTab === 'talent-pool' 
-                  ? 'Discover top Filipino professionals ready to join your team'
-                  : 'Create and manage job requests for your team'
-                }
-              </p>
+      <div className="flex justify-between items-center">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Recruitment
+          </h1>
+          <p className="text-slate-600">
+            {activeTab === 'talent-pool' 
+              ? 'Discover top Filipino professionals ready to join your team'
+              : activeTab === 'job-requests'
+              ? 'Create and manage job requests for your team'
+              : 'Schedule and manage candidate interviews'
+            }
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {activeTab === 'talent-pool' && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200/50">
+              <Users className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-700">
+                {candidates.length} Candidates Available
+              </span>
             </div>
-            {activeTab === 'talent-pool' && (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600">
-                  {candidates.length} candidates available
-                </span>
-              </div>
-            )}
-            {activeTab === 'job-requests' && !showForm && (
+          )}
+          {activeTab === 'interviews' && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200/50">
+              <Calendar className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-700">
+                {interviews.filter((i: InterviewRequest) => i.status === 'SCHEDULED').length} Scheduled Interview{interviews.filter((i: InterviewRequest) => i.status === 'SCHEDULED').length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+          {activeTab === 'job-requests' && !showForm && (
             <Button 
-                onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowForm(true)}
+              className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
             >
               <Plus className="h-4 w-4 mr-2" />
-                New Job Request
+              New Job Request
             </Button>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="mt-6 flex gap-2 border-b border-gray-200">
-            <button
-              onClick={() => {
-                setActiveTab('talent-pool')
-                setShowForm(false)
-              }}
-              className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all relative ${
-                activeTab === 'talent-pool'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <UserSearch className="w-5 h-5" />
-              Talent Pool
-              {activeTab === 'talent-pool' && (
-                <Badge className="bg-blue-500 text-white">{candidates.length}</Badge>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('job-requests')}
-              className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all relative ${
-                activeTab === 'job-requests'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Briefcase className="w-5 h-5" />
-              Job Requests
-              {activeTab === 'job-requests' && jobRequests.length > 0 && (
-                <Badge className="bg-blue-500 text-white">{jobRequests.length}</Badge>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('interviews')}
-              className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all relative ${
-                activeTab === 'interviews'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Calendar className="w-5 h-5" />
-              Interviews
-              {activeTab === 'interviews' && interviews.length > 0 && (
-                <Badge className="bg-blue-500 text-white">{interviews.length}</Badge>
-              )}
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            setActiveTab('talent-pool')
+            setShowForm(false)
+          }}
+          className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
+            activeTab === 'talent-pool'
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+              : 'text-slate-600 hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 hover:text-purple-700'
+          }`}
+        >
+          <UserSearch className="w-5 h-5" />
+          Talent Pool
+          <Badge className={activeTab === 'talent-pool' ? 'bg-white/30 text-white border border-white/50' : 'bg-blue-100 text-blue-700 border border-blue-200'}>{candidates.length}</Badge>
+        </button>
+        <button
+          onClick={() => setActiveTab('job-requests')}
+          className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
+            activeTab === 'job-requests'
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+              : 'text-slate-600 hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 hover:text-purple-700'
+          }`}
+        >
+          <Briefcase className="w-5 h-5" />
+          Job Requests
+          {jobRequests.length > 0 && (
+            <Badge className={activeTab === 'job-requests' ? 'bg-white/30 text-white border border-white/50' : 'bg-blue-100 text-blue-700 border border-blue-200'}>{jobRequests.length}</Badge>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('interviews')}
+          className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
+            activeTab === 'interviews'
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+              : 'text-slate-600 hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 hover:text-purple-700'
+          }`}
+        >
+          <Calendar className="w-5 h-5" />
+          Interviews
+          {interviews.length > 0 && (
+            <Badge className={activeTab === 'interviews' ? 'bg-white/30 text-white border border-white/50' : 'bg-blue-100 text-blue-700 border border-blue-200'}>{interviews.length}</Badge>
+          )}
+        </button>
+      </div>
+
       {/* Tab Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full">
         {activeTab === 'talent-pool' && (
           <TalentPoolTab 
             candidates={candidates}
@@ -620,6 +630,8 @@ export default function RecruitmentPage() {
           <InterviewsTab
             interviews={interviews}
             loading={interviewsLoading}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
             hireRequestingId={hireRequestingId}
             rejectingId={rejectingId}
             hireModalOpen={hireModalOpen}
@@ -867,7 +879,7 @@ function CandidateCard({ candidate, onClick }: { candidate: Candidate; onClick: 
   return (
     <div
       onClick={onClick}
-      className="relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100 hover:border-transparent hover:-translate-y-2 overflow-hidden group"
+      className="relative bg-white rounded-2xl shadow-lg transition-all duration-500 cursor-pointer border border-gray-100 hover:border-transparent hover:-translate-y-2 overflow-hidden group"
     >
       <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl blur-sm -z-10"></div>
       
@@ -959,7 +971,7 @@ function CandidateCard({ candidate, onClick }: { candidate: Candidate; onClick: 
             {candidate.skills.slice(0, 5).map((skill, index) => (
               <span
                 key={index}
-                className="px-3 py-1.5 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700 rounded-lg text-xs font-semibold border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
+                className="px-3 py-1.5 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700 rounded-lg text-xs font-semibold border border-gray-200 hover:border-blue-300 transition-all duration-200"
               >
                 {skill}
               </span>
@@ -978,7 +990,7 @@ function CandidateCard({ candidate, onClick }: { candidate: Candidate; onClick: 
           <span>years of experience</span>
         </div>
 
-        <button className="relative w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold rounded-xl overflow-hidden group-hover:shadow-xl group-hover:scale-[1.02] transition-all duration-300">
+        <button className="relative w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold rounded-xl overflow-hidden group-hover:scale-[1.02] transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
           <span className="relative flex items-center justify-center gap-2">
             View Full Profile
@@ -1576,6 +1588,8 @@ function JobRequestsTab({
 function InterviewsTab({ 
   interviews, 
   loading, 
+  statusFilter,
+  setStatusFilter,
   hireRequestingId,
   rejectingId,
   hireModalOpen,
@@ -1620,7 +1634,7 @@ function InterviewsTab({
       PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       SCHEDULED: 'bg-blue-100 text-blue-800 border-blue-300',
       COMPLETED: 'bg-green-100 text-green-800 border-green-300',
-      CANCELLED: 'bg-red-100 text-red-800 border-red-300',
+      CANCELLED: 'bg-gray-100 text-gray-800 border-gray-300',
       HIRED: 'bg-purple-100 text-purple-800 border-purple-300',
       'HIRE-REQUESTED': 'bg-orange-100 text-orange-800 border-orange-300',
       'HIRE_REQUESTED': 'bg-orange-100 text-orange-800 border-orange-300',
@@ -1630,19 +1644,19 @@ function InterviewsTab({
       'OFFER_ACCEPTED': 'bg-emerald-100 text-emerald-800 border-emerald-300',
       'OFFER-DECLINED': 'bg-red-100 text-red-800 border-red-300',
       'OFFER_DECLINED': 'bg-red-100 text-red-800 border-red-300',
-      REJECTED: 'bg-gray-100 text-gray-800 border-gray-300'
+      REJECTED: 'bg-red-100 text-red-800 border-red-300'
     }
 
     const icons: Record<string, React.ReactElement> = {
       PENDING: <Clock className="h-3 w-3 mr-1" />,
       SCHEDULED: <CalendarCheck className="h-3 w-3 mr-1" />,
       COMPLETED: <CheckCircle2 className="h-3 w-3 mr-1" />,
-      CANCELLED: <AlertCircle className="h-3 w-3 mr-1" />,
+      CANCELLED: <XCircle className="h-3 w-3 mr-1" />,
       HIRED: <UserCheck className="h-3 w-3 mr-1" />,
-      'HIRE-REQUESTED': <Clock className="h-3 w-3 mr-1" />,
-      'HIRE_REQUESTED': <Clock className="h-3 w-3 mr-1" />,
-      'OFFER-SENT': <AlertCircle className="h-3 w-3 mr-1" />,
-      'OFFER_SENT': <AlertCircle className="h-3 w-3 mr-1" />,
+      'HIRE-REQUESTED': <UserCheck className="h-3 w-3 mr-1" />,
+      'HIRE_REQUESTED': <UserCheck className="h-3 w-3 mr-1" />,
+      'OFFER-SENT': <Mail className="h-3 w-3 mr-1" />,
+      'OFFER_SENT': <Mail className="h-3 w-3 mr-1" />,
       'OFFER-ACCEPTED': <CheckCircle2 className="h-3 w-3 mr-1" />,
       'OFFER_ACCEPTED': <CheckCircle2 className="h-3 w-3 mr-1" />,
       'OFFER-DECLINED': <XCircle className="h-3 w-3 mr-1" />,
@@ -1722,10 +1736,57 @@ function InterviewsTab({
     )
   }
 
+  // Filter interviews by status
+  const filteredInterviews = statusFilter === 'ALL' 
+    ? interviews 
+    : statusFilter === 'HIRE_REQUESTED'
+    ? interviews.filter((interview: InterviewRequest) => interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED')
+    : interviews.filter((interview: InterviewRequest) => interview.status === statusFilter)
+
+  const statusOptions = [
+    { value: 'ALL', label: 'All', count: interviews.length },
+    { value: 'PENDING', label: 'Pending', count: interviews.filter((i: InterviewRequest) => i.status === 'PENDING').length },
+    { value: 'SCHEDULED', label: 'Scheduled', count: interviews.filter((i: InterviewRequest) => i.status === 'SCHEDULED').length },
+    { value: 'COMPLETED', label: 'Completed', count: interviews.filter((i: InterviewRequest) => i.status === 'COMPLETED').length },
+    { value: 'HIRE_REQUESTED', label: 'Hire Requested', count: interviews.filter((i: InterviewRequest) => i.status === 'HIRE_REQUESTED' || i.status === 'HIRE-REQUESTED').length },
+    { value: 'HIRED', label: 'Hired', count: interviews.filter((i: InterviewRequest) => i.status === 'HIRED').length },
+    { value: 'CANCELLED', label: 'Cancelled', count: interviews.filter((i: InterviewRequest) => i.status === 'CANCELLED').length },
+    { value: 'REJECTED', label: 'Rejected', count: interviews.filter((i: InterviewRequest) => i.status === 'REJECTED').length },
+  ]
+
   return (
-    <div className="space-y-4">
-      {interviews.map((interview: InterviewRequest) => (
-        <Card key={interview.id} className="p-6 bg-white hover:shadow-lg transition-shadow border border-gray-200">
+    <div className="space-y-6">
+      {/* Status Filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Filter className="h-4 w-4 text-slate-600" />
+        <span className="text-sm font-medium text-slate-700">Filter by status:</span>
+        {statusOptions.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setStatusFilter(option.value)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === option.value
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+            }`}
+          >
+            {option.label} ({option.count})
+          </button>
+        ))}
+      </div>
+
+      {filteredInterviews.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No {statusFilter !== 'ALL' ? statusFilter.toLowerCase() : ''} interviews found</h3>
+          <p className="text-gray-600">
+            Try selecting a different status filter
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredInterviews.map((interview: InterviewRequest) => (
+        <Card key={interview.id} className="p-6 bg-white transition-shadow border border-gray-200">
           <div className="flex items-start justify-between">
             <div className="flex-1 space-y-4">
               
@@ -2072,7 +2133,7 @@ function InterviewsTab({
                       setSelectedInterview(interview)
                       setHireModalOpen(true)
                     }}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg font-medium transition-all flex items-center gap-2 text-sm"
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium transition-all flex items-center gap-2 text-sm"
                   >
                     <UserCheck className="h-4 w-4" />
                     Request to Hire
@@ -2142,7 +2203,7 @@ function InterviewsTab({
                             setUndoCancelNotes('')
                             setUndoCancelModalOpen(true)
                           }}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg font-medium transition-all flex items-center gap-2 text-sm"
+                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium transition-all flex items-center gap-2 text-sm"
                         >
                           <CalendarCheck className="h-4 w-4" />
                           Undo Cancel Request
@@ -2154,6 +2215,8 @@ function InterviewsTab({
           </div>
         </Card>
       ))}
+        </div>
+      )}
 
       {/* Hire Modal */}
       <Dialog open={hireModalOpen} onOpenChange={setHireModalOpen}>
@@ -2280,7 +2343,7 @@ function InterviewsTab({
               <button
                 onClick={handleHireRequest}
                 disabled={!hireData.preferredStartDate || hireRequestingId !== null}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {hireRequestingId ? 'Sending...' : 'Send Hire Request'}
               </button>
@@ -2327,7 +2390,7 @@ function InterviewsTab({
               <button
                 disabled={!rejectData.rejectReason.trim() || rejectingId !== null}
                 onClick={handleRejectRequest}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {rejectingId ? 'Rejecting...' : 'Reject Candidate'}
               </button>
@@ -2389,7 +2452,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
@@ -2619,7 +2682,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Sending...' : 'Send Request'}
               </button>
@@ -2681,7 +2744,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Adding...' : 'Add Notes'}
               </button>
@@ -2761,7 +2824,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {interviewSubmitting ? 'Reopening...' : 'Reopen Interview'}
               </button>
