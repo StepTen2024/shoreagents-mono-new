@@ -31,8 +31,11 @@ export async function GET(req: NextRequest) {
           isComplete: false,
           OR: [
             { personalInfoStatus: "SUBMITTED" },
+            { resumeStatus: "SUBMITTED" },
             { govIdStatus: "SUBMITTED" },
-            { documentsStatus: "SUBMITTED" },
+            { educationStatus: "SUBMITTED" },
+            { medicalStatus: "SUBMITTED" },
+            { dataPrivacyStatus: "SUBMITTED" },
             { signatureStatus: "SUBMITTED" },
             { emergencyContactStatus: "SUBMITTED" }
           ]
@@ -61,7 +64,11 @@ export async function GET(req: NextRequest) {
             completionPercent: true,
             isComplete: true,
             personalInfoStatus: true,
+            resumeStatus: true,
             govIdStatus: true,
+            educationStatus: true,
+            medicalStatus: true,
+            dataPrivacyStatus: true,
             documentsStatus: true,
             signatureStatus: true,
             emergencyContactStatus: true,

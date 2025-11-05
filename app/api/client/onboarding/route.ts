@@ -49,7 +49,11 @@ export async function GET(req: NextRequest) {
             completionPercent: true,
             isComplete: true,
             personalInfoStatus: true,
+            resumeStatus: true,
             govIdStatus: true,
+            educationStatus: true,
+            medicalStatus: true,
+            dataPrivacyStatus: true,
             documentsStatus: true,
             signatureStatus: true,
             emergencyContactStatus: true,
@@ -85,13 +89,16 @@ export async function GET(req: NextRequest) {
         startDateFormatted = startDate.toISOString().split('T')[0] // YYYY-MM-DD
       }
 
-      // Calculate overall onboarding progress
+      // Calculate overall onboarding progress (8 sections total)
       let sectionsApproved = 0
       if (staff.staff_onboarding) {
         const statuses = [
           staff.staff_onboarding.personalInfoStatus,
+          staff.staff_onboarding.resumeStatus,
           staff.staff_onboarding.govIdStatus,
-          staff.staff_onboarding.documentsStatus,
+          staff.staff_onboarding.educationStatus,
+          staff.staff_onboarding.medicalStatus,
+          staff.staff_onboarding.dataPrivacyStatus,
           staff.staff_onboarding.signatureStatus,
           staff.staff_onboarding.emergencyContactStatus
         ]
@@ -107,11 +114,14 @@ export async function GET(req: NextRequest) {
           completionPercent: staff.staff_onboarding.completionPercent,
           isComplete: staff.staff_onboarding.isComplete,
           sectionsApproved,
-          totalSections: 5,
+          totalSections: 8,
           sections: {
             personalInfo: staff.staff_onboarding.personalInfoStatus,
+            resume: staff.staff_onboarding.resumeStatus,
             govId: staff.staff_onboarding.govIdStatus,
-            documents: staff.staff_onboarding.documentsStatus,
+            education: staff.staff_onboarding.educationStatus,
+            medical: staff.staff_onboarding.medicalStatus,
+            dataPrivacy: staff.staff_onboarding.dataPrivacyStatus,
             signature: staff.staff_onboarding.signatureStatus,
             emergencyContact: staff.staff_onboarding.emergencyContactStatus,
           },
