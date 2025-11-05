@@ -1152,3 +1152,104 @@ enum WorkLocationType {
   OFFICE
   HYBRID
 }
+
+// ============================================
+// 🎯 UNIFIED ENGAGEMENT SYSTEM
+// ============================================
+// Universal commenting, reactions, and sharing
+// Supports polymorphic relationships to ANY entity
+// ============================================
+
+model comments {
+  id              String    @id @default(uuid())
+  
+  // 🎯 POLYMORPHIC: What is being commented on
+  commentableType String    // "TICKET" | "TASK" | "CANDIDATE" | "TIME_ENTRY" | "ONBOARDING" | "POST" | "DOCUMENT" | "PERFORMANCE_REVIEW" | etc.
+  commentableId   String    // ID of the entity being commented on
+  
+  // 💬 CONTENT
+  content         String    @db.Text
+  attachments     String[]  @default([])
+  
+  // 👤 AUTHOR: Who created this comment
+  authorType      String    // "CLIENT" | "STAFF" | "MANAGEMENT"
+  authorId        String    // ID of the user
+  
+  // 🔗 THREADING: Parent comment for replies
+  parentId        String?
+  parentComment   comments?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         comments[] @relation("CommentReplies")
+  
+  // 📅 METADATA
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  editedAt        DateTime?
+  isEdited        Boolean   @default(false)
+  
+  // 🗑️ SOFT DELETE
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  
+  // 📊 ENGAGEMENT
+  reactions       reactions[]
+  
+  @@index([commentableType, commentableId])
+  @@index([authorType, authorId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model reactions {
+  id            String   @id @default(uuid())
+  
+  // 🎯 POLYMORPHIC: What is being reacted to
+  reactableType String   // "COMMENT" | "POST" | "TICKET" | "TIME_ENTRY" | "CANDIDATE" | "TASK" | etc.
+  reactableId   String   // ID of the entity being reacted to
+  
+  // 😀 REACTION
+  emoji         String   // "👍" | "❤️" | "😂" | "🎉" | "🔥" | "👎" | "😮" | "😢" | etc.
+  
+  // 👤 AUTHOR: Who reacted
+  authorType    String   // "CLIENT" | "STAFF" | "MANAGEMENT"
+  authorId      String   // ID of the user
+  
+  // 📅 METADATA
+  createdAt     DateTime @default(now())
+  
+  // 🔗 OPTIONAL RELATIONS (for comments)
+  comment       comments? @relation(fields: [reactableId], references: [id], onDelete: Cascade)
+  
+  // 🚫 UNIQUE: One user can only react with same emoji once
+  @@unique([reactableType, reactableId, authorType, authorId, emoji])
+  @@index([reactableType, reactableId])
+  @@index([authorType, authorId])
+}
+
+model shares {
+  id            String   @id @default(uuid())
+  
+  // 🎯 POLYMORPHIC: What is being shared
+  shareableType String   // "TICKET" | "CANDIDATE" | "TIME_ENTRY" | "DOCUMENT" | "TASK" | "ONBOARDING" | etc.
+  shareableId   String   // ID of the entity being shared
+  
+  // 💬 OPTIONAL: Message with share
+  message       String?  @db.Text
+  
+  // 👤 AUTHOR: Who shared it
+  authorType    String   // "CLIENT" | "STAFF" | "MANAGEMENT"
+  authorId      String   // ID of the user
+  
+  // 🎯 DESTINATION: Where it was shared
+  sharedTo      String   // "FEED" | "TEAM" | "DIRECT"
+  targetUserId  String?  // If shared to specific user
+  targetType    String?  // "CLIENT" | "STAFF" | "MANAGEMENT" (type of target user)
+  
+  // 📅 METADATA
+  createdAt     DateTime @default(now())
+  
+  @@index([shareableType, shareableId])
+  @@index([authorType, authorId])
+  @@index([sharedTo])
+  @@index([targetUserId])
+  @@index([createdAt])
+}

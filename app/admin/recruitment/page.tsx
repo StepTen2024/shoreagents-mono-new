@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CommentSection } from "@/components/engagement/comment-section"
 import { Switch } from "@/components/ui/switch"
 import { 
   Search, 
@@ -2316,6 +2317,15 @@ export default function AdminRecruitmentPage() {
                   </div>
                 </div>
               )}
+
+              {/* 🎯 UNIFIED COMMENT SYSTEM */}
+              <div className="mt-6 pt-6 border-t border-border">
+                <CommentSection
+                  commentableType="CANDIDATE"
+                  commentableId={selectedCandidate.id}
+                  darkMode={false}
+                />
+              </div>
             </div>
           )}
         </DialogContent>

@@ -8,7 +8,7 @@ import ViewToggle from "@/components/tickets/view-toggle"
 import TicketList from "@/components/tickets/ticket-list"
 import { useToast } from "@/components/ui/use-toast"
 import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/lib/ticket-categories"
-import ClientTicketCard from "@/components/tickets/client-ticket-card"
+import StaffTicketCard from "@/components/tickets/staff-ticket-card"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
 
@@ -263,7 +263,7 @@ export default function TicketsPage() {
                         onClick={() => handleTicketClick(ticket)}
                         className="cursor-pointer transform transition-all duration-200 hover:scale-105"
                       >
-                        <ClientTicketCard ticket={ticket} />
+                        <StaffTicketCard ticket={ticket} />
                       </div>
                     ))}
 

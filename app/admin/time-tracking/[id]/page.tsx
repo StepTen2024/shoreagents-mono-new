@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { CommentSection } from "@/components/engagement/comment-section"
 
 async function getTimeEntry(id: string) {
   try {
@@ -275,52 +276,118 @@ export default async function TimeEntryDetailPage({
           {/* Breaks Card */}
           {entry.breaks.length > 0 && (
             <Card className="p-6 border-border bg-card">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Coffee className="h-5 w-5 text-orange-500" />
                 Breaks ({entry.breaks.length})
               </h3>
               <div className="space-y-3">
                 {entry.breaks.map((brk, index) => {
-                  const breakDuration = brk.duration || (brk.actualStart && brk.actualEnd
-                    ? Math.floor((new Date(brk.actualEnd).getTime() - new Date(brk.actualStart).getTime()) / (1000 * 60))
-                    : 0)
+                  const isActiveBreak = brk.actualStart && !brk.actualEnd
+                  
+                  // Calculate duration
+                  let breakDuration = brk.duration
+                  if (brk.actualStart && brk.actualEnd) {
+                    breakDuration = Math.floor((new Date(brk.actualEnd).getTime() - new Date(brk.actualStart).getTime()) / (1000 * 60))
+                  } else if (isActiveBreak && brk.actualStart) {
+                    // Calculate current duration for active breaks
+                    const now = Date.now()
+                    breakDuration = Math.floor((now - new Date(brk.actualStart).getTime()) / (1000 * 60))
+                  }
+                  
+                  const formatDuration = (mins: number | null) => {
+                    if (!mins) return "0m"
+                    if (mins < 60) return `${mins}m`
+                    const hours = Math.floor(mins / 60)
+                    const minutes = mins % 60
+                    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+                  }
 
                   return (
-                    <div key={brk.id} className="p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge variant="outline" className="text-xs">
-                          {brk.type}
-                        </Badge>
+                    <div 
+                      key={brk.id} 
+                      className={`p-4 rounded-lg border ${
+                        isActiveBreak 
+                          ? 'bg-yellow-500/10 border-yellow-500/30 shadow-lg' 
+                          : 'bg-muted/30 border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={isActiveBreak ? "default" : "outline"} className={`text-xs ${isActiveBreak ? 'bg-yellow-600' : ''}`}>
+                            {brk.type.charAt(0) + brk.type.slice(1).toLowerCase()}
+                          </Badge>
+                          {isActiveBreak && (
+                            <Badge className="bg-yellow-600 text-white border-yellow-700 text-xs animate-pulse">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Active Now
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground">Break #{index + 1}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        {brk.actualStart && (
+                      
+                      <div className="grid grid-cols-2 gap-3 text-sm mb-2">
+                        {brk.actualStart ? (
                           <div>
-                            <div className="text-xs text-muted-foreground">Start</div>
+                            <div className="text-xs text-muted-foreground mb-1">Start Time</div>
                             <div className="font-medium text-foreground">
                               {new Date(brk.actualStart).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                second: '2-digit'
                               })}
                             </div>
                           </div>
-                        )}
-                        {brk.actualEnd && (
+                        ) : (
                           <div>
-                            <div className="text-xs text-muted-foreground">End</div>
+                            <div className="text-xs text-muted-foreground mb-1">Start Time</div>
+                            <div className="text-xs text-muted-foreground italic">Not started</div>
+                          </div>
+                        )}
+                        
+                        {brk.actualEnd ? (
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">End Time</div>
                             <div className="font-medium text-foreground">
                               {new Date(brk.actualEnd).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                second: '2-digit'
                               })}
                             </div>
                           </div>
+                        ) : (
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">End Time</div>
+                            {isActiveBreak ? (
+                              <div className="text-xs font-semibold text-yellow-600">In Progress...</div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground italic">Not ended</div>
+                            )}
+                          </div>
                         )}
                       </div>
-                      {breakDuration > 0 && (
+                      
+                      {breakDuration && breakDuration > 0 && (
                         <div className="mt-2 pt-2 border-t border-border">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Duration</span>
-                            <span className="font-medium text-foreground">{breakDuration} minutes</span>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Timer className="h-3 w-3" />
+                              Duration
+                            </span>
+                            <span className={`font-semibold ${isActiveBreak ? 'text-yellow-600' : 'text-foreground'}`}>
+                              {formatDuration(breakDuration)}
+                              {isActiveBreak && <span className="text-xs ml-1">(ongoing)</span>}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {brk.isLate && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <div className="flex items-center gap-2 text-amber-500">
+                            <AlertCircle className="h-4 w-4" />
+                            <span className="text-xs font-medium">Late by {brk.lateBy} minutes</span>
                           </div>
                         </div>
                       )}
@@ -406,6 +473,16 @@ export default async function TimeEntryDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* 🎯 UNIFIED COMMENT SYSTEM */}
+      <Card className="p-6 border-border bg-card">
+        <h3 className="text-lg font-semibold text-foreground mb-4">💬 Notes & Comments</h3>
+        <CommentSection
+          commentableType="TIME_ENTRY"
+          commentableId={entry.id}
+          darkMode={false}
+        />
+      </Card>
     </div>
   )
 }
