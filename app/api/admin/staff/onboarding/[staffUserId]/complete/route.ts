@@ -187,7 +187,12 @@ export async function POST(
       console.log("🎉 ONBOARDING COMPLETED & ALL DATA SYNCED TO PERSONAL RECORDS")
 
       // ✨ Auto-generate activity post
-      await logStaffOnboarded(staffUser.id, staffUser.name)
+      try {
+        await logStaffOnboarded(staffUser.id, staffUser.name)
+      } catch (error) {
+        console.error("❌ ACTIVITY LOG FAILED:", error)
+        // Don't block onboarding completion if activity logging fails
+      }
 
       return NextResponse.json({ 
         success: true,
