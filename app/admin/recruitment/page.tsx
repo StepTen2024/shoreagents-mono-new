@@ -365,6 +365,83 @@ export default function AdminRecruitmentPage() {
       }
     }
   }
+
+  // Helper function to format work schedule times with timezone conversion
+  function formatWorkTimeWithTimezone(time24: string, clientTimezone: string, clientTimezoneDisplay?: string) {
+    try {
+      const [hours, minutes] = time24.split(':').map(Number)
+      
+      // Create a date object representing today at the given time
+      const today = new Date()
+      const year = today.getFullYear()
+      const month = today.getMonth()
+      const day = today.getDate()
+      
+      // Create a UTC date
+      const utcRef = new Date(Date.UTC(year, month, day, hours, minutes))
+      
+      // Format this UTC date in the client's timezone to see what time it shows
+      const clientTestStr = utcRef.toLocaleString('en-US', {
+        timeZone: clientTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      })
+      
+      // Parse the result to find the offset
+      const match = clientTestStr.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/)
+      if (!match) {
+        // Fallback: just display the time as-is
+        return {
+          clientTime: convertTo12Hour(time24),
+          clientTimezone: clientTimezoneDisplay || clientTimezone,
+          phTime: convertTo12Hour(time24),
+          fullDisplay: `${convertTo12Hour(time24)} (${clientTimezoneDisplay || clientTimezone})`
+        }
+      }
+      
+      const [, testMonth, testDay, testYear, testHour, testMinute] = match.map(Number)
+      
+      // Calculate the difference between what we wanted and what we got
+      const wantedTime = new Date(year, month, day, hours, minutes).getTime()
+      const gotTime = new Date(testYear, testMonth - 1, testDay, testHour, testMinute).getTime()
+      const offsetMs = wantedTime - gotTime
+      
+      // Create the correct UTC date by applying the offset
+      const correctUTC = new Date(utcRef.getTime() + offsetMs)
+      
+      // Format this correct UTC date in Manila timezone
+      const phTimeStr = correctUTC.toLocaleString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Manila'
+      })
+      
+      // Format client time
+      const clientTimeStr = convertTo12Hour(time24)
+      const tzDisplay = clientTimezoneDisplay || clientTimezone
+      
+      return {
+        clientTime: clientTimeStr,
+        clientTimezone: tzDisplay,
+        phTime: phTimeStr,
+        fullDisplay: `${clientTimeStr} (${tzDisplay}) → ${phTimeStr} (PH)`
+      }
+    } catch (error) {
+      console.error('Error formatting work time with timezone:', error)
+      return {
+        clientTime: convertTo12Hour(time24),
+        clientTimezone: clientTimezoneDisplay || clientTimezone,
+        phTime: convertTo12Hour(time24),
+        fullDisplay: `${convertTo12Hour(time24)} (${clientTimezoneDisplay || clientTimezone})`
+      }
+    }
+  }
+
   const [confirmFormData, setConfirmFormData] = useState({
     confirmedStartDate: '',
     staffEmail: '',
@@ -1791,15 +1868,18 @@ export default function AdminRecruitmentPage() {
                                     </div>
                                     {interview.workSchedule.hasCustomHours && interview.workSchedule.customHours ? (
                                       <div>
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className="space-y-1.5">
                                           {Object.entries(interview.workSchedule.customHours).map(([day, time]) => {
                                             const [hours, minutes] = (time as string).split(':').map(Number)
                                             const endHour = (hours + 9) % 24
                                             const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                            const clientTimezone = interview.workSchedule?.clientTimezone || 'UTC'
+                                            const startFormatted = formatWorkTimeWithTimezone(time as string, clientTimezone)
+                                            const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
                                             return (
-                                              <div key={day} className="flex flex-col items-center text-xs bg-orange-500/10 px-2 py-2 rounded border border-orange-500/20">
-                                                <span className="text-orange-200 font-medium mb-1">{day}</span>
-                                                <span className="text-orange-300 text-[10px]">{convertTo12Hour(time as string)} - {convertTo12Hour(endTime24)}</span>
+                                              <div key={day} className="flex items-center justify-between text-xs bg-orange-500/10 px-2 py-1.5 rounded border border-orange-500/20">
+                                                <span className="text-orange-200 font-medium">{day}:</span>
+                                                <span className="text-orange-300 text-[10px]">{startFormatted.fullDisplay} - {endFormatted.phTime}</span>
                                               </div>
                                             )
                                           })}
@@ -1808,16 +1888,19 @@ export default function AdminRecruitmentPage() {
                                       </div>
                                     ) : interview.workSchedule.workStartTime && interview.workSchedule.workDays ? (
                                       <div>
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className="space-y-1.5">
                                           {interview.workSchedule.workDays.map((day: string) => {
                                             const workStartTime = interview.workSchedule?.workStartTime || '09:00'
                                             const [hours, minutes] = workStartTime.split(':').map(Number)
                                             const endHour = (hours + 9) % 24
                                             const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                            const clientTimezone = interview.workSchedule?.clientTimezone || 'UTC'
+                                            const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
+                                            const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
                                             return (
-                                              <div key={day} className="flex flex-col items-center text-xs bg-orange-500/10 px-2 py-2 rounded border border-orange-500/20">
-                                                <span className="text-orange-200 font-medium mb-1">{day}</span>
-                                                <span className="text-orange-300 text-[10px]">{convertTo12Hour(workStartTime)} - {convertTo12Hour(endTime24)}</span>
+                                              <div key={day} className="flex items-center justify-between text-xs bg-orange-500/10 px-2 py-1.5 rounded border border-orange-500/20">
+                                                <span className="text-orange-200 font-medium">{day}:</span>
+                                                <span className="text-orange-300 text-[10px]">{startFormatted.fullDisplay} - {endFormatted.phTime}</span>
                                               </div>
                                             )
                                           })}
@@ -2479,25 +2562,36 @@ export default function AdminRecruitmentPage() {
                       <Clock className="h-5 w-5 text-green-400" />
                       Work Schedule
                     </h4>
-                    {selectedInterview.workSchedule.isMonToFri && (
-                      <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
-                        Mon-Fri
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selectedInterview.workSchedule.clientTimezone && (
+                        <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/50 text-xs">
+                          {selectedInterview.workSchedule.clientTimezone}
+                        </Badge>
+                      )}
+                      {selectedInterview.workSchedule.isMonToFri && (
+                        <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
+                          Mon-Fri
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   {selectedInterview.workSchedule.hasCustomHours && selectedInterview.workSchedule.customHours ? (
                     <div>
-                      <div className="flex flex-wrap gap-3">
+                      <div className="space-y-2">
                         {Object.entries(selectedInterview.workSchedule.customHours).map(([day, time]) => {
                           const [hours, minutes] = time.split(':').map(Number)
                           const endHour = (hours + 9) % 24
                           const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          const clientTimezone = selectedInterview.workSchedule?.clientTimezone || 'UTC'
+                          const startFormatted = formatWorkTimeWithTimezone(time, clientTimezone)
+                          const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
                           return (
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 w-[120px]">
-                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(time)}</div>
-                              <div className="text-slate-500 text-[10px] my-0.5">to</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(endTime24)}</div>
+                            <div key={day} className="flex items-center justify-between bg-slate-900/50 px-4 py-3 rounded-lg border border-slate-700">
+                              <div className="text-slate-200 font-bold text-sm">{day}</div>
+                              <div className="text-slate-300 text-xs text-right">
+                                <div>{startFormatted.fullDisplay}</div>
+                                <div className="text-slate-400 text-[10px] mt-0.5">to {endFormatted.phTime}</div>
+                              </div>
                             </div>
                           )
                         })}
@@ -2506,18 +2600,22 @@ export default function AdminRecruitmentPage() {
                     </div>
                   ) : selectedInterview.workSchedule.workStartTime && selectedInterview.workSchedule.workDays ? (
                     <div>
-                      <div className="flex flex-wrap gap-3">
+                      <div className="space-y-2">
                         {selectedInterview.workSchedule.workDays.map((day: string) => {
                           const workStartTime = selectedInterview.workSchedule?.workStartTime || '09:00'
                           const [hours, minutes] = workStartTime.split(':').map(Number)
                           const endHour = (hours + 9) % 24
                           const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          const clientTimezone = selectedInterview.workSchedule?.clientTimezone || 'UTC'
+                          const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
+                          const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
                           return (
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 w-[120px]">
-                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(workStartTime)}</div>
-                              <div className="text-slate-500 text-[10px] my-0.5">to</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(endTime24)}</div>
+                            <div key={day} className="flex items-center justify-between bg-slate-900/50 px-4 py-3 rounded-lg border border-slate-700">
+                              <div className="text-slate-200 font-bold text-sm">{day}</div>
+                              <div className="text-slate-300 text-xs text-right">
+                                <div>{startFormatted.fullDisplay}</div>
+                                <div className="text-slate-400 text-[10px] mt-0.5">to {endFormatted.phTime}</div>
+                              </div>
                             </div>
                           )
                         })}

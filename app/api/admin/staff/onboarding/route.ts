@@ -31,13 +31,14 @@ export async function GET(req: NextRequest) {
           isComplete: false,
           OR: [
             { personalInfoStatus: "SUBMITTED" },
-            { resumeStatus: "SUBMITTED" },
             { govIdStatus: "SUBMITTED" },
+            { documentsStatus: "SUBMITTED" },
+            { signatureStatus: "SUBMITTED" },
+            { emergencyContactStatus: "SUBMITTED" },
+            { resumeStatus: "SUBMITTED" },
             { educationStatus: "SUBMITTED" },
             { medicalStatus: "SUBMITTED" },
-            { dataPrivacyStatus: "SUBMITTED" },
-            { signatureStatus: "SUBMITTED" },
-            { emergencyContactStatus: "SUBMITTED" }
+            { dataPrivacyStatus: "SUBMITTED" }
           ]
         }
       }

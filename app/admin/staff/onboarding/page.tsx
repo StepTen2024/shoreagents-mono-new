@@ -78,19 +78,6 @@ export default function AdminOnboardingPage() {
     }
   }
 
-  const getPendingSections = (onboarding: StaffOnboarding["onboarding"]) => {
-    if (!onboarding) return 0
-    let count = 0
-    if (onboarding.personalInfoStatus === "SUBMITTED") count++
-    if (onboarding.resumeStatus === "SUBMITTED") count++
-    if (onboarding.govIdStatus === "SUBMITTED") count++
-    if (onboarding.educationStatus === "SUBMITTED") count++
-    if (onboarding.medicalStatus === "SUBMITTED") count++
-    if (onboarding.dataPrivacyStatus === "SUBMITTED") count++
-    if (onboarding.signatureStatus === "SUBMITTED") count++
-    if (onboarding.emergencyContactStatus === "SUBMITTED") count++
-    return count
-  }
 
   if (loading) {
     return (
@@ -151,15 +138,12 @@ export default function AdminOnboardingPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Pending Review</TableHead>
                   <TableHead>Last Updated</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staffList.map((staff) => {
-                  const pending = getPendingSections(staff.onboarding)
-                  return (
+                {staffList.map((staff) => (
                     <TableRow key={staff.id}>
                       <TableCell className="font-medium">
                         {staff.name}
@@ -186,16 +170,6 @@ export default function AdminOnboardingPage() {
                           staff.onboarding?.isComplete || false
                         )}
                       </TableCell>
-                      <TableCell>
-                        {pending > 0 ? (
-                          <Badge variant="outline" className="border-yellow-500 text-yellow-500">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {pending} section{pending !== 1 ? "s" : ""}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">None</span>
-                        )}
-                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {staff.onboarding?.updatedAt
                           ? new Date(staff.onboarding.updatedAt).toLocaleDateString()
@@ -211,8 +185,7 @@ export default function AdminOnboardingPage() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  )
-                })}
+                ))}
               </TableBody>
             </Table>
           )}
