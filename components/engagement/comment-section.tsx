@@ -299,7 +299,7 @@ export function CommentSection({
                 <Textarea
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className={darkMode ? "bg-slate-900 text-white" : ""}
+                  className={darkMode ? "bg-slate-900 text-white border-slate-700" : "bg-white text-gray-900 border-gray-300"}
                   rows={3}
                 />
                 <div className="flex gap-2">
@@ -365,7 +365,7 @@ export function CommentSection({
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
                 placeholder="Write a reply..."
-                className={darkMode ? "bg-slate-900 text-white" : ""}
+                className={darkMode ? "bg-slate-900 text-white border-slate-700" : "bg-white text-gray-900 border-gray-300"}
                 rows={2}
               />
               <div className="flex gap-2">
@@ -434,7 +434,7 @@ export function CommentSection({
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Write a comment..."
-          className={darkMode ? "bg-slate-900 text-white border-slate-700" : ""}
+          className={darkMode ? "bg-slate-900 text-white border-slate-700" : "bg-white text-gray-900 border-gray-300"}
           rows={3}
         />
         <Button
