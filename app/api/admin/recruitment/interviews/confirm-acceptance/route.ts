@@ -141,14 +141,23 @@ export async function POST(request: NextRequest) {
       second: '2-digit', 
       hour12: true 
     })
+    
+    // Build the hire finalization note (include custom notes if provided)
+    const existingAdminNotes = interview.adminNotes?.trim() || ''
+    const customNotePart = adminNotes?.trim() ? `${adminNotes.trim()}. ` : ''
+    const hireNote = `(Hire Finalized) ${timestamp} - ${customNotePart}Job acceptance ID: ${jobAcceptance.id}. Staff account prepared for: ${staffEmail}`
+    
+    // Combine with existing notes
+    const updatedAdminNotes = existingAdminNotes 
+      ? `${existingAdminNotes}\n\n${hireNote}` 
+      : hireNote
+    
     const updatedInterview = await prisma.interview_requests.update({
       where: { id: interviewRequestId },
       data: {
         status: 'HIRED',
         finalStartDate: new Date(confirmedStartDate),
-        adminNotes: adminNotes 
-          ? `${interview.adminNotes || ''}\n\n(Hire Finalized) ${timestamp} - ${adminNotes}`
-          : `${interview.adminNotes || ''}\n\n(Hire Finalized) ${timestamp} - Job acceptance ID: ${jobAcceptance.id}. Staff account prepared for: ${staffEmail}`,
+        adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })

@@ -2277,10 +2277,15 @@ function InterviewsTab({
                 )}
               </div>
 
-              {/* Your Preferred Times - Hide for completed and hire requested */}
+              {/* Your Preferred Times - Hide for completed, hire requested, hired, offer sent, and offer declined */}
               {interview.status !== 'COMPLETED' && 
                interview.status !== 'HIRE_REQUESTED' && 
-               interview.status !== 'HIRE-REQUESTED' && (
+               interview.status !== 'HIRE-REQUESTED' && 
+               interview.status !== 'HIRED' && 
+               interview.status !== 'OFFER_SENT' && 
+               interview.status !== 'OFFER-SENT' && 
+               interview.status !== 'OFFER_DECLINED' && 
+               interview.status !== 'OFFER-DECLINED' && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="h-4 w-4 text-gray-500" />

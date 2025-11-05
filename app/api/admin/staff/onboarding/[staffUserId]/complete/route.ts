@@ -137,28 +137,42 @@ export async function POST(
 
       console.log("📋 UPSERTING PERSONAL RECORDS:", { staffUserId: staffUser.id, hasContract: !!employmentContractUrl })
       
-      await prisma.staff_personal_records.upsert({
-        where: { staffUserId: staffUser.id },
-        update: personalRecordData,
-        create: {
-          id: crypto.randomUUID(),
-          ...personalRecordData
-        }
-      })
+      try {
+        await prisma.staff_personal_records.upsert({
+          where: { staffUserId: staffUser.id },
+          update: personalRecordData,
+          create: {
+            id: crypto.randomUUID(),
+            ...personalRecordData
+          }
+        })
+        console.log("✅ PERSONAL RECORDS UPDATED")
+      } catch (error) {
+        console.error("❌ PERSONAL RECORDS UPDATE FAILED:", error)
+        // Continue even if this fails - don't block the whole process
+      }
 
       // UPDATE staff_profiles with additional onboarding data (gender, DOB, civil status, phone)
-      await prisma.staff_profiles.update({
-        where: { staffUserId: staffUser.id },
-        data: {
-          phone: onboarding.contactNo,
-          gender: onboarding.gender,
-          civilStatus: onboarding.civilStatus,
-          dateOfBirth: onboarding.dateOfBirth,
+      try {
+        // Build update data object only with non-null values
+        const profileUpdateData: any = {
           updatedAt: new Date()
         }
-      })
-
-      console.log("✅ STAFF PROFILE UPDATED with personal details")
+        
+        if (onboarding.contactNo) profileUpdateData.phone = onboarding.contactNo
+        if (onboarding.gender) profileUpdateData.gender = onboarding.gender
+        if (onboarding.civilStatus) profileUpdateData.civilStatus = onboarding.civilStatus
+        if (onboarding.dateOfBirth) profileUpdateData.dateOfBirth = onboarding.dateOfBirth
+        
+        await prisma.staff_profiles.update({
+          where: { staffUserId: staffUser.id },
+          data: profileUpdateData
+        })
+        console.log("✅ STAFF PROFILE UPDATED with personal details:", profileUpdateData)
+      } catch (error) {
+        console.error("❌ STAFF PROFILE UPDATE FAILED:", error)
+        // Continue even if this fails
+      }
       
       // Mark onboarding as complete
       await prisma.staff_onboarding.update({
@@ -173,7 +187,12 @@ export async function POST(
       console.log("🎉 ONBOARDING COMPLETED & ALL DATA SYNCED TO PERSONAL RECORDS")
 
       // ✨ Auto-generate activity post
-      await logStaffOnboarded(staffUser.id, staffUser.name)
+      try {
+        await logStaffOnboarded(staffUser.id, staffUser.name)
+      } catch (error) {
+        console.error("❌ ACTIVITY LOG FAILED:", error)
+        // Don't block onboarding completion if activity logging fails
+      }
 
       return NextResponse.json({ 
         success: true,
@@ -413,8 +432,14 @@ export async function POST(
       stack: error instanceof Error ? error.stack : undefined,
       name: error instanceof Error ? error.name : undefined
     })
+    
+    // Return more specific error message
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
     return NextResponse.json(
-      { error: "Failed to complete onboarding" },
+      { 
+        error: "Failed to complete onboarding",
+        details: errorMessage 
+      },
       { status: 500 }
     )
   }

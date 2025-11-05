@@ -89,12 +89,35 @@ export async function POST(request: NextRequest) {
 
     } else {
       // DECLINE OFFER
+      // Get existing interview to append notes
+      const interview = await prisma.interview_requests.findUnique({
+        where: { id: jobAcceptance.interviewRequestId }
+      })
+
+      // Format timestamp consistently with other status changes
+      const timestamp = new Date().toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: 'numeric', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: true 
+      })
+      const existingAdminNotes = interview?.adminNotes?.trim() || ''
+      const trimmedReason = declineReason.trim()
+      const declineNote = `(Offer Declined) ${timestamp} - ${trimmedReason}`
+      const updatedAdminNotes = existingAdminNotes 
+        ? `${existingAdminNotes}\n\n${declineNote}` 
+        : declineNote
+
       await prisma.interview_requests.update({
         where: { id: jobAcceptance.interviewRequestId },
         data: {
           status: 'OFFER_DECLINED',
           offerResponseAt: new Date(),
           offerDeclineReason: declineReason,
+          adminNotes: updatedAdminNotes,
           updatedAt: new Date()
         }
       })

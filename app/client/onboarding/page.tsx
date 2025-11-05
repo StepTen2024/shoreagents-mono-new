@@ -16,7 +16,11 @@ import {
   FileText,
   Shield,
   PenTool,
-  Phone
+  Phone,
+  Briefcase,
+  GraduationCap,
+  Stethoscope,
+  CreditCard
 } from "lucide-react"
 
 type OnboardingStatus = "PENDING" | "SUBMITTED" | "APPROVED" | "REJECTED"
@@ -33,8 +37,11 @@ type StaffOnboarding = {
     totalSections: number
     sections: {
       personalInfo: OnboardingStatus
+      resume: OnboardingStatus
       govId: OnboardingStatus
-      documents: OnboardingStatus
+      education: OnboardingStatus
+      medical: OnboardingStatus
+      dataPrivacy: OnboardingStatus
       signature: OnboardingStatus
       emergencyContact: OnboardingStatus
     }
@@ -102,8 +109,11 @@ export default function ClientOnboardingPage() {
 
   const sections = [
     { key: "personalInfo" as const, label: "Personal Info", icon: User },
-    { key: "govId" as const, label: "Government IDs", icon: FileText },
-    { key: "documents" as const, label: "Documents", icon: Shield },
+    { key: "resume" as const, label: "Resume", icon: Briefcase },
+    { key: "govId" as const, label: "Government IDs", icon: CreditCard },
+    { key: "education" as const, label: "Education", icon: GraduationCap },
+    { key: "medical" as const, label: "Medical Certificate", icon: Stethoscope },
+    { key: "dataPrivacy" as const, label: "Data Privacy & Bank", icon: Shield },
     { key: "signature" as const, label: "Signature", icon: PenTool },
     { key: "emergencyContact" as const, label: "Emergency Contact", icon: Phone },
   ]
@@ -191,7 +201,7 @@ export default function ClientOnboardingPage() {
                         <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
                           <ClipboardCheck className="h-5 w-5 text-blue-600" />
                           <span className="text-sm font-semibold text-blue-700">
-                            {member.onboarding.sectionsApproved}/{member.onboarding.totalSections} Approved
+                            {member.onboarding.sectionsApproved}/8 Approved
                           </span>
                         </div>
                       </div>
@@ -251,7 +261,7 @@ export default function ClientOnboardingPage() {
                   {member.onboarding ? (
                     <div className="space-y-3">
                       <h4 className="text-sm font-semibold text-gray-700 mb-3">Onboarding Sections</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                         {sections.map((section) => {
                           const status = member.onboarding!.sections[section.key]
                           const Icon = section.icon
@@ -280,13 +290,13 @@ export default function ClientOnboardingPage() {
                       {member.onboarding.isComplete ? (
                         <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200 text-center">
                           <p className="text-sm font-semibold text-green-700">
-                            ✅ Onboarding Complete - Ready to Start!
+                            ✅ Onboarding Complete - All 8 sections approved!
                           </p>
                         </div>
                       ) : (
                         <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
                           <p className="text-sm font-semibold text-blue-700">
-                            ⏳ Onboarding In Progress ({member.onboarding.sectionsApproved}/{member.onboarding.totalSections} sections approved)
+                            ⏳ Onboarding In Progress ({member.onboarding.sectionsApproved}/8 sections approved)
                           </p>
                         </div>
                       )}

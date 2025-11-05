@@ -12,30 +12,34 @@ export async function GET(req: NextRequest) {
 
     // Get client user
     const clientUser = await prisma.client_users.findUnique({
-      where: { email: session.user.email },
+      where: { authUserId: session.user.id },
       include: { company: true }
     })
 
-    if (!clientUser || !clientUser.companyId) {
-      return NextResponse.json({ error: "Client user or company not found" }, { status: 404 })
+    if (!clientUser) {
+      return NextResponse.json({ error: "Client user not found" }, { status: 404 })
     }
 
-    // Get all staff for this company who have completed onboarding but haven't started yet
+    if (!clientUser.companyId) {
+      return NextResponse.json({ error: "No company assigned to client user" }, { status: 404 })
+    }
+
+    console.log('🔍 [CLIENT ONBOARDING] Fetching staff for company:', {
+      companyId: clientUser.companyId,
+      companyName: clientUser.company?.name,
+      clientEmail: clientUser.email
+    })
+
+    // Get all staff for this company with their onboarding status
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
     const staffList = await prisma.staff_users.findMany({
       where: { 
         companyId: clientUser.companyId,
-        // Must have completed onboarding
+        // Show staff who have onboarding records (any status)
         staff_onboarding: {
-          isComplete: true
-        },
-        // But start date must be in the future
-        staff_profiles: {
-          startDate: {
-            gt: today
-          }
+          isNot: null
         }
       },
       include: {
@@ -45,7 +49,11 @@ export async function GET(req: NextRequest) {
             completionPercent: true,
             isComplete: true,
             personalInfoStatus: true,
+            resumeStatus: true,
             govIdStatus: true,
+            educationStatus: true,
+            medicalStatus: true,
+            dataPrivacyStatus: true,
             documentsStatus: true,
             signatureStatus: true,
             emergencyContactStatus: true,
@@ -81,13 +89,16 @@ export async function GET(req: NextRequest) {
         startDateFormatted = startDate.toISOString().split('T')[0] // YYYY-MM-DD
       }
 
-      // Calculate overall onboarding progress
+      // Calculate overall onboarding progress (8 sections total)
       let sectionsApproved = 0
       if (staff.staff_onboarding) {
         const statuses = [
           staff.staff_onboarding.personalInfoStatus,
+          staff.staff_onboarding.resumeStatus,
           staff.staff_onboarding.govIdStatus,
-          staff.staff_onboarding.documentsStatus,
+          staff.staff_onboarding.educationStatus,
+          staff.staff_onboarding.medicalStatus,
+          staff.staff_onboarding.dataPrivacyStatus,
           staff.staff_onboarding.signatureStatus,
           staff.staff_onboarding.emergencyContactStatus
         ]
@@ -103,11 +114,14 @@ export async function GET(req: NextRequest) {
           completionPercent: staff.staff_onboarding.completionPercent,
           isComplete: staff.staff_onboarding.isComplete,
           sectionsApproved,
-          totalSections: 5,
+          totalSections: 8,
           sections: {
             personalInfo: staff.staff_onboarding.personalInfoStatus,
+            resume: staff.staff_onboarding.resumeStatus,
             govId: staff.staff_onboarding.govIdStatus,
-            documents: staff.staff_onboarding.documentsStatus,
+            education: staff.staff_onboarding.educationStatus,
+            medical: staff.staff_onboarding.medicalStatus,
+            dataPrivacy: staff.staff_onboarding.dataPrivacyStatus,
             signature: staff.staff_onboarding.signatureStatus,
             emergencyContact: staff.staff_onboarding.emergencyContactStatus,
           },
@@ -121,6 +135,11 @@ export async function GET(req: NextRequest) {
         } : null,
         createdAt: staff.createdAt
       }
+    })
+
+    console.log('✅ [CLIENT ONBOARDING] Found staff:', {
+      count: staffWithCountdown.length,
+      staffNames: staffWithCountdown.map(s => s.name)
     })
 
     return NextResponse.json({ staff: staffWithCountdown })

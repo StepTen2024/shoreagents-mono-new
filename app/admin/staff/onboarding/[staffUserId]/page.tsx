@@ -403,6 +403,7 @@ export default function AdminOnboardingDetailPage() {
            status: response.status,
            statusText: response.statusText,
            error: data.error,
+           details: data.details,
            data: data,
            employmentData: employmentData
          })
@@ -410,14 +411,25 @@ export default function AdminOnboardingDetailPage() {
         // Provide more specific error messages based on status codes
         let errorMessage = data.error || "Failed to complete onboarding"
         
+        // Add details if available
+        if (data.details) {
+          errorMessage += `: ${data.details}`
+        }
+        
         if (response.status === 400) {
           errorMessage = `Bad Request: ${data.error || "Invalid data provided. Please check all fields."}`
+          if (data.details) {
+            errorMessage += ` - ${data.details}`
+          }
         } else if (response.status === 404) {
           errorMessage = `Not Found: ${data.error || "Staff member or company not found."}`
         } else if (response.status === 409) {
           errorMessage = `Conflict: ${data.error || "Staff profile already exists or duplicate entry."}`
         } else if (response.status === 500) {
           errorMessage = `Server Error: ${data.error || "Internal server error. Please try again later."}`
+          if (data.details) {
+            errorMessage += ` - Details: ${data.details}`
+          }
         }
         
         throw new Error(errorMessage)
@@ -426,17 +438,18 @@ export default function AdminOnboardingDetailPage() {
        const data = await response.json()
        console.log("✅ COMPLETE SUCCESS:", data)
        
-       if (data.alreadyExists) {
-         setSuccessModal({
-           show: true,
-           title: "Profile Already Exists",
-           message: `${data.staffName || 'Staff'} profile was already created`,
-           details: [
-             `Assigned to ${data.companyName || 'company'}`,
-             "Onboarding was completed previously"
-           ]
-         })
-       } else {
+      if (data.alreadyExists) {
+        setSuccessModal({
+          show: true,
+          title: "Onboarding Complete!",
+          message: `${data.staffName || 'Staff'} onboarding has been successfully updated`,
+          details: [
+            `Assigned to ${data.companyName || 'company'}`,
+            "All onboarding data synced to personal records",
+            "Profile updated with latest information"
+          ]
+        })
+      } else {
          setSuccessModal({
            show: true,
            title: "Onboarding Complete!",
