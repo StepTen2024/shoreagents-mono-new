@@ -12,30 +12,34 @@ export async function GET(req: NextRequest) {
 
     // Get client user
     const clientUser = await prisma.client_users.findUnique({
-      where: { email: session.user.email },
+      where: { authUserId: session.user.id },
       include: { company: true }
     })
 
-    if (!clientUser || !clientUser.companyId) {
-      return NextResponse.json({ error: "Client user or company not found" }, { status: 404 })
+    if (!clientUser) {
+      return NextResponse.json({ error: "Client user not found" }, { status: 404 })
     }
 
-    // Get all staff for this company who have completed onboarding but haven't started yet
+    if (!clientUser.companyId) {
+      return NextResponse.json({ error: "No company assigned to client user" }, { status: 404 })
+    }
+
+    console.log('🔍 [CLIENT ONBOARDING] Fetching staff for company:', {
+      companyId: clientUser.companyId,
+      companyName: clientUser.company?.name,
+      clientEmail: clientUser.email
+    })
+
+    // Get all staff for this company with their onboarding status
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
     const staffList = await prisma.staff_users.findMany({
       where: { 
         companyId: clientUser.companyId,
-        // Must have completed onboarding
+        // Show staff who have onboarding records (any status)
         staff_onboarding: {
-          isComplete: true
-        },
-        // But start date must be in the future
-        staff_profiles: {
-          startDate: {
-            gt: today
-          }
+          isNot: null
         }
       },
       include: {
@@ -121,6 +125,11 @@ export async function GET(req: NextRequest) {
         } : null,
         createdAt: staff.createdAt
       }
+    })
+
+    console.log('✅ [CLIENT ONBOARDING] Found staff:', {
+      count: staffWithCountdown.length,
+      staffNames: staffWithCountdown.map(s => s.name)
     })
 
     return NextResponse.json({ staff: staffWithCountdown })
