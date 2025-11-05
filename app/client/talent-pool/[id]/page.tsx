@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, MapPin, Calendar, Briefcase, Award, Book, Languages,
   Brain, Zap, Target, TrendingUp, Video, CheckCircle, X, Plus, FileText
@@ -72,12 +72,37 @@ type TabType = 'profile' | 'ai' | 'disc' | 'performance'
 export default function CandidateProfilePage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const candidateId = params.id as string
 
   const [candidate, setCandidate] = useState<CandidateProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('profile')
+  
+  // Get return navigation info from URL params
+  const returnTo = searchParams.get('returnTo')
+  const returnTab = searchParams.get('tab')
+  
+  const handleBackNavigation = () => {
+    if (returnTo === 'recruitment') {
+      router.push(`/client/recruitment${returnTab ? `?tab=${returnTab}` : ''}`)
+    } else {
+      router.push('/client/talent-pool')
+    }
+  }
+  
+  const getBackButtonText = () => {
+    if (returnTo === 'recruitment') {
+      if (returnTab === 'interviews') {
+        return 'Back to Interviews'
+      } else if (returnTab === 'job-requests') {
+        return 'Back to Job Requests'
+      }
+      return 'Back to Talent Pool'
+    }
+    return 'Back to Talent Pool'
+  }
 
   useEffect(() => {
     fetchCandidate()
@@ -103,10 +128,84 @@ export default function CandidateProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading candidate profile...</p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Skeleton */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+          <div className="w-full py-4 px-6">
+            <div className="h-6 w-40 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* Hero Section Skeleton */}
+        <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700">
+          <div className="w-full py-12 px-6">
+            <div className="flex items-center gap-6">
+              {/* Avatar Skeleton */}
+              <div className="w-28 h-28 rounded-full border-4 border-white shadow-2xl bg-white/20 animate-pulse" />
+              
+              {/* Info Skeleton */}
+              <div className="flex-1 space-y-3">
+                <div className="h-10 w-64 bg-white/20 rounded animate-pulse" />
+                <div className="h-6 w-48 bg-white/20 rounded animate-pulse" />
+                <div className="flex items-center gap-6">
+                  <div className="h-5 w-32 bg-white/20 rounded animate-pulse" />
+                  <div className="h-5 w-40 bg-white/20 rounded animate-pulse" />
+                  <div className="h-5 w-28 bg-white/20 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Navigation Skeleton */}
+        <div className="bg-white border-b border-gray-200 sticky top-[73px] z-10 shadow-sm">
+          <div className="w-full px-6">
+            <div className="flex gap-4 py-2">
+              <div className="h-12 w-32 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-12 w-32 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-12 w-32 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-12 w-40 bg-gray-200 rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="w-full px-6 py-8 space-y-6">
+          {/* Action Button Skeleton */}
+          <div className="flex justify-end">
+            <div className="h-12 w-48 bg-blue-200 rounded-xl animate-pulse" />
+          </div>
+
+          {/* Cards Skeleton */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 animate-pulse">
+              <div className="h-6 w-32 bg-gray-200 rounded" />
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-gray-200 rounded" />
+                <div className="h-4 w-5/6 bg-gray-200 rounded" />
+                <div className="h-4 w-4/6 bg-gray-200 rounded" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 animate-pulse">
+              <div className="h-6 w-24 bg-gray-200 rounded" />
+              <div className="flex flex-wrap gap-2">
+                <div className="h-8 w-20 bg-gray-200 rounded-lg" />
+                <div className="h-8 w-24 bg-gray-200 rounded-lg" />
+                <div className="h-8 w-28 bg-gray-200 rounded-lg" />
+                <div className="h-8 w-20 bg-gray-200 rounded-lg" />
+                <div className="h-8 w-32 bg-gray-200 rounded-lg" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 animate-pulse">
+              <div className="h-6 w-40 bg-gray-200 rounded" />
+              <div className="space-y-3">
+                <div className="h-20 w-full bg-gray-200 rounded-lg" />
+                <div className="h-20 w-full bg-gray-200 rounded-lg" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -118,10 +217,10 @@ export default function CandidateProfilePage() {
         <div className="text-center">
           <p className="text-xl text-gray-900 font-semibold mb-2">Candidate not found</p>
           <button
-            onClick={() => router.push('/client/talent-pool')}
+            onClick={handleBackNavigation}
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
-            ← Back to Talent Pool
+            ← {getBackButtonText()}
           </button>
         </div>
       </div>
@@ -135,20 +234,20 @@ export default function CandidateProfilePage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="w-full py-4 px-6">
           <button
-            onClick={() => router.push('/client/talent-pool')}
+            onClick={handleBackNavigation}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Talent Pool
+            {getBackButtonText()}
           </button>
         </div>
       </div>
 
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="w-full py-12 px-6">
           <div className="flex items-center gap-6">
             {/* Avatar */}
             {candidate.avatar ? (
@@ -199,8 +298,8 @@ export default function CandidateProfilePage() {
 
       {/* Tabs Navigation */}
       <div className="bg-white border-b border-gray-200 sticky top-[73px] z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-1 overflow-x-auto">
+        <div className="w-full px-6">
+          <div className="flex overflow-x-auto">
             <TabButton
               active={activeTab === 'profile'}
               onClick={() => setActiveTab('profile')}
@@ -230,7 +329,7 @@ export default function CandidateProfilePage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full py-8 px-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Column - Tab Content */}
           <div className="lg:col-span-2">
@@ -248,7 +347,7 @@ export default function CandidateProfilePage() {
               {/* Request Interview Button */}
               <button
                 onClick={() => setShowRequestModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all text-lg flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all text-lg flex items-center justify-center gap-2"
               >
                 <Video className="w-5 h-5" />
                 Request Interview
@@ -401,7 +500,7 @@ function ProfileTab({ candidate }: { candidate: CandidateProfile }) {
             {candidate.resume.skills.map((skill, i) => (
               <span
                 key={i}
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all hover:scale-105"
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg text-sm font-medium shadow-md transition-all"
               >
                 {skill}
               </span>
@@ -758,7 +857,7 @@ function PerformanceTab({ candidate }: { candidate: CandidateProfile }) {
 
 function Section({ title, icon: Icon, children }: { title: string; icon?: any; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-shadow">
       <div className="flex items-center gap-2 mb-4">
         {Icon && <Icon className="w-6 h-6 text-blue-600" />}
         <h3 className="text-2xl font-bold text-gray-900">{title}</h3>
@@ -1132,7 +1231,7 @@ function RequestInterviewModal({ candidate, onClose }: { candidate: CandidatePro
             </button>
             <button
               onClick={handleSubmit}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={submitting}
             >
               {submitting ? (

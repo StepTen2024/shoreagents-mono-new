@@ -58,8 +58,8 @@ export async function PATCH(
     
     // Append cancellation note with timestamp to existing notes
     const cancellationNote = trimmedReason 
-      ? `[${timestamp}] Cancellation Reason: ${trimmedReason}` 
-      : `[${timestamp}] Interview cancelled by client`
+      ? `(Cancelled) ${timestamp} - ${trimmedReason}` 
+      : `(Cancelled) ${timestamp} - Interview cancelled by client`
     const updatedClientNotes = existingNotes 
       ? `${existingNotes}\n\n${cancellationNote}` 
       : cancellationNote

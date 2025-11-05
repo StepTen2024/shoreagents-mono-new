@@ -47,10 +47,18 @@ export async function PATCH(
     }
 
     // Append to existing admin notes with timestamp
-    const timestamp = new Date().toLocaleString()
+    const timestamp = new Date().toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'numeric', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    })
     const trimmedNotes = notes.trim()
     const existingAdminNotes = existing.adminNotes?.trim() || ''
-    const newNote = existingAdminNotes ? `\n\n[${timestamp}] ${trimmedNotes}` : `[${timestamp}] ${trimmedNotes}`
+    const newNote = existingAdminNotes ? `\n\n${timestamp} - ${trimmedNotes}` : `${timestamp} - ${trimmedNotes}`
     const updatedAdminNotes = existingAdminNotes + newNote
 
     // Update admin notes

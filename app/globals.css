@@ -119,6 +119,26 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Custom scrollbar for all scrollable elements */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+  *::-webkit-scrollbar-thumb:active {
+    background: rgba(148, 163, 184, 0.7);
   }
   body {
     @apply bg-background text-foreground;
@@ -304,35 +324,6 @@ input[type="file"]::-webkit-file-upload-button {
   100% {
     inset: 0;
   }
-}
-
-/* Custom scrollbar styles */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:active {
-  background: rgba(148, 163, 184, 0.7);
 }
 
 /* Admin Analytics Scrollbar Styles */

@@ -73,7 +73,7 @@ export default async function ClientLayout({
     <WebSocketProvider userId={clientUser.id} userName={clientUser.name}>
       <div className="flex min-h-screen bg-gray-50">
         <ClientSidebar user={clientUser} />
-        <main className="flex-1 ml-64 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 ml-64">
           {children}
         </main>
         <Toaster />

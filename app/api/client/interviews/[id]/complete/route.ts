@@ -52,18 +52,24 @@ export async function PATCH(
     }
 
     // Update interview status to COMPLETED and add feedback to client notes
+    // Always add a completion note with optional feedback
+    const timestamp = new Date().toLocaleString()
+    const trimmedNotes = notes ? notes.trim() : ''
+    const existingNotes = existing.clientNotes?.trim() || ''
+    
+    // Create feedback note with default message if no feedback provided
+    const feedbackNote = trimmedNotes
+      ? `(Feedback) ${timestamp} - ${trimmedNotes}`
+      : `(Feedback) ${timestamp} - Interview completed by client`
+    
+    const updatedClientNotes = existingNotes 
+      ? `${existingNotes}\n\n${feedbackNote}` 
+      : feedbackNote
+
     const updateData: any = {
       status: 'COMPLETED',
+      clientNotes: updatedClientNotes,
       updatedAt: new Date()
-    }
-
-    // If client provided feedback, append it to client notes
-    if (notes && notes.trim()) {
-      const timestamp = new Date().toLocaleString()
-      const trimmedNotes = notes.trim()
-      const existingNotes = existing.clientNotes?.trim() || ''
-      const feedbackNote = existingNotes ? `\n\n[${timestamp}] FEEDBACK: ${trimmedNotes}` : `[${timestamp}] FEEDBACK: ${trimmedNotes}`
-      updateData.clientNotes = existingNotes + feedbackNote
     }
 
     const interview = await prisma.interview_requests.update({

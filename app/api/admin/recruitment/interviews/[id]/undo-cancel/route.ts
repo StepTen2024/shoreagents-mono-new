@@ -14,10 +14,12 @@ export async function PATCH(
     }
 
     const { id } = await params
+    const body = await request.json().catch(() => ({}))
+    const { notes } = body
 
-    console.log(`✅ [ADMIN] Marking interview ${id} as completed`)
+    console.log(`🔄 [ADMIN] Undoing cancellation for interview ${id}`)
 
-    // Fetch existing interview to get current notes
+    // Fetch existing interview
     const existing = await prisma.interview_requests.findUnique({
       where: { id }
     })
@@ -26,7 +28,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
     }
 
-    // Add completion note to admin notes
+    // Verify it's currently cancelled
+    if (existing.status !== 'CANCELLED') {
+      return NextResponse.json({ error: 'Interview is not cancelled' }, { status: 400 })
+    }
+
+    // Append undo cancellation note to admin notes with timestamp
     const timestamp = new Date().toLocaleString('en-US', { 
       year: 'numeric', 
       month: 'numeric', 
@@ -36,36 +43,39 @@ export async function PATCH(
       second: '2-digit', 
       hour12: true 
     })
-    const existingAdminNotes = existing.adminNotes?.trim() || ''
-    const completionNote = `(Completed) ${timestamp} - Interview marked as completed by admin`
-    const updatedAdminNotes = existingAdminNotes 
-      ? `${existingAdminNotes}\n\n${completionNote}` 
-      : completionNote
+    const trimmedNotes = notes ? notes.trim() : ''
+    const existingNotes = existing.adminNotes?.trim() || ''
+    
+    // Create undo note with optional custom notes
+    const undoNote = trimmedNotes 
+      ? `(Reopened) ${timestamp} - ${trimmedNotes}` 
+      : `(Reopened) ${timestamp} - Cancellation undone, interview request reopened by admin`
+    const updatedAdminNotes = existingNotes 
+      ? `${existingNotes}\n\n${undoNote}` 
+      : undoNote
 
-    // Update interview status to COMPLETED and add note
+    // Update interview status back to PENDING and add note
     const interview = await prisma.interview_requests.update({
       where: { id },
       data: {
-        status: 'COMPLETED',
+        status: 'PENDING',
         adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })
 
-    console.log(`✅ [ADMIN] Interview marked as completed: ${id}`)
+    console.log(`✅ [ADMIN] Interview cancellation undone: ${id}`)
 
     return NextResponse.json({ 
       success: true, 
       interview 
     })
   } catch (error) {
-    console.error('❌ Error marking interview as completed:', error)
+    console.error('❌ [ADMIN] Error undoing cancellation:', error)
     return NextResponse.json(
-      { error: 'Failed to mark interview as completed' },
+      { error: 'Failed to undo cancellation' },
       { status: 500 }
     )
   }
 }
-
-
 
