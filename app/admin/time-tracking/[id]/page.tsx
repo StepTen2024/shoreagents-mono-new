@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { CommentSection } from "@/components/engagement/comment-section"
 
 async function getTimeEntry(id: string) {
   try {
@@ -472,6 +473,19 @@ export default async function TimeEntryDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* 🎯 UNIFIED COMMENT SYSTEM */}
+      <Card className="p-6 border-border bg-card">
+        <h3 className="text-lg font-semibold text-foreground mb-4">💬 Notes & Comments</h3>
+        <CommentSection
+          commentableType="TIME_ENTRY"
+          commentableId={entry.id}
+          currentUserType="MANAGEMENT"
+          currentUserId="temp-management-id"
+          currentUserName="Admin User"
+          darkMode={false}
+        />
+      </Card>
     </div>
   )
 }

@@ -15,6 +15,7 @@ import {
   ArrowLeft, MapPin, Calendar, Briefcase, Award, Book, Languages,
   Brain, Zap, Target, TrendingUp, Video, CheckCircle, X, Plus, FileText
 } from 'lucide-react'
+import { CommentSection } from '@/components/engagement/comment-section'
 
 interface CandidateProfile {
   id: string
@@ -432,6 +433,24 @@ export default function CandidateProfilePage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* 🎯 UNIFIED COMMENT SYSTEM */}
+        <div className="max-w-7xl mx-auto px-6 pb-8">
+          <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">💬 Internal Notes & Comments</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Share insights and notes about this candidate with your team. These comments are only visible to your organization.
+            </p>
+            <CommentSection
+              commentableType="CANDIDATE"
+              commentableId={candidate.id}
+              currentUserType="CLIENT"
+              currentUserId="temp-client-id"
+              currentUserName="Client User"
+              darkMode={false}
+            />
           </div>
         </div>
       </div>
