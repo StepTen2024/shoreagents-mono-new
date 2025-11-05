@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { mapCategoryToDepartment } from "@/lib/category-department-map"
-import { randomUUID } from "crypto"
 
 // GET /api/tickets - Get all tickets for current user
 export async function GET(request: NextRequest) {
@@ -147,7 +146,6 @@ export async function POST(request: NextRequest) {
 
     const ticket = await prisma.tickets.create({
       data: {
-        id: randomUUID(),
         staffUserId: staffUser.id,
         managementUserId, // Auto-assigned manager
         ticketId,
@@ -158,8 +156,6 @@ export async function POST(request: NextRequest) {
         status: "OPEN",
         attachments: attachments || [],
         createdByType: "STAFF",
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
       include: {
         staff_users: {
@@ -224,3 +220,4 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+

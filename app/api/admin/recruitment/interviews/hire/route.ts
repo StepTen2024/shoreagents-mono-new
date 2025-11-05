@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -105,6 +106,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job offer has already been sent to this candidate' }, { status: 400 })
     }
 
+    // Add offer sent note to admin notes
+    const timestamp = new Date().toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'numeric', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    })
+    const existingAdminNotes = interviewRequest.adminNotes?.trim() || ''
+    const offerNote = `(Offer Sent) ${timestamp} - Job offer sent to candidate for ${position} position`
+    const updatedAdminNotes = existingAdminNotes 
+      ? `${existingAdminNotes}\n\n${offerNote}` 
+      : offerNote
+
     // Update interview request status to OFFER_SENT
     await prisma.interview_requests.update({
       where: { id: interviewRequestId },
@@ -114,6 +131,7 @@ export async function POST(request: NextRequest) {
         hireRequestedAt: new Date(),
         offerSentAt: new Date(),
         clientPreferredStart: clientPreferredStart ? new Date(clientPreferredStart) : null,
+        adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })
