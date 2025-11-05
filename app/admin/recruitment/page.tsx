@@ -2471,77 +2471,8 @@ export default function AdminRecruitmentPage() {
                 </div>
               </div>
 
-              {/* Work Schedule */}
-              {selectedInterview.workSchedule && (
-                <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-green-400" />
-                      Work Schedule
-                    </h4>
-                    {selectedInterview.workSchedule.isMonToFri && (
-                      <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
-                        Mon-Fri
-                      </Badge>
-                    )}
-                  </div>
-                  {selectedInterview.workSchedule.hasCustomHours && selectedInterview.workSchedule.customHours ? (
-                    <div>
-                      <div className="flex flex-wrap gap-3">
-                        {Object.entries(selectedInterview.workSchedule.customHours).map(([day, time]) => {
-                          const [hours, minutes] = time.split(':').map(Number)
-                          const endHour = (hours + 9) % 24
-                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-                          return (
-<<<<<<< HEAD
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 py-3 rounded-lg border border-slate-700 w-[120px]">
-=======
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[110px]">
->>>>>>> dcfaec0541b33a2d443fb29dde9a8eee795107f5
-                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(time)}</div>
-                              <div className="text-slate-500 text-[10px] my-0.5">to</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(endTime24)}</div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-4 text-center">(9 hours per day, including break time)</p>
-                    </div>
-                  ) : selectedInterview.workSchedule.workStartTime && selectedInterview.workSchedule.workDays ? (
-                    <div>
-                      <div className="flex flex-wrap gap-3">
-                        {selectedInterview.workSchedule.workDays.map((day: string) => {
-                          const workStartTime = selectedInterview.workSchedule?.workStartTime || '09:00'
-                          const [hours, minutes] = workStartTime.split(':').map(Number)
-                          const endHour = (hours + 9) % 24
-                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-                          return (
-<<<<<<< HEAD
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 py-3 rounded-lg border border-slate-700 w-[120px]">
-=======
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[110px]">
->>>>>>> dcfaec0541b33a2d443fb29dde9a8eee795107f5
-                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(workStartTime)}</div>
-                              <div className="text-slate-500 text-[10px] my-0.5">to</div>
-                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(endTime24)}</div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-4 text-center">(9 hours per day, including break time)</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-4">Not specified</p>
-                  )}
-                </div>
-              )}
-
-              {/* Client's Preferred Times - Hide for completed and hire requested */}
-              {modalStatus !== 'completed' && 
-               modalStatus !== 'hire_requested' && 
-               modalStatus !== 'hire-requested' && (
+              {/* Client's Preferred Times - Hide for cancelled */}
+              {modalStatus !== 'cancelled' && (
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                 <h4 className="text-base font-semibold text-slate-100 mb-3">Client's Preferred Interview Times</h4>
                 <div className="flex flex-wrap gap-2">
