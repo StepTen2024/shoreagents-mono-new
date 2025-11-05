@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     console.log("✅ [CLIENT/STAFF] Client found:", clientUser.email, "Company:", clientUser.company.companyName)
 
-    // Get all staff for this company who have started (regardless of onboarding status)
+    // Get all staff for this company (regardless of onboarding status or start date)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
@@ -44,14 +44,8 @@ export async function GET(request: NextRequest) {
     
     const staffList = await prisma.staff_users.findMany({
       where: {
-        companyId: clientUser.company.id,
-        // Show all staff regardless of onboarding status
-        // And whose start date is today or in the past
-        staff_profiles: {
-          startDate: {
-            lte: today
-          }
-        }
+        companyId: clientUser.company.id
+        // Show all staff regardless of profile, onboarding status, or start date
       },
       include: {
         staff_onboarding: {
@@ -134,9 +128,23 @@ export async function GET(request: NextRequest) {
 
     // Format the response with calculated fields
     const formattedStaff = staffList.map(staff => {
-      // Calculate days employed
-      const startDate = staff.staff_profiles?.startDate || new Date()
-      const daysEmployed = Math.floor((new Date().getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+      // Calculate days employed or days until start
+      const startDate = staff.staff_profiles?.startDate
+      let daysEmployed = 0
+      let hasStarted = true
+      
+      if (startDate) {
+        const daysDiff = Math.floor((new Date().getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        if (daysDiff >= 0) {
+          daysEmployed = daysDiff
+          hasStarted = true
+        } else {
+          daysEmployed = Math.abs(daysDiff) // Store as positive for "starts in X days"
+          hasStarted = false
+        }
+      } else {
+        hasStarted = false
+      }
 
       // Calculate average productivity
       const avgProductivity = staff.performance_metrics.length > 0
@@ -158,10 +166,10 @@ export async function GET(request: NextRequest) {
       }, 0)
 
       // Get shift time from work schedule
-      const workSchedule = staff.staff_profiles?.work_schedules.find(s => s.isWorkday) || null
+      const workSchedule = staff.staff_profiles?.work_schedules?.find(s => s.isWorkday) || null
       const shift = workSchedule 
         ? `${workSchedule.startTime} - ${workSchedule.endTime}` 
-        : "9:00 AM - 6:00 PM"
+        : "Not assigned"
 
       // Check if clocked in (no active breaks means they're working)
       const isClockedIn = staff.breaks.length === 0 && totalHoursThisMonth > 0
@@ -171,15 +179,16 @@ export async function GET(request: NextRequest) {
         name: staff.name,
         email: staff.email,
         avatar: staff.avatar,
-        assignmentRole: staff.staff_profiles?.currentRole || null,
+        assignmentRole: staff.staff_profiles?.currentRole || "Onboarding",
         rate: staff.staff_profiles?.salary ? Number(staff.staff_profiles.salary) : null,
         startDate: staff.staff_profiles?.startDate?.toISOString() || new Date().toISOString(),
-        managedBy: clientUser.company.management_users?.name || "Not assigned",
+        managedBy: clientUser.company.management_users?.[0]?.name || "Not assigned",
         client: clientUser.company.companyName,
         phone: staff.staff_profiles?.phone || null,
         location: staff.staff_profiles?.location || null,
         employmentStatus: staff.staff_profiles?.employmentStatus || "PROBATION",
         daysEmployed,
+        hasStarted, // New field to indicate if staff has started
         currentRole: staff.staff_profiles?.currentRole || "Staff Member",
         salary: staff.staff_profiles?.salary ? Number(staff.staff_profiles.salary) : 0,
         totalLeave: staff.staff_profiles?.totalLeave || 12,

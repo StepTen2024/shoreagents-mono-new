@@ -24,6 +24,7 @@ interface StaffMember {
   location: string | null
   employmentStatus: string
   daysEmployed: number
+  hasStarted: boolean
   currentRole: string
   salary: number
   totalLeave: number
@@ -242,8 +243,17 @@ export default function StaffPage() {
                       <p className="text-xs text-gray-500 font-medium mt-0.5">Leave Days</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-orange-600">{member.daysEmployed}</p>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">Days</p>
+                      {member.hasStarted ? (
+                        <>
+                          <p className="text-xl font-bold text-orange-600">{member.daysEmployed}</p>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">Days</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-blue-600">Starts in</p>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">{member.daysEmployed} {member.daysEmployed === 1 ? 'day' : 'days'}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -365,8 +375,17 @@ export default function StaffPage() {
                       <p className="text-xs text-gray-500 font-medium mt-1">Leave Days</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-600">{member.daysEmployed}</p>
-                      <p className="text-xs text-gray-500 font-medium mt-1">Days</p>
+                      {member.hasStarted ? (
+                        <>
+                          <p className="text-2xl font-bold text-orange-600">{member.daysEmployed}</p>
+                          <p className="text-xs text-gray-500 font-medium mt-1">Days</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-base font-bold text-blue-600">Starts in</p>
+                          <p className="text-xs text-gray-500 font-medium mt-1">{member.daysEmployed} {member.daysEmployed === 1 ? 'day' : 'days'}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </Card>

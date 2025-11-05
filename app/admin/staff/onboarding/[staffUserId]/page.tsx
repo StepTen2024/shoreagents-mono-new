@@ -2517,7 +2517,7 @@ export default function AdminOnboardingDetailPage() {
 
       {/* Success Modal */}
       <Dialog open={successModal.show} onOpenChange={(open) => setSuccessModal(prev => ({ ...prev, show: open }))}>
-        <DialogContent className="max-w-lg bg-linear-to-br from-green-900/40 to-green-800/20 border-green-600">
+        <DialogContent className="max-w-lg bg-gradient-to-br from-green-900/95 to-green-800/95 border-green-600 backdrop-blur-sm">
           <DialogHeader className="pb-2">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-green-500/20 rounded-lg">
