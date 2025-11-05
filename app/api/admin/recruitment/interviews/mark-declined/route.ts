@@ -53,12 +53,29 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Format timestamp consistently with other status changes
+    const timestamp = new Date().toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'numeric', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    })
+    const existingAdminNotes = interview.adminNotes?.trim() || ''
+    const trimmedReason = declineReason.trim()
+    const declineNote = `(Offer Declined) ${timestamp} - ${trimmedReason}`
+    const updatedAdminNotes = existingAdminNotes 
+      ? `${existingAdminNotes}\n\n${declineNote}` 
+      : declineNote
+
     // Update interview request status to OFFER_DECLINED
     const updatedInterview = await prisma.interview_requests.update({
       where: { id: interviewRequestId },
       data: {
         status: 'OFFER_DECLINED',
-        adminNotes: `${interview.adminNotes || ''}\n\n[Offer Declined] ${declineReason}\nDeclined on: ${new Date().toLocaleDateString()}`,
+        adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })
@@ -80,4 +97,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
-

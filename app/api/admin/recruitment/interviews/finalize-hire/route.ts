@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { interviewRequestId, finalStartDate, staffEmail, bpocCandidateId } = body
+    const { interviewRequestId, finalStartDate, staffEmail, bpocCandidateId, adminNotes } = body
 
     // Validation
     if (!interviewRequestId) {
@@ -140,13 +140,30 @@ export async function POST(request: NextRequest) {
       second: '2-digit', 
       hour12: true 
     })
+    
+    // Build the hire finalization note (include custom notes if provided)
+    const existingAdminNotes = interview.adminNotes?.trim() || ''
+    const customNotePart = adminNotes?.trim() ? `${adminNotes.trim()}. ` : ''
+    const hireNote = `(Hire Finalized) ${timestamp} - ${customNotePart}Job acceptance ID: ${jobAcceptance.id}. Staff account prepared for: ${staffEmail}`
+    
+    console.log('📝 [DEBUG] Custom note received:', adminNotes)
+    console.log('📝 [DEBUG] Custom note part:', customNotePart)
+    console.log('📝 [DEBUG] Full hire note:', hireNote)
+    
+    // Combine with existing notes
+    const updatedAdminNotes = existingAdminNotes 
+      ? `${existingAdminNotes}\n\n${hireNote}` 
+      : hireNote
+    
+    console.log('📝 [DEBUG] Final updated admin notes:', updatedAdminNotes)
+    
     await prisma.interview_requests.update({
       where: { id: interviewRequestId },
       data: {
         status: 'HIRED',
         finalStartDate: new Date(finalStartDate),
         updatedAt: new Date(),
-        adminNotes: `${interview.adminNotes || ''}\n\n(Hire Finalized) ${timestamp} - Job acceptance ID: ${jobAcceptance.id}. Staff account prepared for: ${staffEmail}`
+        adminNotes: updatedAdminNotes
       }
     })
 

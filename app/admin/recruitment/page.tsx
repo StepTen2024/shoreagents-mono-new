@@ -1960,8 +1960,8 @@ export default function AdminRecruitmentPage() {
                           </div>
                         </div>
 
-                        {/* Preferred Interview Times - Hide for completed and hire requested */}
-                        {status !== 'completed' && status !== 'hire_requested' && status !== 'hire-requested' && (
+                        {/* Preferred Interview Times - Hide for completed, hire requested, offer sent, and offer declined */}
+                        {status !== 'completed' && status !== 'hire_requested' && status !== 'hire-requested' && status !== 'offer-sent' && status !== 'offer-declined' && (
                         <div>
                           <h4 className="text-base font-semibold text-foreground mb-2">
                             Client's Preferred Interview Times
@@ -2530,10 +2530,12 @@ export default function AdminRecruitmentPage() {
                 </div>
               )}
 
-              {/* Client's Preferred Times - Hide for completed and hire requested */}
+              {/* Client's Preferred Times - Hide for completed, hire requested, offer sent, and offer declined */}
               {modalStatus !== 'completed' && 
                modalStatus !== 'hire_requested' && 
-               modalStatus !== 'hire-requested' && (
+               modalStatus !== 'hire-requested' && 
+               modalStatus !== 'offer-sent' && 
+               modalStatus !== 'offer-declined' && (
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                 <h4 className="text-base font-semibold text-slate-100 mb-3">Client's Preferred Interview Times</h4>
                 <div className="flex flex-wrap gap-2">
