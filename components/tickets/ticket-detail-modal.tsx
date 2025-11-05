@@ -105,10 +105,6 @@ export default function TicketDetailModal({
 }: TicketDetailModalProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [message, setMessage] = useState("")
-  const [attachments, setAttachments] = useState<File[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState(ticket.status)
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState(0)
@@ -122,151 +118,6 @@ export default function TicketDetailModal({
     setLightboxImages(images)
     setLightboxIndex(index)
     setShowLightbox(true)
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files)
-      const validFiles = files.filter((f) => f.size <= 5 * 1024 * 1024).slice(0, 3)
-      setAttachments((prev) => [...prev, ...validFiles].slice(0, 3))
-    }
-  }
-
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handleAddAttachmentsOnly = async () => {
-    if (attachments.length === 0) return
-
-    setUploading(true)
-    try {
-      // Upload attachments to Supabase
-      const formData = new FormData()
-      attachments.forEach((file) => {
-        formData.append("files", file)
-      })
-
-      const uploadResponse = await fetch("/api/tickets/attachments", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json()
-        console.error("Upload failed:", errorData)
-        throw new Error(`Failed to upload attachments: ${errorData.error || "Unknown error"}`)
-      }
-
-      const uploadData = await uploadResponse.json()
-      console.log("Upload successful:", uploadData)
-      const attachmentUrls = uploadData.urls || []
-
-      // Add attachments as a response (with empty message, just images)
-      console.log("Creating response with attachments:", attachmentUrls)
-      const response = await fetch(`/api/tickets/${ticket.id}/responses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "", // Empty message, just adding images
-          attachments: attachmentUrls,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error("Response creation failed:", errorData)
-        throw new Error(`Failed to add attachments to ticket: ${errorData.error || "Unknown error"}`)
-      }
-
-      toast({
-        title: "✅ Success!",
-        description: `${attachments.length} image${attachments.length > 1 ? 's' : ''} saved to ticket`,
-      })
-
-      setAttachments([])
-      onUpdate()
-      
-      // Auto-close modal after 500ms to show success message
-      setTimeout(() => {
-        onClose()
-      }, 500)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add images. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleSubmitResponse = async () => {
-    if (!message.trim() && attachments.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please enter a message or add at least one image",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      // Upload attachments first if any
-      let attachmentUrls: string[] = []
-
-      if (attachments.length > 0) {
-        setUploading(true)
-        const formData = new FormData()
-        attachments.forEach((file) => {
-          formData.append("files", file)
-        })
-
-        const uploadResponse = await fetch("/api/tickets/attachments", {
-          method: "POST",
-          body: formData,
-        })
-
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          attachmentUrls = uploadData.urls || []
-        }
-        setUploading(false)
-      }
-
-      // Submit response
-      console.log("Submitting response with message:", message, "attachments:", attachmentUrls)
-      const response = await fetch(`/api/tickets/${ticket.id}/responses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message,
-          attachments: attachmentUrls,
-        }),
-      })
-
-      if (!response.ok) throw new Error("Failed to submit response")
-
-      toast({
-        title: "Success",
-        description: "Response added successfully",
-      })
-
-      setMessage("")
-      setAttachments([])
-      onUpdate()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit response. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setSubmitting(false)
-      setUploading(false)
-    }
   }
 
   const handleStatusChange = async () => {
@@ -854,131 +705,7 @@ export default function TicketDetailModal({
           </div>
         )}
 
-        {/* Add Response - FUN STYLE! */}
-        <div className="space-y-4 rounded-2xl bg-slate-800/30 backdrop-blur-xl p-6 ring-1 ring-indigo-500/20">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 flex items-center gap-2">
-              💭 Add Response (Optional)
-            </h3>
-            {attachments.length > 0 && (
-              <span className="text-xs font-bold text-indigo-300 bg-indigo-500/20 px-3 py-1 rounded-full border border-indigo-500/30">
-                📎 {attachments.length} image{attachments.length > 1 ? 's' : ''} attached
-              </span>
-            )}
-          </div>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your response... (optional - you can just add images) 💬"
-            rows={4}
-            className="w-full rounded-xl px-5 py-4 outline-none transition-all bg-slate-800/50 backdrop-blur-xl text-white placeholder-slate-500 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80"
-          />
-
-          {/* Attachments */}
-          {attachments.length > 0 && (
-            <div className="space-y-2">
-              {uploading && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/20 ring-1 ring-blue-500/30 backdrop-blur-xl shadow-lg">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-sm font-bold text-blue-300">
-                    Uploading {attachments.length} image{attachments.length > 1 ? 's' : ''}...
-                  </span>
-                </div>
-              )}
-              {attachments.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 rounded-xl p-3 bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10 hover:ring-indigo-500/30 transition-all"
-                >
-                  <Paperclip className="h-4 w-4 text-indigo-400" />
-                  <span className="flex-1 truncate text-sm font-medium text-slate-200">{file.name}</span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </span>
-                  <button
-                    onClick={() => removeAttachment(index)}
-                    disabled={uploading || submitting}
-                    className="rounded-lg p-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:bg-red-500/20 hover:scale-110"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Actions - FUN BUTTONS! */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              {attachments.length < 5 && (
-                <label className="flex cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all bg-gradient-to-r from-slate-700 to-slate-800 text-indigo-300 hover:from-slate-600 hover:to-slate-700 hover:scale-105 shadow-lg ring-1 ring-white/10">
-                  <Upload className="h-4 w-4" />
-                  📸 Add Images
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-              {attachments.length > 0 && (
-                <Button
-                  onClick={handleAddAttachmentsOnly}
-                  disabled={uploading || submitting}
-                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-lg shadow-green-500/50 hover:scale-105 transition-all rounded-xl px-4 py-3"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Uploading {attachments.length} image{attachments.length > 1 ? 's' : ''}...
-                    </>
-                  ) : (
-                    <>
-                      <Paperclip className="h-4 w-4" />
-                      💾 Save {attachments.length} Image{attachments.length > 1 ? 's' : ''} & Close
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 ml-auto">
-              {message.trim() && (
-                <div className="relative group">
-                  <Button
-                    onClick={handleSubmitResponse}
-                    disabled={submitting || uploading}
-                    className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold shadow-lg shadow-indigo-500/50 hover:scale-105 transition-all rounded-xl px-4 py-3"
-                  >
-                    {submitting || uploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {uploading ? "⏳ Uploading..." : "📤 Submitting..."}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        🚀 Submit Response
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-              
-              <Button
-                onClick={onClose}
-                variant="outline"
-                className="border-2 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 hover:scale-105 transition-all rounded-xl px-4 py-3 font-bold"
-              >
-                ✖️ Close
-              </Button>
-            </div>
-          </div>
-        </div>
-        
-        {/* 🎯 NEW UNIFIED COMMENT SYSTEM */}
+        {/* 🎯 UNIFIED COMMENT SYSTEM - Replaces old ticket_responses */}
         <div className="rounded-2xl bg-slate-800/30 backdrop-blur-xl p-6 ring-1 ring-indigo-500/20">
           <CommentSection
             commentableType="TICKET"
@@ -989,6 +716,17 @@ export default function TicketDetailModal({
             currentUserAvatar={ticket.staff_users?.avatar || ticket.client_users?.avatar}
             darkMode={true}
           />
+        </div>
+        
+        {/* Close Button */}
+        <div className="flex justify-end">
+          <Button
+            onClick={onClose}
+            variant="outline"
+            className="border-2 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 hover:scale-105 transition-all rounded-xl px-6 py-3 font-bold"
+          >
+            ✖️ Close
+          </Button>
         </div>
         
         </div>
