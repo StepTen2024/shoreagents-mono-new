@@ -2483,8 +2483,8 @@ function InterviewsTab({
                   </button>
                 )}
 
-                {/* Cancel Interview - Show for pending or scheduled */}
-                {(interview.status === 'PENDING' || interview.status === 'SCHEDULED') && (
+                {/* Cancel Interview - Show for pending, scheduled, or reschedule requested */}
+                {(interview.status === 'PENDING' || interview.status === 'SCHEDULED' || interview.status === 'RESCHEDULE_REQUESTED') && (
                   <button
                     onClick={() => {
                       setSelectedInterview(interview)
@@ -2520,18 +2520,22 @@ function InterviewsTab({
 
       {/* Hire Modal */}
       <Dialog open={hireModalOpen} onOpenChange={setHireModalOpen}>
-        <DialogContent className="bg-white text-gray-900 max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-white text-gray-900 max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Request to Hire Candidate</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              Request to Hire Candidate
+            </DialogTitle>
             <DialogDescription className="text-gray-600">
-              Provide details about the hire request for the admin team.
+              Complete the details below to submit your hire request to the admin team.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Preferred Start Date */}
-            <div>
-              <Label htmlFor="preferredStartDate" className="text-gray-900">
-                Preferred Start Date *
+          
+          <div className="space-y-6 pt-2">
+            {/* Start Date Section */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
+              <Label className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                Preferred Start Date <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="preferredStartDate"
@@ -2539,23 +2543,37 @@ function InterviewsTab({
                 value={hireData.preferredStartDate}
                 onChange={(e) => setHireData({ ...hireData, preferredStartDate: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base h-11"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Date will display in your local format (DD/MM/YYYY). Admin will confirm with candidate.
+              <p className="text-xs text-blue-700 mt-2">
+                Admin will confirm this date with the candidate and finalize the onboarding schedule.
               </p>
             </div>
 
             {/* Work Schedule Section */}
-            <div>
-              <Label className="text-gray-900">Work Schedule</Label>
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-200">
+              <Label className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <Clock className="h-5 w-5 text-purple-600" />
+                Work Schedule <span className="text-red-500">*</span>
+              </Label>
               
+              {/* Info Banner */}
+              <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 rounded-r-lg">
+                <p className="font-semibold text-amber-900 text-sm">9-Hour Work Day</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  All Filipino staff work 9-hour shifts per day, which includes scheduled break times. 
+                  This is standard for full-time employment.
+                </p>
+              </div>
+
               {/* Work Days */}
-              <div className="space-y-2 mt-2">
-                <Label className="text-gray-900 text-sm">Work Days *</Label>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-900">
+                  Work Days
+                </Label>
+                <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
+                  <label className="flex items-start gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={hireData.isMonToFri}
@@ -2569,62 +2587,99 @@ function InterviewsTab({
                             : hireData.workDays
                         })
                       }}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 mt-0.5"
                     />
-                    <span className="text-sm font-medium text-gray-700">Monday to Friday</span>
+                    <div className="flex-1">
+                      <span className="text-base font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                        Monday to Friday (Standard Schedule)
+                      </span>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Most common schedule - 5 consecutive weekdays
+                      </p>
+                    </div>
                   </label>
+                  
+                  {!hireData.isMonToFri && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p className="font-semibold text-blue-900 text-sm">Custom Schedule Selected</p>
+                        <p className="text-xs text-blue-800 mt-1">
+                          You'll work with admin to select 5 consecutive working days that fit your business needs.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {!hireData.isMonToFri && (
-                  <div className="ml-6 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <p className="font-medium text-blue-900 mb-1">Custom Schedule</p>
-                    <p>Select 5 consecutive working days in the next step with admin</p>
-                  </div>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Filipino staff work 9-hour shifts (including breaks)</p>
               </div>
 
               {/* Start Time */}
-              <div className="mt-3">
-                <Label htmlFor="workStartTime" className="text-gray-900 text-sm">
-                  Work Start Time *
+              <div className="mt-4 space-y-3">
+                <Label className="text-sm font-semibold text-gray-900">
+                  Daily Work Hours
                 </Label>
-                <div className="flex items-center gap-3 mt-2">
-                  <Input
-                    id="workStartTime"
-                    type="time"
-                    value={hireData.workStartTime}
-                    onChange={(e) => setHireData({ ...hireData, workStartTime: e.target.value })}
-                    className="bg-white text-gray-900 border-gray-300 w-40"
-                    required
-                  />
-                  <div className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-                    <span className="font-medium">End: </span>
-                    {(() => {
-                      const [hours, minutes] = hireData.workStartTime.split(':').map(Number)
-                      const endHour = (hours + 9) % 24
-                      return `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-                    })()}
+                <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1">
+                      <Label htmlFor="workStartTime" className="text-xs text-gray-600 mb-1 block">
+                        Start Time
+                      </Label>
+                      <Input
+                        id="workStartTime"
+                        type="time"
+                        value={hireData.workStartTime}
+                        onChange={(e) => setHireData({ ...hireData, workStartTime: e.target.value })}
+                        className="bg-white text-gray-900 border-gray-300 text-base h-11"
+                        required
+                      />
+                    </div>
+                    <div className="flex items-center justify-center pt-6">
+                      <span className="text-gray-400 font-bold">→</span>
+                    </div>
+                    <div className="flex-1">
+                      <Label className="text-xs text-gray-600 mb-1 block">
+                        End Time (Auto-calculated)
+                      </Label>
+                      <div className="h-11 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg flex items-center justify-center">
+                        <span className="text-base font-bold text-green-700">
+                          {(() => {
+                            const [hours, minutes] = hireData.workStartTime.split(':').map(Number)
+                            const endHour = (hours + 9) % 24
+                            return `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg mt-3 border border-gray-200">
+                    <p className="text-xs text-gray-700">
+                      <strong>Example:</strong> If work starts at 9:00 AM, it will end at 6:00 PM (9 hours total, including break time)
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
             
             {/* Additional Notes */}
-            <div>
-              <Label htmlFor="hireNotes" className="text-gray-900">
-                Additional Notes (Optional)
+            <div className="bg-gray-50 rounded-xl p-5 border-2 border-gray-200">
+              <Label htmlFor="hireNotes" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <FileText className="h-5 w-5 text-gray-600" />
+                Additional Information <span className="text-gray-400 text-sm font-normal">(Optional)</span>
               </Label>
               <Textarea
                 id="hireNotes"
                 value={hireData.hireNotes}
                 onChange={(e) => setHireData({ ...hireData, hireNotes: e.target.value })}
-                placeholder="Any additional information for the admin (e.g., salary offer, benefits, role details, etc.)"
-                rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                placeholder="Share any additional details about the role or offer. e.g., salary package, benefits, specific responsibilities, team structure, special requirements..."
+                rows={5}
+                className="bg-white text-gray-900 border-gray-300"
               />
+              <p className="text-xs text-gray-700 mt-2">
+                Provide any additional context that will help the admin team process this hire request
+              </p>
             </div>
             
-            <div className="flex gap-3">
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => {
                   setHireModalOpen(false)
@@ -2636,16 +2691,25 @@ function InterviewsTab({
                     workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
                   })
                 }}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleHireRequest}
                 disabled={!hireData.preferredStartDate || hireRequestingId !== null}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base flex items-center justify-center gap-2"
               >
-                {hireRequestingId ? 'Sending...' : 'Send Hire Request'}
+                {hireRequestingId ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Sending Request...
+                  </>
+                ) : (
+                  <>
+                    Submit Request
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -2654,44 +2718,50 @@ function InterviewsTab({
 
       {/* Reject Modal */}
       <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
+        <DialogContent className="max-w-lg bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Reject Candidate</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Reject Candidate</DialogTitle>
             <DialogDescription className="text-gray-600">
               Optionally provide a reason for rejecting this candidate. Your feedback helps us improve our screening process.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="rejectReason" className="text-gray-900">Rejection Reason (Optional)</Label>
+          <div className="space-y-6 pt-2">
+            {/* Rejection Reason Section */}
+            <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-5 border-2 border-red-200">
+              <Label htmlFor="rejectReason" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <XCircle className="h-5 w-5 text-red-600" />
+                Rejection Reason <span className="text-gray-400 text-sm font-normal">(Optional)</span>
+              </Label>
               <Textarea
                 id="rejectReason"
                 value={rejectData.rejectReason}
                 onChange={(e) => setRejectData({ rejectReason: e.target.value })}
-                placeholder="e.g., Skills don't match requirements, communication concerns, cultural fit issues..."
+                placeholder="Share your feedback on why this candidate isn't the right fit. e.g., skills mismatch, communication concerns, experience level, cultural fit..."
                 rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-red-700 mt-2">
                 If no reason is provided, a default message will be recorded
               </p>
             </div>
-            <div className="flex gap-3">
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => {
                   setRejectModalOpen(false)
                   setRejectData({ rejectReason: '' })
                 }}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Cancel
               </button>
               <button
                 disabled={rejectingId !== null}
                 onClick={handleRejectRequest}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
               >
-                {rejectingId ? 'Rejecting...' : 'Reject Candidate'}
+                {rejectingId ? 'Rejecting...' : 'Confirm Rejection'}
               </button>
             </div>
           </div>
@@ -2700,29 +2770,38 @@ function InterviewsTab({
 
       {/* Cancel Interview Modal */}
       <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
+        <DialogContent className="max-w-lg bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Cancel Interview Request</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Cancel Interview Request</DialogTitle>
             <DialogDescription className="text-gray-600">
               Please provide a reason for cancelling this interview request.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="cancelReason" className="text-gray-900">Reason for Cancellation</Label>
+          <div className="space-y-6 pt-2">
+            {/* Cancellation Reason Section */}
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-5 border-2 border-orange-200">
+              <Label htmlFor="cancelReason" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <XCircle className="h-5 w-5 text-orange-600" />
+                Reason for Cancellation
+              </Label>
               <Textarea
                 id="cancelReason"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="E.g., Position filled, candidate unavailable..."
+                placeholder="Share why you need to cancel this interview. e.g., position filled, candidate no longer available, timeline changed, requirements updated..."
                 rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base"
               />
+              <p className="text-xs text-orange-700 mt-2">
+                This information helps us understand your hiring needs better
+              </p>
             </div>
-            <div className="flex gap-3">
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setCancelModalOpen(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Keep Interview
               </button>
@@ -2751,7 +2830,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
               >
                 {interviewSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
@@ -2770,24 +2849,24 @@ function InterviewsTab({
       }}>
         <DialogContent className="max-w-lg w-full bg-white text-gray-900 max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Request Reschedule</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Request Reschedule</DialogTitle>
             <DialogDescription className="text-gray-600">
               Provide new preferred times for rescheduling this interview.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            {/* Preferred Times */}
-            <div>
-              <Label className="text-gray-900 font-medium mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
+          <div className="space-y-6 pt-2">
+            {/* Preferred Times Section */}
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-200">
+              <Label className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <Calendar className="h-5 w-5 text-indigo-600" />
                 New Preferred Interview Times
               </Label>
-              <p className="text-xs text-gray-600 mb-2">
+              <p className="text-xs text-indigo-700 mb-3">
                 Provide 2-3 new time options that work for you. We'll check availability and confirm.
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
-                <p className="text-xs text-blue-900 font-medium">
-                  🌍 Times in your timezone: <span className="font-bold">{(() => {
+              <div className="bg-white/60 border border-indigo-300 rounded-lg p-3 mb-4">
+                <p className="text-xs text-indigo-900 font-medium">
+                  Times in your timezone: <span className="font-bold">{(() => {
                     const tzMap: Record<string, string> = {
                       'Australia/Sydney': 'Sydney Time (AEDT)',
                       'Australia/Melbourne': 'Melbourne Time (AEDT)',
@@ -2891,7 +2970,7 @@ function InterviewsTab({
                 {reschedulePreferredTimes.length < 5 && (
                   <button
                     onClick={() => setReschedulePreferredTimes([...reschedulePreferredTimes, ''])}
-                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-medium text-sm"
+                    className="w-full px-4 py-2 border-2 border-dashed border-indigo-300 text-indigo-700 rounded-xl hover:bg-white/80 hover:border-indigo-400 transition-all font-medium text-sm"
                   >
                     + Add Another Time Option
                   </button>
@@ -2899,27 +2978,34 @@ function InterviewsTab({
               </div>
             </div>
 
-            {/* Notes (Optional) */}
-            <div>
-              <Label htmlFor="rescheduleNotes" className="text-gray-900">Additional Notes (Optional)</Label>
+            {/* Notes Section */}
+            <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl p-5 border-2 border-slate-200">
+              <Label htmlFor="rescheduleNotes" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <FileText className="h-5 w-5 text-slate-600" />
+                Additional Notes <span className="text-gray-400 text-sm font-normal">(Optional)</span>
+              </Label>
               <Textarea
                 id="rescheduleNotes"
                 value={rescheduleNotes}
                 onChange={(e) => setRescheduleNotes(e.target.value)}
-                placeholder="E.g., Can we move this to next week? I have a conflict..."
+                placeholder="Share why you need to reschedule. e.g., scheduling conflict, need more preparation time, unexpected meeting, availability changed..."
                 rows={3}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base"
               />
+              <p className="text-xs text-slate-700 mt-2">
+                Let us know why you need to reschedule
+              </p>
             </div>
 
-            <div className="flex gap-3">
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => {
                   setRescheduleModalOpen(false)
                   setRescheduleNotes('')
                   setReschedulePreferredTimes(['', ''])
                 }}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Cancel
               </button>
@@ -2981,7 +3067,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
               >
                 {interviewSubmitting ? 'Sending...' : 'Send Request'}
               </button>
@@ -2992,34 +3078,43 @@ function InterviewsTab({
 
       {/* Add/Update Notes Modal */}
       <Dialog open={notesModalOpen} onOpenChange={setNotesModalOpen}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
+        <DialogContent className="max-w-lg bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Add Notes to Interview</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Add Notes to Interview</DialogTitle>
             <DialogDescription className="text-gray-600">
               Add new notes to this interview request. They will be appended to your existing notes.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="additionalNotes" className="text-gray-900">New Notes</Label>
+          <div className="space-y-6 pt-2">
+            {/* Notes Section */}
+            <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl p-5 border-2 border-slate-200">
+              <Label htmlFor="additionalNotes" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <FileText className="h-5 w-5 text-slate-600" />
+                New Notes
+              </Label>
               <Textarea
                 id="additionalNotes"
                 value={additionalNotes}
                 onChange={(e) => setAdditionalNotes(e.target.value)}
-                placeholder="Type your new notes here..."
+                placeholder="Add your notes about this interview. e.g., candidate impressions, follow-up items, questions to ask, scheduling preferences..."
                 rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base"
               />
+              <p className="text-xs text-slate-700 mt-2">
+                Notes will be timestamped and added to the interview history
+              </p>
             </div>
-            <div className="flex gap-3">
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setNotesModalOpen(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Cancel
               </button>
               <button
-                disabled={interviewSubmitting}
+                disabled={interviewSubmitting || !additionalNotes.trim()}
                 onClick={async () => {
                   if (!selectedInterview) return
                   setInterviewSubmitting(true)
@@ -3043,9 +3138,9 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
               >
-                {interviewSubmitting ? 'Adding...' : 'Add Notes'}
+                {interviewSubmitting ? 'Adding...' : 'Save Notes'}
               </button>
             </div>
           </div>
@@ -3057,32 +3152,41 @@ function InterviewsTab({
         setUndoCancelModalOpen(open)
         if (!open) setUndoCancelNotes('')
       }}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
+        <DialogContent className="max-w-lg bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Reopen Interview Request</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Reopen Interview Request</DialogTitle>
             <DialogDescription className="text-gray-600">
               Add optional notes about reopening this interview request.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="undoCancelNotes" className="text-gray-900">Reopening Notes (Optional)</Label>
+          <div className="space-y-6 pt-2">
+            {/* Reopening Notes Section */}
+            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-5 border-2 border-teal-200">
+              <Label htmlFor="undoCancelNotes" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <Calendar className="h-5 w-5 text-teal-600" />
+                Reopening Notes <span className="text-gray-400 text-sm font-normal">(Optional)</span>
+              </Label>
               <Textarea
                 id="undoCancelNotes"
                 value={undoCancelNotes}
                 onChange={(e) => setUndoCancelNotes(e.target.value)}
-                placeholder="Add any notes about why you're reopening this interview..."
+                placeholder="Share why you're reopening this interview. e.g., position still available, reconsidered timeline, candidate still interested, new information..."
                 rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base"
               />
+              <p className="text-xs text-teal-700 mt-2">
+                The interview will be set back to pending status
+              </p>
             </div>
-            <div className="flex gap-3">
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => {
                   setUndoCancelModalOpen(false)
                   setUndoCancelNotes('')
                 }}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Cancel
               </button>
@@ -3123,7 +3227,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
               >
                 {interviewSubmitting ? 'Reopening...' : 'Reopen Interview'}
               </button>
@@ -3137,32 +3241,41 @@ function InterviewsTab({
         setUndoRejectModalOpen(open)
         if (!open) setUndoRejectNotes('')
       }}>
-        <DialogContent className="max-w-md bg-white text-gray-900">
+        <DialogContent className="max-w-lg bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">Reconsider Candidate</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Reconsider Candidate</DialogTitle>
             <DialogDescription className="text-gray-600">
               This will change the interview status back to Completed, allowing you to request to hire this candidate. Share your thoughts on reconsidering them.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="undoRejectNotes" className="text-gray-900">Reconsideration Notes (Optional)</Label>
+          <div className="space-y-6 pt-2">
+            {/* Reconsideration Notes Section */}
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-5 border-2 border-emerald-200">
+              <Label htmlFor="undoRejectNotes" className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                Reconsideration Notes <span className="text-gray-400 text-sm font-normal">(Optional)</span>
+              </Label>
               <Textarea
                 id="undoRejectNotes"
                 value={undoRejectNotes}
                 onChange={(e) => setUndoRejectNotes(e.target.value)}
-                placeholder="Why are you reconsidering this candidate? (e.g., new position opened, team feedback, second thoughts...)"
+                placeholder="Share why you're reconsidering this candidate. e.g., new position opened, received positive feedback, reconsidered requirements, timeline changed..."
                 rows={4}
-                className="mt-2 bg-white text-gray-900 border-gray-300"
+                className="bg-white text-gray-900 border-gray-300 text-base"
               />
+              <p className="text-xs text-emerald-700 mt-2">
+                The candidate will be moved back to Completed status
+              </p>
             </div>
-            <div className="flex gap-3">
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => {
                   setUndoRejectModalOpen(false)
                   setUndoRejectNotes('')
                 }}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
               >
                 Cancel
               </button>
@@ -3187,7 +3300,7 @@ function InterviewsTab({
                     }
                     
                     toast({ 
-                      title: "✅ Candidate Reconsidered", 
+                      title: "Candidate Reconsidered", 
                       description: "The candidate is now back to Completed status. You can request to hire them again." 
                     })
                     setUndoRejectModalOpen(false)
@@ -3203,9 +3316,9 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold transition-all hover:from-emerald-700 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
               >
-                {interviewSubmitting ? 'Reconsidering...' : 'Reconsider Candidate'}
+                {interviewSubmitting ? 'Reconsidering...' : 'Reconsider'}
               </button>
             </div>
           </div>

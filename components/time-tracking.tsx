@@ -1381,7 +1381,7 @@ export default function TimeTracking() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                 {scheduledBreaks
                   // Filter: Only show one break per scheduled time - prioritize completed/active over scheduled
                   .filter((breakItem: any, index: number, array: any[]) => {

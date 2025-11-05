@@ -14,17 +14,12 @@ export async function PATCH(
     }
 
     const { id } = await params
-    let reason = ''
-    try {
-      const body = await request.json()
-      reason = body.reason || ''
-    } catch {
-      // No body or invalid JSON - that's okay, reason will be empty
-    }
+    const body = await request.json().catch(() => ({}))
+    const { notes } = body
 
-    console.log(`🚫 Cancelling interview ${id}`)
+    console.log(`🔄 [ADMIN] Undoing cancellation for interview ${id}`)
 
-    // Fetch existing interview to get current notes
+    // Fetch existing interview
     const existing = await prisma.interview_requests.findUnique({
       where: { id }
     })
@@ -33,7 +28,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
     }
 
-    // Add cancellation note to admin notes
+    // Verify it's currently cancelled
+    if (existing.status !== 'CANCELLED') {
+      return NextResponse.json({ error: 'Interview is not cancelled' }, { status: 400 })
+    }
+
+    // Append undo cancellation note to admin notes with timestamp
     const timestamp = new Date().toLocaleString('en-US', { 
       year: 'numeric', 
       month: 'numeric', 
@@ -43,39 +43,39 @@ export async function PATCH(
       second: '2-digit', 
       hour12: true 
     })
-    const existingAdminNotes = existing.adminNotes?.trim() || ''
-    const trimmedReason = reason ? reason.trim() : ''
-    const cancellationNote = trimmedReason 
-      ? `(Cancelled) ${timestamp} - ${trimmedReason}` 
-      : `(Cancelled) ${timestamp} - Interview cancelled by admin`
-    const updatedAdminNotes = existingAdminNotes 
-      ? `${existingAdminNotes}\n\n${cancellationNote}` 
-      : cancellationNote
+    const trimmedNotes = notes ? notes.trim() : ''
+    const existingNotes = existing.adminNotes?.trim() || ''
+    
+    // Create undo note with optional custom notes
+    const undoNote = trimmedNotes 
+      ? `(Reopened) ${timestamp} - ${trimmedNotes}` 
+      : `(Reopened) ${timestamp} - Cancellation undone, interview request reopened by admin`
+    const updatedAdminNotes = existingNotes 
+      ? `${existingNotes}\n\n${undoNote}` 
+      : undoNote
 
-    // Update interview status to CANCELLED and add note
+    // Update interview status back to PENDING and add note
     const interview = await prisma.interview_requests.update({
       where: { id },
       data: {
-        status: 'CANCELLED',
+        status: 'PENDING',
         adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })
 
-    console.log(`✅ Interview cancelled: ${id}`)
+    console.log(`✅ [ADMIN] Interview cancellation undone: ${id}`)
 
     return NextResponse.json({ 
       success: true, 
       interview 
     })
   } catch (error) {
-    console.error('❌ Error cancelling interview:', error)
+    console.error('❌ [ADMIN] Error undoing cancellation:', error)
     return NextResponse.json(
-      { error: 'Failed to cancel interview' },
+      { error: 'Failed to undo cancellation' },
       { status: 500 }
     )
   }
 }
-
-
 

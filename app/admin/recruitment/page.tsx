@@ -32,7 +32,8 @@ import {
   User,
   Phone,
   FileText,
-  Loader2
+  Loader2,
+  CalendarCheck
 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -370,7 +371,14 @@ export default function AdminRecruitmentPage() {
   // Cancel Interview Modal State
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [interviewToCancel, setInterviewToCancel] = useState<InterviewRequest | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
+  
+  // Undo Cancel Interview Modal State
+  const [undoCancelModalOpen, setUndoCancelModalOpen] = useState(false)
+  const [interviewToUndoCancel, setInterviewToUndoCancel] = useState<InterviewRequest | null>(null)
+  const [undoCancelNotes, setUndoCancelNotes] = useState('')
+  const [undoCancelling, setUndoCancelling] = useState(false)
   
   // Stats
   const [stats, setStats] = useState({
@@ -969,7 +977,11 @@ export default function AdminRecruitmentPage() {
       setCancelling(true)
 
       const response = await fetch(`/api/admin/recruitment/interviews/${interviewToCancel.id}/cancel`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: cancelReason.trim()
+        })
       })
 
       if (response.ok) {
@@ -997,6 +1009,49 @@ export default function AdminRecruitmentPage() {
       })
     } finally {
       setCancelling(false)
+    }
+  }
+
+  async function handleUndoCancelInterview() {
+    if (!interviewToUndoCancel) return
+
+    try {
+      setUndoCancelling(true)
+
+      const response = await fetch(`/api/admin/recruitment/interviews/${interviewToUndoCancel.id}/undo-cancel`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: undoCancelNotes.trim() || undefined
+        })
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Cancellation Undone",
+          description: `Interview with ${interviewToUndoCancel.candidateFirstName} has been reopened and set to pending status.`,
+        })
+
+        // Refresh interviews list
+        await fetchInterviews()
+
+        // Close modals
+        setUndoCancelModalOpen(false)
+        setInterviewToUndoCancel(null)
+        setUndoCancelNotes('')
+        setSelectedInterview(null)
+      } else {
+        throw new Error('Failed to undo cancellation')
+      }
+    } catch (error) {
+      console.error('Error undoing cancellation:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to undo cancellation",
+        variant: "destructive"
+      })
+    } finally {
+      setUndoCancelling(false)
     }
   }
 
@@ -1439,30 +1494,24 @@ export default function AdminRecruitmentPage() {
                             </div>
                             {/* Candidate Info */}
                             <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground mt-1">
-                              {interview.candidate_position && (
-                                <span className="text-blue-400 font-medium">{interview.candidate_position}</span>
-                              )}
-                              {interview.candidate_location && (
-                                <span className="flex items-center gap-1">
-                                  {interview.candidate_position && <span>•</span>}
-                                  <MapPin className="h-3 w-3 inline" />
-                                  <span>{interview.candidate_location}</span>
-                                </span>
-                              )}
-                              {interview.candidate_email && (
-                                <span className="flex items-center gap-1">
-                                  <span>•</span>
-                                  <Mail className="h-3 w-3 inline" />
-                                  <span>{interview.candidate_email}</span>
-                                </span>
-                              )}
-                              {interview.candidate_phone && (
-                                <span className="flex items-center gap-1">
-                                  <span>•</span>
-                                  <Phone className="h-3 w-3 inline" />
-                                  <span>{interview.candidate_phone}</span>
-                                </span>
-                              )}
+                              <span className="text-blue-400 font-medium">
+                                {interview.candidate_position || 'Not Provided'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span>•</span>
+                                <MapPin className="h-3 w-3 inline" />
+                                <span>{interview.candidate_location || 'Not Provided'}</span>
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span>•</span>
+                                <Mail className="h-3 w-3 inline" />
+                                <span>{interview.candidate_email || 'Not Provided'}</span>
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span>•</span>
+                                <Phone className="h-3 w-3 inline" />
+                                <span>{interview.candidate_phone || 'Not Provided'}</span>
+                              </span>
                             </div>
                         </div>
 
@@ -1477,6 +1526,22 @@ export default function AdminRecruitmentPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View Full
                           </Button>
+                          {/* Undo Cancellation - Show for cancelled interviews */}
+                          {status === 'cancelled' && (
+                            <Button 
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setInterviewToUndoCancel(interview)
+                                setUndoCancelNotes('')
+                                setUndoCancelModalOpen(true)
+                              }}
+                            >
+                              <CalendarCheck className="h-4 w-4 mr-2" />
+                              Undo Cancellation
+                            </Button>
+                          )}
                           {(status === 'pending' || status === 'reschedule-requested') && (
                             <Button 
                               variant="default" 
@@ -1536,19 +1601,50 @@ export default function AdminRecruitmentPage() {
                               )}
                             </Button>
                           )}
-                          {status === 'hire-requested' && (
+                          {/* Cancel Interview - Show for pending, scheduled, or reschedule requested */}
+                          {(status === 'pending' || status === 'scheduled' || status === 'reschedule-requested') && (
                             <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="bg-green-600 hover:bg-green-700"
+                              size="sm"
+                              className="bg-red-600 hover:bg-red-700 text-white"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                openHireModal(interview)
+                                setInterviewToCancel(interview)
+                                setCancelReason('')
+                                setCancelModalOpen(true)
                               }}
                             >
-                              <Mail className="h-4 w-4 mr-2" />
-                              Send Offer
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Cancel
                             </Button>
+                          )}
+                          {status === 'hire-requested' && (
+                            <>
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openHireModal(interview)
+                                }}
+                              >
+                                <Mail className="h-4 w-4 mr-2" />
+                                Send Offer
+                              </Button>
+                              <Button 
+                                size="sm"
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setInterviewToCancel(interview)
+                                  setCancelReason('')
+                                  setCancelModalOpen(true)
+                                }}
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </>
                           )}
                           {status === 'offer-sent' && (
                             <>
@@ -1649,7 +1745,8 @@ export default function AdminRecruitmentPage() {
                                   Client has requested to hire this candidate. Click "Send Offer" to proceed.
                                 </p>
                                 {interview.clientPreferredStart && (
-                                  <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                  <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                    <p className="text-xs text-orange-400 mb-1">Client Preferred Start Date</p>
                                     <p className="text-sm font-semibold text-orange-200">
                                       📅 {new Date(interview.clientPreferredStart).toLocaleDateString('en-US', {
                                         weekday: 'long',
@@ -2557,18 +2654,34 @@ export default function AdminRecruitmentPage() {
                   </Button>
                 )}
 
-                {/* Cancel Interview - Show for pending or scheduled */}
-                {(modalStatus === 'pending' || modalStatus === 'scheduled') && (
+                {/* Cancel Interview - Show for pending, scheduled, reschedule requested, or hire requested */}
+                {(modalStatus === 'pending' || modalStatus === 'scheduled' || modalStatus === 'reschedule-requested' || modalStatus === 'hire-requested') && (
                   <Button 
                     variant="destructive" 
                     className="flex-1 min-w-[180px] bg-red-600 hover:bg-red-700"
                     onClick={() => {
                       setInterviewToCancel(selectedInterview)
+                      setCancelReason('')
                       setCancelModalOpen(true)
                     }}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Cancel Interview
+                  </Button>
+                )}
+
+                {/* Undo Cancellation - Show for cancelled interviews */}
+                {modalStatus === 'cancelled' && (
+                  <Button 
+                    className="flex-1 min-w-[180px] bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => {
+                      setInterviewToUndoCancel(selectedInterview)
+                      setUndoCancelNotes('')
+                      setUndoCancelModalOpen(true)
+                    }}
+                  >
+                    <CalendarCheck className="h-4 w-4 mr-2" />
+                    Undo Cancellation
                   </Button>
                 )}
               </div>
@@ -3376,43 +3489,45 @@ export default function AdminRecruitmentPage() {
 
       {/* Cancel Interview Confirmation Modal */}
       <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
-        <DialogContent className="max-w-lg bg-slate-900 border-slate-700 text-slate-100">
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-slate-100">
-              Cancel Interview
+              Cancel Interview with {interviewToCancel?.candidateFirstName}
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Are you sure you want to cancel this interview?
-            </DialogDescription>
           </DialogHeader>
+
           {interviewToCancel && (
             <div className="space-y-4">
-              {/* Warning */}
-              <div className="rounded-lg p-4 bg-red-500/10">
-                <div className="flex items-start gap-3">
+              {/* Warning Info */}
+              <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                <div className="flex items-start gap-2">
                   <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-semibold text-red-300">This action cannot be undone</p>
-                    <p className="text-sm text-red-400/80 mt-1">
-                      The interview request will be cancelled and the client will be notified.
+                    <p className="text-sm font-medium text-red-300">This action will cancel the interview</p>
+                    <p className="text-xs text-red-400/80 mt-1">
+                      The client will be notified. You can optionally provide a reason below.
                     </p>
                   </div>
                 </div>
               </div>
 
+              {/* Cancel Reason */}
+              <div className="space-y-2">
+                <Label htmlFor="cancelReason" className="text-sm font-medium text-slate-200">
+                  Reason for Cancellation (Optional)
+                </Label>
+                <Textarea
+                  id="cancelReason"
+                  placeholder="E.g., Candidate no longer available, Client requested cancellation, Scheduling conflicts..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  rows={3}
+                  className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
+                />
+              </div>
+
               {/* Action Buttons */}
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setCancelModalOpen(false)
-                    setInterviewToCancel(null)
-                  }}
-                  disabled={cancelling}
-                  className="flex-1 border-slate-700 hover:bg-slate-800"
-                >
-                  No, Keep It
-                </Button>
+              <div className="flex gap-3 pt-4">
                 <Button
                   variant="destructive"
                   onClick={handleCancelInterview}
@@ -3430,6 +3545,97 @@ export default function AdminRecruitmentPage() {
                       Yes, Cancel Interview
                     </>
                   )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCancelModalOpen(false)
+                    setInterviewToCancel(null)
+                    setCancelReason('')
+                  }}
+                  disabled={cancelling}
+                  className="border-slate-700 hover:bg-slate-800"
+                >
+                  Keep Interview
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Cancel Interview Modal */}
+      <Dialog open={undoCancelModalOpen} onOpenChange={setUndoCancelModalOpen}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-100">
+              Undo Interview Cancellation
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This will reopen the interview request and set it back to pending status.
+            </DialogDescription>
+          </DialogHeader>
+
+          {interviewToUndoCancel && (
+            <div className="space-y-4">
+              {/* Info Banner */}
+              <div className="p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <CalendarCheck className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-300">Reopening interview with {interviewToUndoCancel.candidateFirstName}</p>
+                    <p className="text-xs text-blue-400/80 mt-1">
+                      The interview will be set back to pending status. Both you and the client can proceed with scheduling.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="undoCancelNotes" className="text-sm font-medium text-slate-200">
+                  Reopening Notes (Optional)
+                </Label>
+                <Textarea
+                  id="undoCancelNotes"
+                  placeholder="Add any notes about why you're reopening this interview..."
+                  value={undoCancelNotes}
+                  onChange={(e) => setUndoCancelNotes(e.target.value)}
+                  rows={3}
+                  className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleUndoCancelInterview}
+                  disabled={undoCancelling}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  {undoCancelling ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Reopening...
+                    </>
+                  ) : (
+                    <>
+                      <CalendarCheck className="h-4 w-4 mr-2" />
+                      Reopen Interview
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUndoCancelModalOpen(false)
+                    setInterviewToUndoCancel(null)
+                    setUndoCancelNotes('')
+                  }}
+                  disabled={undoCancelling}
+                  className="border-slate-700 hover:bg-slate-800"
+                >
+                  Cancel
                 </Button>
               </div>
             </div>
