@@ -98,9 +98,11 @@ interface InterviewRequest {
   adminNotes?: string | null
   workSchedule?: {
     workDays: string[]
-    workStartTime: string
+    workStartTime: string | null
     isMonToFri: boolean
-    clientTimezone: string
+    clientTimezone?: string
+    hasCustomHours?: boolean
+    customHours?: Record<string, string>
   } | null
   client_name?: string
   client_email?: string
@@ -130,6 +132,14 @@ interface InterviewRequest {
 }
 
 type TabType = 'candidates' | 'job-requests' | 'interviews'
+
+// Helper function to convert 24-hour time to 12-hour format with AM/PM
+const convertTo12Hour = (time24: string): string => {
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`
+}
 
 // Helper functions for time picker (30-minute intervals)
 function parseTimeSlot(time: string) {
@@ -639,21 +649,34 @@ export default function AdminRecruitmentPage() {
       let shiftType: 'DAY_SHIFT' | 'NIGHT_SHIFT' | 'MID_SHIFT' = 'DAY_SHIFT' // Default
       
       if (interview.workSchedule) {
-        const { workStartTime, workDays, isMonToFri } = interview.workSchedule
+        const { workStartTime, workDays, isMonToFri, hasCustomHours, customHours } = interview.workSchedule
         
-        // Calculate end time (start + 9 hours)
-        const [startHour, startMinute] = workStartTime.split(':').map(Number)
-        const endHour = (startHour + 9) % 24
-        const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
-        
-        // Format schedule display
-        const scheduleType = isMonToFri ? 'Monday to Friday' : '5 Consecutive Days'
-        workHoursDisplay = `${workStartTime} - ${endTime} ${clientTimezone} (9 hours, ${scheduleType})`
+        if (hasCustomHours && customHours) {
+          // Format custom hours display
+          const scheduleType = isMonToFri ? 'Monday to Friday' : workDays.join(', ')
+          const hoursDisplay = Object.entries(customHours).map(([day, time]) => {
+            const [hours, minutes] = time.split(':').map(Number)
+            const endHour = (hours + 9) % 24
+            const endTime = `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+            return `${day}: ${time}-${endTime}`
+          }).join('; ')
+          workHoursDisplay = `${hoursDisplay} ${clientTimezone} (9 hours/day, ${scheduleType})`
+        } else if (workStartTime) {
+          // Calculate end time (start + 9 hours)
+          const [startHour, startMinute] = workStartTime.split(':').map(Number)
+          const endHour = (startHour + 9) % 24
+          const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
+          
+          // Format schedule display
+          const scheduleType = isMonToFri ? 'Monday to Friday' : '5 Consecutive Days'
+          workHoursDisplay = `${workStartTime} - ${endTime} ${clientTimezone} (9 hours, ${scheduleType})`
+        }
         
         console.log('📅 Using client work schedule:', {
           workDays,
           workStartTime,
-          endTime,
+          hasCustomHours,
+          customHours,
           clientTimezone,
           isMonToFri
         })
@@ -1757,6 +1780,55 @@ export default function AdminRecruitmentPage() {
                                     </p>
                                   </div>
                                 )}
+                                
+                                {interview.workSchedule && (
+                                  <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-xs text-orange-400">Work Schedule</p>
+                                      {interview.workSchedule.isMonToFri && (
+                                        <p className="text-xs text-orange-400/60">(Standard Mon-Fri)</p>
+                                      )}
+                                    </div>
+                                    {interview.workSchedule.hasCustomHours && interview.workSchedule.customHours ? (
+                                      <div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                          {Object.entries(interview.workSchedule.customHours).map(([day, time]) => {
+                                            const [hours, minutes] = (time as string).split(':').map(Number)
+                                            const endHour = (hours + 9) % 24
+                                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                            return (
+                                              <div key={day} className="flex flex-col items-center text-xs bg-orange-500/10 px-2 py-2 rounded border border-orange-500/20">
+                                                <span className="text-orange-200 font-medium mb-1">{day}</span>
+                                                <span className="text-orange-300 text-[10px]">{convertTo12Hour(time as string)} - {convertTo12Hour(endTime24)}</span>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                        <p className="text-xs text-orange-400/60 mt-1.5">(9 hrs/day, incl. break)</p>
+                                      </div>
+                                    ) : interview.workSchedule.workStartTime && interview.workSchedule.workDays ? (
+                                      <div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                          {interview.workSchedule.workDays.map((day: string) => {
+                                            const workStartTime = interview.workSchedule?.workStartTime || '09:00'
+                                            const [hours, minutes] = workStartTime.split(':').map(Number)
+                                            const endHour = (hours + 9) % 24
+                                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                            return (
+                                              <div key={day} className="flex flex-col items-center text-xs bg-orange-500/10 px-2 py-2 rounded border border-orange-500/20">
+                                                <span className="text-orange-200 font-medium mb-1">{day}</span>
+                                                <span className="text-orange-300 text-[10px]">{convertTo12Hour(workStartTime)} - {convertTo12Hour(endTime24)}</span>
+                                              </div>
+                                            )
+                                          })}
+                                        </div>
+                                        <p className="text-xs text-orange-400/60 mt-1.5">(9 hrs/day, incl. break)</p>
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-orange-400/60">Not specified</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -1888,8 +1960,8 @@ export default function AdminRecruitmentPage() {
                           </div>
                         </div>
 
-                        {/* Preferred Interview Times - Hide for cancelled */}
-                        {(status === 'pending' || status === 'scheduled' || status === 'completed') && (
+                        {/* Preferred Interview Times - Hide for completed and hire requested */}
+                        {status !== 'completed' && status !== 'hire_requested' && status !== 'hire-requested' && (
                         <div>
                           <h4 className="text-base font-semibold text-foreground mb-2">
                             Client's Preferred Interview Times
@@ -2215,9 +2287,11 @@ export default function AdminRecruitmentPage() {
 
       {/* Interview Detail Modal */}
       <Dialog open={!!selectedInterview} onOpenChange={() => setSelectedInterview(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-slate-100">Interview Request Details</DialogTitle>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
+              Interview Request Details
+            </DialogTitle>
           </DialogHeader>
           {selectedInterview && (() => {
             // Normalize status to lowercase for comparison
@@ -2225,67 +2299,71 @@ export default function AdminRecruitmentPage() {
             
             return (
             <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-2 pb-6">
-              {/* Header */}
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={selectedInterview.candidate_avatar_url || undefined} />
-                  <AvatarFallback>{selectedInterview.candidateFirstName.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-slate-100">{selectedInterview.candidateFirstName}</h3>
-                    <Badge className={
-                      modalStatus === 'pending' 
-                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50 hover:bg-yellow-500/30'
-                        : modalStatus === 'scheduled'
-                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 hover:bg-blue-500/30'
-                        : modalStatus === 'hire-requested'
-                        ? 'bg-orange-500/20 text-orange-300 border-orange-500/50 hover:bg-orange-500/30'
-                        : modalStatus === 'offer-sent'
-                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 hover:bg-indigo-500/30'
-                        : modalStatus === 'offer-accepted'
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
-                        : modalStatus === 'offer-declined'
-                        ? 'bg-red-500/20 text-red-300 border-red-500/50 hover:bg-red-500/30'
-                        : modalStatus === 'hired'
-                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30'
-                        : modalStatus === 'completed'
-                        ? 'bg-green-500/20 text-green-300 border-green-500/50 hover:bg-green-500/30'
-                        : modalStatus === 'cancelled'
-                        ? 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30'
-                        : modalStatus === 'rejected'
-                        ? 'bg-slate-500/20 text-slate-300 border-slate-500/50 hover:bg-slate-500/30'
-                        : 'bg-gray-500/20 text-gray-300 border-gray-500/50'
-                    }>
-                      {modalStatus.toUpperCase().replace(/-/g, ' ')}
-                    </Badge>
-                  </div>
-                  {/* Candidate Info */}
-                  <div className="flex items-center gap-2 flex-wrap text-sm text-slate-400 mt-1">
-                    {selectedInterview.candidate_position && (
-                      <span className="text-blue-400 font-medium">{selectedInterview.candidate_position}</span>
-                    )}
-                    {selectedInterview.candidate_location && (
-                      <span className="flex items-center gap-1">
-                        {selectedInterview.candidate_position && <span>•</span>}
-                        <MapPin className="h-3 w-3 inline" />
-                        <span>{selectedInterview.candidate_location}</span>
-                      </span>
-                    )}
-                    {selectedInterview.candidate_email && (
-                      <span className="flex items-center gap-1">
-                        <span>•</span>
-                        <Mail className="h-3 w-3 inline" />
-                        <span>{selectedInterview.candidate_email}</span>
-                      </span>
-                    )}
-                    {selectedInterview.candidate_phone && (
-                      <span className="flex items-center gap-1">
-                        <span>•</span>
-                        <Phone className="h-3 w-3 inline" />
-                        <span>{selectedInterview.candidate_phone}</span>
-                      </span>
-                    )}
+              {/* Header - Candidate Info Card */}
+              <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-20 w-20 border-4 border-slate-700 shadow-lg">
+                    <AvatarImage src={selectedInterview.candidate_avatar_url || undefined} />
+                    <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      {selectedInterview.candidateFirstName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-2xl font-bold text-slate-100">{selectedInterview.candidateFirstName}</h3>
+                      <Badge className={`text-sm px-3 py-1 ${
+                        modalStatus === 'pending' 
+                          ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50 hover:bg-yellow-500/30'
+                          : modalStatus === 'scheduled'
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 hover:bg-blue-500/30'
+                          : modalStatus === 'hire-requested'
+                          ? 'bg-orange-500/20 text-orange-300 border-orange-500/50 hover:bg-orange-500/30'
+                          : modalStatus === 'offer-sent'
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 hover:bg-indigo-500/30'
+                          : modalStatus === 'offer-accepted'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                          : modalStatus === 'offer-declined'
+                          ? 'bg-red-500/20 text-red-300 border-red-500/50 hover:bg-red-500/30'
+                          : modalStatus === 'hired'
+                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30'
+                          : modalStatus === 'completed'
+                          ? 'bg-green-500/20 text-green-300 border-green-500/50 hover:bg-green-500/30'
+                          : modalStatus === 'cancelled'
+                          ? 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30'
+                          : modalStatus === 'rejected'
+                          ? 'bg-slate-500/20 text-slate-300 border-slate-500/50 hover:bg-slate-500/30'
+                          : 'bg-gray-500/20 text-gray-300 border-gray-500/50'
+                      }`}>
+                        {modalStatus.toUpperCase().replace(/-/g, ' ')}
+                      </Badge>
+                    </div>
+                    {/* Candidate Info Grid */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      {selectedInterview.candidate_position && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-blue-400" />
+                          <span className="text-blue-400 font-medium">{selectedInterview.candidate_position}</span>
+                        </div>
+                      )}
+                      {selectedInterview.candidate_location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{selectedInterview.candidate_location}</span>
+                        </div>
+                      )}
+                      {selectedInterview.candidate_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300 truncate">{selectedInterview.candidate_email}</span>
+                        </div>
+                      )}
+                      {selectedInterview.candidate_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{selectedInterview.candidate_phone}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2343,56 +2421,123 @@ export default function AdminRecruitmentPage() {
               )}
 
               {/* Client Details */}
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                <h4 className="text-base font-semibold text-slate-100 mb-3">
+              <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                <h4 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-blue-400" />
                   Client Details
                 </h4>
-                <div className="flex items-center gap-4 flex-wrap text-sm text-slate-400">
+                <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
                   {(selectedInterview.client_name || selectedInterview.client_users?.name) && (
-                    <span className="flex items-center gap-1">
-                      <User className="h-3 w-3 inline" />
-                      <span className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-500">Contact:</span>
+                      <span className="text-slate-200 font-medium">
                         {selectedInterview.client_name || selectedInterview.client_users?.name}
                       </span>
-                    </span>
+                    </div>
                   )}
                   {(selectedInterview.company_name || selectedInterview.client_users?.company?.companyName) && (
-                    <span className="flex items-center gap-1">
-                      <span>•</span>
-                      <Building2 className="h-3 w-3 inline" />
-                      <span>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-500">Company:</span>
+                      <span className="text-slate-200 font-medium">
                         {selectedInterview.company_name || selectedInterview.client_users?.company?.companyName}
                       </span>
-                    </span>
+                    </div>
                   )}
                   {(selectedInterview.client_email || selectedInterview.client_users?.email) && (
-                    <span className="flex items-center gap-1">
-                      <span>•</span>
-                      <Mail className="h-3 w-3 inline" />
-                      <span>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-500">Email:</span>
+                      <span className="text-slate-200">
                         {selectedInterview.client_email || selectedInterview.client_users?.email}
                       </span>
-                    </span>
+                    </div>
                   )}
                   {selectedInterview.client_phone && (
-                    <span className="flex items-center gap-1">
-                      <span>•</span>
-                      <Phone className="h-3 w-3 inline" />
-                      <span>{selectedInterview.client_phone}</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-500">Phone:</span>
+                      <span className="text-slate-200">{selectedInterview.client_phone}</span>
+                    </div>
                   )}
                   {selectedInterview.client_address && (
-                    <span className="flex items-center gap-1">
-                      <span>•</span>
-                      <MapPin className="h-3 w-3 inline" />
-                      <span>{selectedInterview.client_address}</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-500">Address:</span>
+                      <span className="text-slate-200">{selectedInterview.client_address}</span>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Client's Preferred Times - Hide for cancelled */}
-              {modalStatus !== 'cancelled' && (
+              {/* Work Schedule */}
+              {selectedInterview.workSchedule && (
+                <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-green-400" />
+                      Work Schedule
+                    </h4>
+                    {selectedInterview.workSchedule.isMonToFri && (
+                      <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
+                        Mon-Fri
+                      </Badge>
+                    )}
+                  </div>
+                  {selectedInterview.workSchedule.hasCustomHours && selectedInterview.workSchedule.customHours ? (
+                    <div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4">
+                        {Object.entries(selectedInterview.workSchedule.customHours).map(([day, time]) => {
+                          const [hours, minutes] = time.split(':').map(Number)
+                          const endHour = (hours + 9) % 24
+                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          return (
+                            <div key={day} className="flex flex-col items-center justify-center bg-slate-900/50 px-3 py-3 rounded-lg border border-slate-700">
+                              <div className="text-slate-300 font-semibold mb-2 text-sm">{day}</div>
+                              <div className="flex flex-col items-center gap-0.5">
+                                <div className="text-slate-400 text-xs">{convertTo12Hour(time)}</div>
+                                <div className="text-slate-500 text-xs">-</div>
+                                <div className="text-slate-400 text-xs">{convertTo12Hour(endTime24)}</div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-4 text-center">(9 hours per day, including break time)</p>
+                    </div>
+                  ) : selectedInterview.workSchedule.workStartTime && selectedInterview.workSchedule.workDays ? (
+                    <div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4">
+                        {selectedInterview.workSchedule.workDays.map((day: string) => {
+                          const workStartTime = selectedInterview.workSchedule?.workStartTime || '09:00'
+                          const [hours, minutes] = workStartTime.split(':').map(Number)
+                          const endHour = (hours + 9) % 24
+                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          return (
+                            <div key={day} className="flex flex-col items-center justify-center bg-slate-900/50 px-3 py-3 rounded-lg border border-slate-700">
+                              <div className="text-slate-300 font-semibold mb-2 text-sm">{day}</div>
+                              <div className="flex flex-col items-center gap-0.5">
+                                <div className="text-slate-400 text-xs">{convertTo12Hour(workStartTime)}</div>
+                                <div className="text-slate-500 text-xs">-</div>
+                                <div className="text-slate-400 text-xs">{convertTo12Hour(endTime24)}</div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-4 text-center">(9 hours per day, including break time)</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 text-center py-4">Not specified</p>
+                  )}
+                </div>
+              )}
+
+              {/* Client's Preferred Times - Hide for completed and hire requested */}
+              {modalStatus !== 'completed' && 
+               modalStatus !== 'hire_requested' && 
+               modalStatus !== 'hire-requested' && (
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                 <h4 className="text-base font-semibold text-slate-100 mb-3">Client's Preferred Interview Times</h4>
                 <div className="flex flex-wrap gap-2">

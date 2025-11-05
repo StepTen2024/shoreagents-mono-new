@@ -99,9 +99,24 @@ interface InterviewRequest {
   meetingLink: string | null
   clientPreferredStart?: string | null
   candidateAvatar?: string
+  workSchedule?: {
+    workDays: string[]
+    workStartTime: string | null
+    isMonToFri: boolean
+    hasCustomHours?: boolean
+    customHours?: Record<string, string>
+  } | null
 }
 
 type TabType = 'talent-pool' | 'job-requests' | 'interviews'
+
+// Helper function to convert 24-hour time to 12-hour format with AM/PM
+const convertTo12Hour = (time24: string): string => {
+  const [hours, minutes] = time24.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`
+}
 
 export default function RecruitmentPage() {
   const router = useRouter()
@@ -150,7 +165,9 @@ export default function RecruitmentPage() {
     hireNotes: '',
     isMonToFri: true,
     workStartTime: '09:00',
-    workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    hasCustomHours: false,
+    customHours: {} as Record<string, string>
   })
   const [rejectData, setRejectData] = useState({ rejectReason: '' })
   
@@ -311,6 +328,16 @@ export default function RecruitmentPage() {
       const noteText = hireData.hireNotes || "Client would like to hire this candidate"
       const formattedNotes = `(Hire Requested) ${timestamp} - ${noteText}`
       
+      // Clean up customHours to only include selected workDays
+      const cleanedCustomHours: Record<string, string> = {}
+      if (hireData.hasCustomHours) {
+        hireData.workDays.forEach((day: string) => {
+          if (hireData.customHours[day]) {
+            cleanedCustomHours[day] = hireData.customHours[day]
+          }
+        })
+      }
+      
       const response = await fetch("/api/client/interviews/hire-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -320,8 +347,10 @@ export default function RecruitmentPage() {
           notes: formattedNotes,
           workSchedule: {
             workDays: hireData.workDays,
-            workStartTime: hireData.workStartTime,
-            isMonToFri: hireData.isMonToFri
+            workStartTime: hireData.hasCustomHours ? null : hireData.workStartTime,
+            isMonToFri: hireData.isMonToFri,
+            hasCustomHours: hireData.hasCustomHours,
+            customHours: cleanedCustomHours
           }
         })
       })
@@ -340,7 +369,9 @@ export default function RecruitmentPage() {
           hireNotes: '',
           isMonToFri: true,
           workStartTime: '09:00',
-          workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+          workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          hasCustomHours: false,
+          customHours: {}
         })
         setSelectedInterview(null)
         // Refresh interviews to show updated status
@@ -2246,21 +2277,96 @@ function InterviewsTab({
                 )}
               </div>
 
-              {/* Your Preferred Times */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">Your Preferred Times:</span>
+              {/* Your Preferred Times - Hide for completed and hire requested */}
+              {interview.status !== 'COMPLETED' && 
+               interview.status !== 'HIRE_REQUESTED' && 
+               interview.status !== 'HIRE-REQUESTED' && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">Your Preferred Times:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {interview.preferredTimes.map((time, idx) => (
+                      <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {formatPreferredTime(time)}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {interview.preferredTimes.map((time, idx) => (
-                    <Badge key={idx} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 transition-colors">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {formatPreferredTime(time)}
-                    </Badge>
-                  ))}
+              )}
+
+              {/* Preferred Start Date - Show for hire requested and later */}
+              {interview.clientPreferredStart && (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED' || interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT' || interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED' || interview.status === 'HIRED') && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-gray-900">Your Preferred Start Date</span>
+                  </div>
+                  <p className="text-base font-medium text-blue-700">
+                    {new Date(interview.clientPreferredStart).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
                 </div>
-              </div>
+              )}
+
+              {/* Work Schedule - Show for hire requested and later */}
+              {interview.workSchedule && (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED' || interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT' || interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED' || interview.status === 'HIRED') && (
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm font-semibold text-gray-900">Work Schedule</span>
+                    </div>
+                    {interview.workSchedule.isMonToFri && (
+                      <p className="text-xs text-gray-500">(Standard Mon-Fri)</p>
+                    )}
+                  </div>
+                  {interview.workSchedule.hasCustomHours && interview.workSchedule.customHours ? (
+                    <div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Object.entries(interview.workSchedule.customHours).map(([day, time]) => {
+                          const [hours, minutes] = time.split(':').map(Number)
+                          const endHour = (hours + 9) % 24
+                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          return (
+                            <div key={day} className="flex flex-col items-center text-sm bg-white px-3 py-2.5 rounded border border-purple-200">
+                              <span className="text-gray-900 font-medium mb-1.5">{day}</span>
+                              <span className="text-gray-600 text-xs">{convertTo12Hour(time)} - {convertTo12Hour(endTime24)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">(9 hours per day, including break time)</p>
+                    </div>
+                  ) : interview.workSchedule.workStartTime && interview.workSchedule.workDays ? (
+                    <div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {interview.workSchedule.workDays.map((day: string) => {
+                          const workStartTime = interview.workSchedule?.workStartTime || '09:00'
+                          const [hours, minutes] = workStartTime.split(':').map(Number)
+                          const endHour = (hours + 9) % 24
+                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          return (
+                            <div key={day} className="flex flex-col items-center text-sm bg-white px-3 py-2.5 rounded border border-purple-200">
+                              <span className="text-gray-900 font-medium mb-1.5">{day}</span>
+                              <span className="text-gray-600 text-xs">{convertTo12Hour(workStartTime)} - {convertTo12Hour(endTime24)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">(9 hours per day, including break time)</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">Not specified</p>
+                  )}
+                </div>
+              )}
 
               {/* Combined Notes (Client + Admin) */}
               {(() => {
@@ -2579,12 +2685,30 @@ function InterviewsTab({
                       checked={hireData.isMonToFri}
                       onChange={(e) => {
                         const checked = e.target.checked
+                        const newWorkDays = checked 
+                          ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+                          : []
+                        
+                        // If in custom hours mode, update customHours to match new workDays
+                        let newCustomHours = { ...hireData.customHours }
+                        if (hireData.hasCustomHours) {
+                          if (checked) {
+                            // Setting Mon-Fri: initialize all with default times
+                            newCustomHours = {}
+                            newWorkDays.forEach(day => {
+                              newCustomHours[day] = '09:00'
+                            })
+                          } else {
+                            // Clearing days: clear custom hours
+                            newCustomHours = {}
+                          }
+                        }
+                        
                         setHireData({ 
                           ...hireData, 
                           isMonToFri: checked,
-                          workDays: checked 
-                            ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-                            : hireData.workDays
+                          workDays: newWorkDays,
+                          customHours: newCustomHours
                         })
                       }}
                       className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 mt-0.5"
@@ -2601,11 +2725,54 @@ function InterviewsTab({
                   
                   {!hireData.isMonToFri && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <p className="font-semibold text-blue-900 text-sm">Custom Schedule Selected</p>
-                        <p className="text-xs text-blue-800 mt-1">
-                          You'll work with admin to select 5 consecutive working days that fit your business needs.
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-3">
+                        <p className="font-semibold text-blue-900 text-sm">Custom Schedule - Select Work Days</p>
+                        <p className="text-xs text-blue-800">
+                          Select the days the candidate will work (typically 5 consecutive days)
                         </p>
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                            <label key={day} className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-blue-200 hover:bg-blue-50 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={hireData.workDays.includes(day)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked
+                                  const newWorkDays = checked
+                                    ? [...hireData.workDays, day]
+                                    : hireData.workDays.filter((d: string) => d !== day)
+                                  
+                                  // If in custom hours mode, update customHours accordingly
+                                  const newCustomHours = { ...hireData.customHours }
+                                  if (hireData.hasCustomHours) {
+                                    if (checked) {
+                                      // Adding a day - set default time
+                                      newCustomHours[day] = '09:00'
+                                    } else {
+                                      // Removing a day - delete from customHours
+                                      delete newCustomHours[day]
+                                    }
+                                  }
+                                  
+                                  setHireData({
+                                    ...hireData,
+                                    workDays: newWorkDays,
+                                    customHours: newCustomHours
+                                  })
+                                }}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-900 font-medium">{day}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {hireData.workDays.length > 0 && (
+                          <div className="bg-white p-2 rounded border border-blue-300">
+                            <p className="text-xs text-blue-900">
+                              <strong>Selected:</strong> {hireData.workDays.join(', ')} ({hireData.workDays.length} days)
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2618,43 +2785,152 @@ function InterviewsTab({
                   Daily Work Hours
                 </Label>
                 <div className="bg-white rounded-lg border-2 border-gray-200 p-4">
-                  <div className="flex items-center gap-3 mb-2">
+                  {/* Same time for all days option */}
+                  <label className="flex items-start gap-3 cursor-pointer group mb-4">
+                    <input
+                      type="checkbox"
+                      checked={!hireData.hasCustomHours}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        if (!checked) {
+                          // Switching to custom hours - initialize with default times
+                          const defaultCustomHours: Record<string, string> = {}
+                          hireData.workDays.forEach((day: string) => {
+                            defaultCustomHours[day] = '09:00'
+                          })
+                          setHireData({ 
+                            ...hireData, 
+                            hasCustomHours: true,
+                            customHours: defaultCustomHours
+                          })
+                        } else {
+                          // Switching back to same hours for all days
+                          setHireData({ 
+                            ...hireData, 
+                            hasCustomHours: false,
+                            customHours: {}
+                          })
+                        }
+                      }}
+                      className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500 mt-0.5"
+                    />
                     <div className="flex-1">
-                      <Label htmlFor="workStartTime" className="text-xs text-gray-600 mb-1 block">
-                        Start Time
-                      </Label>
-                      <Input
-                        id="workStartTime"
-                        type="time"
-                        value={hireData.workStartTime}
-                        onChange={(e) => setHireData({ ...hireData, workStartTime: e.target.value })}
-                        className="bg-white text-gray-900 border-gray-300 text-base h-11"
-                        required
-                      />
+                      <span className="text-base font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                        Same hours for all days
+                      </span>
+                      <p className="text-xs text-gray-600 mt-1">
+                        All work days will have the same start time
+                      </p>
                     </div>
-                    <div className="flex items-center justify-center pt-6">
-                      <span className="text-gray-400 font-bold">→</span>
-                    </div>
-                    <div className="flex-1">
-                      <Label className="text-xs text-gray-600 mb-1 block">
-                        End Time (Auto-calculated)
-                      </Label>
-                      <div className="h-11 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg flex items-center justify-center">
-                        <span className="text-base font-bold text-green-700">
-                          {(() => {
-                            const [hours, minutes] = hireData.workStartTime.split(':').map(Number)
-                            const endHour = (hours + 9) % 24
-                            return `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-                          })()}
-                        </span>
+                  </label>
+
+                  {!hireData.hasCustomHours ? (
+                    <>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex-1">
+                          <Label htmlFor="workStartTime" className="text-xs text-gray-600 mb-1 block">
+                            Start Time
+                          </Label>
+                          <Input
+                            id="workStartTime"
+                            type="time"
+                            value={hireData.workStartTime}
+                            onChange={(e) => setHireData({ ...hireData, workStartTime: e.target.value })}
+                            className="bg-white text-gray-900 border-gray-300 text-base h-11"
+                            required
+                          />
+                        </div>
+                        <div className="flex items-center justify-center pt-6">
+                          <span className="text-gray-400 font-bold">→</span>
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs text-gray-600 mb-1 block">
+                            End Time <span className="text-[10px] text-gray-500">(Auto-calculated)</span>
+                          </Label>
+                          <div className="h-11 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg flex items-center justify-center">
+                            <span className="text-base font-bold text-green-700">
+                              {(() => {
+                                const [hours, minutes] = hireData.workStartTime.split(':').map(Number)
+                                const endHour = (hours + 9) % 24
+                                const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                return convertTo12Hour(endTime24)
+                              })()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      <div className="bg-gray-50 p-3 rounded-lg mt-3 border border-gray-200">
+                        <p className="text-xs text-gray-700">
+                          <strong>Example:</strong> If work starts at 9:00 AM, it will end at 6:00 PM (9 hours total, including break time)
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p className="font-semibold text-blue-900 text-sm">Custom Hours Per Day</p>
+                        <p className="text-xs text-blue-800 mt-1">
+                          Set different start times for each work day (all shifts are 9 hours total, including break time)
+                        </p>
+                      </div>
+                      {hireData.workDays.length > 0 ? (
+                        <div className="space-y-2">
+                          {hireData.workDays.map((day: string) => (
+                            <div key={day} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-sm font-semibold text-gray-900">{day}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <Label className="text-xs text-gray-600 mb-1 block">
+                                    Start Time
+                                  </Label>
+                                  <Input
+                                    type="time"
+                                    value={hireData.customHours[day]}
+                                    onChange={(e) => setHireData({
+                                      ...hireData,
+                                      customHours: {
+                                        ...hireData.customHours,
+                                        [day]: e.target.value
+                                      }
+                                    })}
+                                    className="bg-white text-gray-900 border-gray-300 text-sm h-9"
+                                  />
+                                </div>
+                                <div className="flex items-center justify-center pt-5 px-1">
+                                  <span className="text-gray-400 font-bold text-sm">→</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <Label className="text-xs text-gray-600 mb-1 block">
+                                    End Time <span className="text-[10px] text-gray-500">(Auto-calculated)</span>
+                                  </Label>
+                                  <div className="h-9 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg flex items-center justify-center">
+                                    <span className="text-sm font-bold text-green-700">
+                                      {(() => {
+                                        const startTime = hireData.customHours[day]
+                                        if (!startTime) return convertTo12Hour('18:00')
+                                        const [hours, minutes] = startTime.split(':').map(Number)
+                                        const endHour = (hours + 9) % 24
+                                        const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                        return convertTo12Hour(endTime24)
+                                      })()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                          <p className="text-xs text-yellow-800">
+                            Please select work days first to set custom hours
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-lg mt-3 border border-gray-200">
-                    <p className="text-xs text-gray-700">
-                      <strong>Example:</strong> If work starts at 9:00 AM, it will end at 6:00 PM (9 hours total, including break time)
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2688,7 +2964,9 @@ function InterviewsTab({
                     hireNotes: '',
                     isMonToFri: true,
                     workStartTime: '09:00',
-                    workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+                    workDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                    hasCustomHours: false,
+                    customHours: {}
                   })
                 }}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 font-semibold transition-all text-base"
@@ -2697,13 +2975,18 @@ function InterviewsTab({
               </button>
               <button
                 onClick={handleHireRequest}
-                disabled={!hireData.preferredStartDate || hireRequestingId !== null}
-                className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base flex items-center justify-center gap-2"
+                disabled={
+                  !hireData.preferredStartDate || 
+                  hireData.workDays.length === 0 || 
+                  (!hireData.hasCustomHours && !hireData.workStartTime) ||
+                  hireRequestingId !== null
+                }
+                className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base flex items-center justify-center gap-2"
               >
                 {hireRequestingId ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    Sending Request...
+                    Submitting...
                   </>
                 ) : (
                   <>
@@ -2759,7 +3042,7 @@ function InterviewsTab({
               <button
                 disabled={rejectingId !== null}
                 onClick={handleRejectRequest}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 {rejectingId ? 'Rejecting...' : 'Confirm Rejection'}
               </button>
@@ -2830,7 +3113,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 {interviewSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
@@ -3067,7 +3350,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
+                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 {interviewSubmitting ? 'Sending...' : 'Send Request'}
               </button>
@@ -3138,7 +3421,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
+                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 {interviewSubmitting ? 'Adding...' : 'Save Notes'}
               </button>
@@ -3227,7 +3510,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
+                className="flex-1 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 {interviewSubmitting ? 'Reopening...' : 'Reopen Interview'}
               </button>
@@ -3316,7 +3599,7 @@ function InterviewsTab({
                     setInterviewSubmitting(false)
                   }
                 }}
-                className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-base"
+                className="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
               >
                 {interviewSubmitting ? 'Reconsidering...' : 'Reconsider'}
               </button>
