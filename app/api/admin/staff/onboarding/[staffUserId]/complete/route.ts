@@ -63,20 +63,25 @@ export async function POST(
 
     // Check if all 9 sections are approved (GUNTING 9-step system)
     const onboarding = staffUser.staff_onboarding
-    const allApproved = 
-      onboarding.personalInfoStatus === "APPROVED" &&
-      onboarding.govIdStatus === "APPROVED" &&
-      onboarding.documentsStatus === "APPROVED" &&
-      onboarding.signatureStatus === "APPROVED" &&
-      onboarding.emergencyContactStatus === "APPROVED" &&
-      onboarding.resumeStatus === "APPROVED" &&
-      onboarding.educationStatus === "APPROVED" &&
-      onboarding.medicalStatus === "APPROVED" &&
-      onboarding.dataPrivacyStatus === "APPROVED"
-
-    if (!allApproved) {
+    const sections = [
+      { name: "Personal Info", status: onboarding.personalInfoStatus },
+      { name: "Government ID", status: onboarding.govIdStatus },
+      { name: "Documents", status: onboarding.documentsStatus },
+      { name: "Signature", status: onboarding.signatureStatus },
+      { name: "Emergency Contact", status: onboarding.emergencyContactStatus },
+      { name: "Resume", status: onboarding.resumeStatus },
+      { name: "Education", status: onboarding.educationStatus },
+      { name: "Medical", status: onboarding.medicalStatus },
+      { name: "Data Privacy", status: onboarding.dataPrivacyStatus }
+    ]
+    
+    const unapprovedSections = sections.filter(s => s.status !== "APPROVED")
+    
+    if (unapprovedSections.length > 0) {
+      const sectionNames = unapprovedSections.map(s => `${s.name} (${s.status})`).join(", ")
       return NextResponse.json({ 
-        error: "All 9 onboarding sections must be approved before completing onboarding" 
+        error: "All 9 onboarding sections must be approved before completing onboarding",
+        details: `Unapproved sections: ${sectionNames}`
       }, { status: 400 })
     }
 
@@ -414,7 +419,12 @@ export async function POST(
     })
 
     // ✨ Auto-generate activity post
-    await logStaffOnboarded(staffUser.id, fullName)
+    try {
+      await logStaffOnboarded(staffUser.id, fullName)
+    } catch (error) {
+      console.error("❌ ACTIVITY LOG FAILED:", error)
+      // Don't block onboarding completion if activity logging fails
+    }
 
     return NextResponse.json({ 
       success: true,
