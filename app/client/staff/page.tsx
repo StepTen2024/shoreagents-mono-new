@@ -25,6 +25,7 @@ interface StaffMember {
   employmentStatus: string
   daysEmployed: number
   hasStarted: boolean
+  hasStartDate: boolean
   currentRole: string
   salary: number
   totalLeave: number
@@ -243,7 +244,12 @@ export default function StaffPage() {
                       <p className="text-xs text-gray-500 font-medium mt-0.5">Leave Days</p>
                     </div>
                     <div className="text-center">
-                      {member.hasStarted ? (
+                      {!member.hasStartDate ? (
+                        <>
+                          <p className="text-xs font-semibold text-gray-500">Not</p>
+                          <p className="text-xs text-gray-400 font-medium mt-0.5">Scheduled</p>
+                        </>
+                      ) : member.hasStarted ? (
                         <>
                           <p className="text-xl font-bold text-orange-600">{member.daysEmployed}</p>
                           <p className="text-xs text-gray-500 font-medium mt-0.5">Days</p>
@@ -375,7 +381,12 @@ export default function StaffPage() {
                       <p className="text-xs text-gray-500 font-medium mt-1">Leave Days</p>
                     </div>
                     <div className="text-center">
-                      {member.hasStarted ? (
+                      {!member.hasStartDate ? (
+                        <>
+                          <p className="text-sm font-semibold text-gray-500">Not</p>
+                          <p className="text-xs text-gray-400 font-medium mt-1">Scheduled</p>
+                        </>
+                      ) : member.hasStarted ? (
                         <>
                           <p className="text-2xl font-bold text-orange-600">{member.daysEmployed}</p>
                           <p className="text-xs text-gray-500 font-medium mt-1">Days</p>

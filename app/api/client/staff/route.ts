@@ -132,8 +132,10 @@ export async function GET(request: NextRequest) {
       const startDate = staff.staff_profiles?.startDate
       let daysEmployed = 0
       let hasStarted = true
+      let hasStartDate = false
       
       if (startDate) {
+        hasStartDate = true
         const daysDiff = Math.floor((new Date().getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
         if (daysDiff >= 0) {
           daysEmployed = daysDiff
@@ -143,7 +145,9 @@ export async function GET(request: NextRequest) {
           hasStarted = false
         }
       } else {
+        hasStartDate = false
         hasStarted = false
+        daysEmployed = 0
       }
 
       // Calculate average productivity
@@ -189,6 +193,7 @@ export async function GET(request: NextRequest) {
         employmentStatus: staff.staff_profiles?.employmentStatus || "PROBATION",
         daysEmployed,
         hasStarted, // New field to indicate if staff has started
+        hasStartDate, // New field to indicate if staff has a start date
         currentRole: staff.staff_profiles?.currentRole || "Staff Member",
         salary: staff.staff_profiles?.salary ? Number(staff.staff_profiles.salary) : 0,
         totalLeave: staff.staff_profiles?.totalLeave || 12,
