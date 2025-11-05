@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { MessageSquare, Send, Edit2, Trash2, Reply, Loader2 } from "lucide-react"
 import { ReactionPicker } from "./reaction-picker"
+import { useCurrentUser } from "@/hooks/use-current-user"
 
 interface Comment {
   id: string
@@ -34,22 +35,22 @@ interface Reaction {
 interface CommentSectionProps {
   commentableType: string // "TICKET" | "TASK" | "CANDIDATE" | "TIME_ENTRY" | etc.
   commentableId: string
-  currentUserType: string // "CLIENT" | "STAFF" | "MANAGEMENT"
-  currentUserId: string
-  currentUserName: string
-  currentUserAvatar?: string
   darkMode?: boolean
 }
 
 export function CommentSection({
   commentableType,
   commentableId,
-  currentUserType,
-  currentUserId,
-  currentUserName,
-  currentUserAvatar,
   darkMode = false,
 }: CommentSectionProps) {
+  // 🔥 AUTO-FETCH REAL USER DATA
+  const { user: currentUser, loading: userLoading } = useCurrentUser()
+  
+  // Extract user data (with fallbacks)
+  const currentUserType = currentUser?.type || "MANAGEMENT"
+  const currentUserId = currentUser?.id || ""
+  const currentUserName = currentUser?.name || "Unknown User"
+  const currentUserAvatar = currentUser?.avatar || null
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState("")

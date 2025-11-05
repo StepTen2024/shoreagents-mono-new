@@ -2323,9 +2323,6 @@ export default function AdminRecruitmentPage() {
                 <CommentSection
                   commentableType="CANDIDATE"
                   commentableId={selectedCandidate.id}
-                  currentUserType="MANAGEMENT"
-                  currentUserId="temp-management-id"
-                  currentUserName="Admin User"
                   darkMode={false}
                 />
               </div>

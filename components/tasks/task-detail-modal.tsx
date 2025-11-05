@@ -1082,10 +1082,6 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
           <CommentSection
             commentableType="TASK"
             commentableId={task.id}
-            currentUserType={task.clientUser ? "CLIENT" : task.staffUser ? "STAFF" : "MANAGEMENT"}
-            currentUserId={task.clientUser?.id || task.staffUser?.id || "temp-management-id"}
-            currentUserName={task.clientUser?.name || task.staffUser?.name || "User"}
-            currentUserAvatar={task.clientUser?.avatar || task.staffUser?.avatar}
             darkMode={isDarkTheme}
           />
         </div>

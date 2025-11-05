@@ -446,9 +446,6 @@ export default function CandidateProfilePage() {
             <CommentSection
               commentableType="CANDIDATE"
               commentableId={candidate.id}
-              currentUserType="CLIENT"
-              currentUserId="temp-client-id"
-              currentUserName="Client User"
               darkMode={false}
             />
           </div>

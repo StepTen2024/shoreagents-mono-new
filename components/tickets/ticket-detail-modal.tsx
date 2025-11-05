@@ -710,10 +710,6 @@ export default function TicketDetailModal({
           <CommentSection
             commentableType="TICKET"
             commentableId={ticket.id}
-            currentUserType={isManagement ? "MANAGEMENT" : ticket.staff_users ? "STAFF" : "CLIENT"}
-            currentUserId={isManagement ? "temp-management-id" : ticket.staff_users?.id || ticket.client_users?.id || ""}
-            currentUserName={isManagement ? "Management User" : ticket.staff_users?.name || ticket.client_users?.name || "User"}
-            currentUserAvatar={ticket.staff_users?.avatar || ticket.client_users?.avatar}
             darkMode={true}
           />
         </div>

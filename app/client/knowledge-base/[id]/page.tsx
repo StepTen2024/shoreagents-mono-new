@@ -333,9 +333,6 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
             <CommentSection
               commentableType="DOCUMENT"
               commentableId={document.id}
-              currentUserType="CLIENT"
-              currentUserId="temp-client-id"
-              currentUserName="Client User"
               darkMode={false}
             />
           </div>

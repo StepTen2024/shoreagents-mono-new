@@ -480,9 +480,6 @@ export default async function TimeEntryDetailPage({
         <CommentSection
           commentableType="TIME_ENTRY"
           commentableId={entry.id}
-          currentUserType="MANAGEMENT"
-          currentUserId="temp-management-id"
-          currentUserName="Admin User"
           darkMode={false}
         />
       </Card>
