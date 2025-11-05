@@ -2493,7 +2493,11 @@ export default function AdminRecruitmentPage() {
                           const endHour = (hours + 9) % 24
                           const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
                           return (
+<<<<<<< HEAD
                             <div key={day} className="flex flex-col items-center bg-slate-900/50 py-3 rounded-lg border border-slate-700 w-[120px]">
+=======
+                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[110px]">
+>>>>>>> dcfaec0541b33a2d443fb29dde9a8eee795107f5
                               <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
                               <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(time)}</div>
                               <div className="text-slate-500 text-[10px] my-0.5">to</div>
@@ -2513,7 +2517,11 @@ export default function AdminRecruitmentPage() {
                           const endHour = (hours + 9) % 24
                           const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
                           return (
+<<<<<<< HEAD
                             <div key={day} className="flex flex-col items-center bg-slate-900/50 py-3 rounded-lg border border-slate-700 w-[120px]">
+=======
+                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[110px]">
+>>>>>>> dcfaec0541b33a2d443fb29dde9a8eee795107f5
                               <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
                               <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(workStartTime)}</div>
                               <div className="text-slate-500 text-[10px] my-0.5">to</div>

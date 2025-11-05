@@ -63,8 +63,8 @@ export async function PATCH(
     
     // Create undo note with optional custom notes
     const undoNote = trimmedNotes 
-      ? `[${timestamp}] Reopening Reason: ${trimmedNotes}` 
-      : `[${timestamp}] Cancellation undone - Interview reopened by client`
+      ? `(Reopened) ${timestamp} - ${trimmedNotes}` 
+      : `(Reopened) ${timestamp} - Cancellation undone, interview request reopened by client`
     const updatedClientNotes = existingNotes 
       ? `${existingNotes}\n\n${undoNote}` 
       : undoNote

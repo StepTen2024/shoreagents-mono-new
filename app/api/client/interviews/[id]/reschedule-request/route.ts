@@ -61,13 +61,14 @@ export async function POST(
     const trimmedNotes = notes ? notes.trim() : ''
     const existingClientNotes = existing.clientNotes?.trim() || ''
     const rescheduleNote = trimmedNotes 
-      ? (existingClientNotes ? `\n\n[${timestamp}] Reschedule Request: ${trimmedNotes}` : `[${timestamp}] Reschedule Request: ${trimmedNotes}`)
-      : (existingClientNotes ? `\n\n[${timestamp}] Reschedule Request: New preferred times provided` : `[${timestamp}] Reschedule Request: New preferred times provided`)
+      ? (existingClientNotes ? `\n\n(Reschedule Request) ${timestamp} - ${trimmedNotes}` : `(Reschedule Request) ${timestamp} - ${trimmedNotes}`)
+      : (existingClientNotes ? `\n\n(Reschedule Request) ${timestamp} - New preferred times provided` : `(Reschedule Request) ${timestamp} - New preferred times provided`)
     const updatedClientNotes = existingClientNotes + rescheduleNote
 
     // Update interview with reschedule request in client notes and optionally update preferred times
     const updateData: any = {
       clientNotes: updatedClientNotes,
+      status: 'RESCHEDULE_REQUESTED',
       updatedAt: new Date()
     }
 

@@ -14,14 +14,50 @@ export async function PATCH(
     }
 
     const { id } = await params
+    let reason = ''
+    try {
+      const body = await request.json()
+      reason = body.reason || ''
+    } catch {
+      // No body or invalid JSON - that's okay, reason will be empty
+    }
 
     console.log(`🚫 Cancelling interview ${id}`)
 
-    // Update interview status to CANCELLED
+    // Fetch existing interview to get current notes
+    const existing = await prisma.interview_requests.findUnique({
+      where: { id }
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
+    }
+
+    // Add cancellation note to admin notes
+    const timestamp = new Date().toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'numeric', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    })
+    const existingAdminNotes = existing.adminNotes?.trim() || ''
+    const trimmedReason = reason ? reason.trim() : ''
+    const cancellationNote = trimmedReason 
+      ? `(Cancelled) ${timestamp} - ${trimmedReason}` 
+      : `(Cancelled) ${timestamp} - Interview cancelled by admin`
+    const updatedAdminNotes = existingAdminNotes 
+      ? `${existingAdminNotes}\n\n${cancellationNote}` 
+      : cancellationNote
+
+    // Update interview status to CANCELLED and add note
     const interview = await prisma.interview_requests.update({
       where: { id },
       data: {
         status: 'CANCELLED',
+        adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })

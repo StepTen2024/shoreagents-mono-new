@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         clientUserId: clientUser.id
       },
       orderBy: {
-        createdAt: 'desc'
+        updatedAt: 'desc'
       }
     })
 

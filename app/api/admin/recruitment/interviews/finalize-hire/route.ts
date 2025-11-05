@@ -131,13 +131,22 @@ export async function POST(request: NextRequest) {
     console.log('✅ [ADMIN] Job acceptance record ready:', jobAcceptance.id)
 
     // Update interview request status to HIRED
+    const timestamp = new Date().toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'numeric', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    })
     await prisma.interview_requests.update({
       where: { id: interviewRequestId },
       data: {
         status: 'HIRED',
         finalStartDate: new Date(finalStartDate),
         updatedAt: new Date(),
-        adminNotes: `Hire finalized. Job acceptance ID: ${jobAcceptance.id}. Staff account prepared for: ${staffEmail}`
+        adminNotes: `${interview.adminNotes || ''}\n\n(Hire Finalized) ${timestamp} - Job acceptance ID: ${jobAcceptance.id}. Staff account prepared for: ${staffEmail}`
       }
     })
 
