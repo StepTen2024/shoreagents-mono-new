@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase"
 import CloudConvert from "cloudconvert"
+import { randomUUID } from "crypto"
 
 // GET: Fetch all admin documents
 export async function GET(req: NextRequest) {
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest) {
     })
 
     // If not management user, try staff user (for staff who have admin access)
-    let staffUserId = null
-    let uploaderName = ""
+    let staffUserId: string
+    let uploaderName: string
     
     if (adminUser) {
       // For management users, we'll use a placeholder staff user or create association differently
@@ -77,7 +78,14 @@ export async function POST(req: NextRequest) {
       const anyStaffUser = await prisma.staff_users.findFirst({
         select: { id: true }
       })
-      staffUserId = anyStaffUser?.id || ""
+      
+      if (!anyStaffUser) {
+        return NextResponse.json({ 
+          error: "No staff users found in system. At least one staff user is required to upload documents." 
+        }, { status: 400 })
+      }
+      
+      staffUserId = anyStaffUser.id
       uploaderName = adminUser.name
     } else {
       // Try to get as staff user
@@ -289,8 +297,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Create document in database
-    const document = await prisma.document.create({
+    const now = new Date()
+    const document = await prisma.documents.create({
       data: {
+        id: randomUUID(),
         title,
         category,
         uploadedBy: uploaderName,
@@ -300,7 +310,9 @@ export async function POST(req: NextRequest) {
         staffUserId,
         source: 'ADMIN',
         sharedWithAll,
-        sharedWith
+        sharedWith,
+        createdAt: now,
+        updatedAt: now
       }
     })
 
