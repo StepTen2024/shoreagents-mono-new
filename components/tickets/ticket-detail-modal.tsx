@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
+import { CommentSection } from "@/components/engagement/comment-section"
 
 interface TicketDetailModalProps {
   ticket: Ticket
@@ -976,6 +977,20 @@ export default function TicketDetailModal({
             </div>
           </div>
         </div>
+        
+        {/* 🎯 NEW UNIFIED COMMENT SYSTEM */}
+        <div className="rounded-2xl bg-slate-800/30 backdrop-blur-xl p-6 ring-1 ring-indigo-500/20">
+          <CommentSection
+            commentableType="TICKET"
+            commentableId={ticket.id}
+            currentUserType={isManagement ? "MANAGEMENT" : ticket.staff_users ? "STAFF" : "CLIENT"}
+            currentUserId={isManagement ? "temp-management-id" : ticket.staff_users?.id || ticket.client_users?.id || ""}
+            currentUserName={isManagement ? "Management User" : ticket.staff_users?.name || ticket.client_users?.name || "User"}
+            currentUserAvatar={ticket.staff_users?.avatar || ticket.client_users?.avatar}
+            darkMode={true}
+          />
+        </div>
+        
         </div>
       </div>
       
