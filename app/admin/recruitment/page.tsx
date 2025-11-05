@@ -2487,19 +2487,17 @@ export default function AdminRecruitmentPage() {
                   </div>
                   {selectedInterview.workSchedule.hasCustomHours && selectedInterview.workSchedule.customHours ? (
                     <div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4">
+                      <div className="flex flex-wrap gap-3">
                         {Object.entries(selectedInterview.workSchedule.customHours).map(([day, time]) => {
                           const [hours, minutes] = time.split(':').map(Number)
                           const endHour = (hours + 9) % 24
                           const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
                           return (
-                            <div key={day} className="flex flex-col items-center justify-center bg-slate-900/50 px-3 py-3 rounded-lg border border-slate-700">
-                              <div className="text-slate-300 font-semibold mb-2 text-sm">{day}</div>
-                              <div className="flex flex-col items-center gap-0.5">
-                                <div className="text-slate-400 text-xs">{convertTo12Hour(time)}</div>
-                                <div className="text-slate-500 text-xs">-</div>
-                                <div className="text-slate-400 text-xs">{convertTo12Hour(endTime24)}</div>
-                              </div>
+                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[110px]">
+                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
+                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(time)}</div>
+                              <div className="text-slate-500 text-[10px] my-0.5">to</div>
+                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(endTime24)}</div>
                             </div>
                           )
                         })}
@@ -2508,20 +2506,18 @@ export default function AdminRecruitmentPage() {
                     </div>
                   ) : selectedInterview.workSchedule.workStartTime && selectedInterview.workSchedule.workDays ? (
                     <div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4">
+                      <div className="flex flex-wrap gap-3">
                         {selectedInterview.workSchedule.workDays.map((day: string) => {
                           const workStartTime = selectedInterview.workSchedule?.workStartTime || '09:00'
                           const [hours, minutes] = workStartTime.split(':').map(Number)
                           const endHour = (hours + 9) % 24
                           const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
                           return (
-                            <div key={day} className="flex flex-col items-center justify-center bg-slate-900/50 px-3 py-3 rounded-lg border border-slate-700">
-                              <div className="text-slate-300 font-semibold mb-2 text-sm">{day}</div>
-                              <div className="flex flex-col items-center gap-0.5">
-                                <div className="text-slate-400 text-xs">{convertTo12Hour(workStartTime)}</div>
-                                <div className="text-slate-500 text-xs">-</div>
-                                <div className="text-slate-400 text-xs">{convertTo12Hour(endTime24)}</div>
-                              </div>
+                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[110px]">
+                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
+                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(workStartTime)}</div>
+                              <div className="text-slate-500 text-[10px] my-0.5">to</div>
+                              <div className="text-slate-400 text-xs whitespace-nowrap">{convertTo12Hour(endTime24)}</div>
                             </div>
                           )
                         })}
