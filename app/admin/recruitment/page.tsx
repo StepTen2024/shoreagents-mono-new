@@ -1886,7 +1886,7 @@ export default function AdminRecruitmentPage() {
                                 {interview.workSchedule && (
                                   <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                                     <div className="flex items-center justify-between mb-2">
-                                      <p className="text-xs text-orange-400">Work Schedule</p>
+                                      <p className="text-xs text-orange-400">Client Preferred Schedule</p>
                                       {interview.workSchedule.isMonToFri && (
                                         <p className="text-xs text-orange-400/60">(Standard Mon-Fri)</p>
                                       )}
@@ -2583,13 +2583,13 @@ export default function AdminRecruitmentPage() {
                 </div>
               </div>
 
-              {/* Work Schedule */}
+              {/* Client Preferred Schedule */}
               {selectedInterview.workSchedule && (
                 <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
                       <Clock className="h-5 w-5 text-green-400" />
-                      Work Schedule
+                      Client Preferred Schedule
                     </h4>
                     <div className="flex items-center gap-2">
                       {(() => {
