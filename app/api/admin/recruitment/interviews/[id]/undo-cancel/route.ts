@@ -9,8 +9,9 @@ export async function PATCH(
   try {
     const session = await auth()
     
-    if (!session || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Allow both ADMIN and MANAGER roles (like other admin routes)
+    if (!session || (session.user.role?.toUpperCase() !== 'ADMIN' && session.user.role?.toUpperCase() !== 'MANAGER')) {
+      return NextResponse.json({ error: 'Unauthorized. Admin or Manager role required.' }, { status: 401 })
     }
 
     const { id } = await params

@@ -24,7 +24,9 @@ import {
   LogOut,
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Utensils,
+  Timer
 } from "lucide-react"
 
 type BreakType = "MORNING" | "LUNCH" | "AFTERNOON" | "AWAY"
@@ -153,10 +155,11 @@ export default function ClientTimeTrackingPage() {
 
   const getBreakIcon = (type: BreakType) => {
     switch (type) {
-      case "MORNING": return <Coffee className="h-4 w-4" />
-      case "LUNCH": return <Coffee className="h-4 w-4" />
-      case "AFTERNOON": return <Coffee className="h-4 w-4" />
-      case "AWAY": return <Pause className="h-4 w-4" />
+      case "MORNING": return <Coffee className="h-4 w-4 text-orange-600" />
+      case "LUNCH": return <Utensils className="h-4 w-4 text-green-600" />
+      case "AFTERNOON": return <Coffee className="h-4 w-4 text-amber-600" />
+      case "AWAY": return <Timer className="h-4 w-4 text-blue-600" />
+      default: return <Coffee className="h-4 w-4 text-gray-600" />
     }
   }
 
@@ -430,9 +433,9 @@ export default function ClientTimeTrackingPage() {
 
         {/* Detail Modal */}
         <Dialog open={!!selectedStaff} onOpenChange={() => setSelectedStaff(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white text-gray-900">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
+              <DialogTitle className="flex items-center gap-3 text-gray-900">
                 {selectedStaff && (
                   <>
                     <Avatar className="h-12 w-12">
@@ -442,7 +445,7 @@ export default function ClientTimeTrackingPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-xl font-bold">{selectedStaff.staff.name}</p>
+                      <p className="text-xl font-bold text-gray-900">{selectedStaff.staff.name}</p>
                       <p className="text-sm text-gray-600 font-normal">{selectedStaff.staff.role}</p>
                     </div>
                   </>
@@ -470,79 +473,162 @@ export default function ClientTimeTrackingPage() {
 
                 {/* Time Entries */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Time Entries</h3>
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900">Time Entries</h3>
                   <div className="space-y-4">
-                    {selectedStaff.timeEntries.map((entry) => (
-                      <Card key={entry.id} className="p-4 border-l-4 border-l-blue-500">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Play className="h-4 w-4 text-green-600" />
-                              <span className="font-semibold">Clock In: {formatTime(entry.clockIn)}</span>
-                              {entry.wasLate && (
-                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                                  Late {entry.lateBy}m
-                                </Badge>
-                              )}
+                    {selectedStaff.timeEntries.map((entry) => {
+                      // Calculate hours for active entries
+                      const displayHours = entry.clockOut 
+                        ? entry.totalHours 
+                        : calculateCurrentHours(entry.clockIn)
+                      
+                      return (
+                        <Card key={entry.id} className="p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between mb-6">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="p-2 bg-green-50 rounded-lg">
+                                  <Play className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Clock In</p>
+                                  <p className="text-lg font-semibold text-gray-900">{formatTime(entry.clockIn)}</p>
+                                </div>
+                                {entry.wasLate && (
+                                  <Badge className="bg-red-100 text-red-700 border-red-200">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    Late {entry.lateBy}m
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {entry.clockOut ? (
+                                  <>
+                                    <div className="p-2 bg-gray-50 rounded-lg">
+                                      <LogOut className="h-5 w-5 text-gray-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Clock Out</p>
+                                      <p className="text-lg font-semibold text-gray-900">{formatTime(entry.clockOut)}</p>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <Badge className="bg-green-500 text-white border-green-600 px-3 py-1.5">
+                                    <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                                    Currently Working
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {entry.clockOut ? (
-                                <>
-                                  <LogOut className="h-4 w-4 text-gray-600" />
-                                  <span className="font-semibold">Clock Out: {formatTime(entry.clockOut)}</span>
-                                </>
-                              ) : (
-                                <Badge className="bg-green-100 text-green-700 border-green-200">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Currently Active
-                                </Badge>
-                              )}
+                            <div className="text-right bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                              <p className="text-xs text-blue-600 uppercase tracking-wide font-medium mb-1">Total Hours</p>
+                              <p className="text-3xl font-bold text-blue-600">{displayHours}h</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">Total Hours</p>
-                            <p className="text-2xl font-bold text-blue-600">{entry.totalHours}h</p>
-                          </div>
-                        </div>
 
                         {/* Breaks */}
                         {entry.breaks.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-sm font-semibold text-gray-700 mb-3">Breaks</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {entry.breaks.map((brk) => (
-                                <div key={brk.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    {getBreakIcon(brk.type)}
-                                    <span className="text-sm font-semibold">{brk.type}</span>
-                                  </div>
-                                  <div className="text-xs space-y-1">
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">Start:</span>
-                                      <span className="font-medium">{formatTime(brk.actualStart)}</span>
+                          <div className="mt-6 pt-6 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-orange-50 rounded-lg">
+                                <Coffee className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <h4 className="font-semibold text-gray-900">Breaks</h4>
+                              <Badge variant="secondary" className="ml-auto">{entry.breaks.length} total</Badge>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {entry.breaks.map((brk) => {
+                                const isActive = brk.actualStart && !brk.actualEnd
+                                const startTime = brk.actualStart ? new Date(brk.actualStart) : null
+                                const endTime = brk.actualEnd ? new Date(brk.actualEnd) : null
+                                
+                                // Calculate duration properly
+                                let displayDuration = null
+                                if (brk.actualStart && brk.actualEnd) {
+                                  const diffMs = new Date(brk.actualEnd).getTime() - new Date(brk.actualStart).getTime()
+                                  displayDuration = Math.floor(diffMs / (1000 * 60))
+                                } else if (isActive && startTime) {
+                                  const now = new Date()
+                                  const diffInMs = now.getTime() - startTime.getTime()
+                                  displayDuration = Math.floor(diffInMs / (1000 * 60))
+                                }
+                                
+                                return (
+                                  <div 
+                                    key={brk.id} 
+                                    className={`p-4 rounded-lg border transition-all ${
+                                      isActive 
+                                        ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' 
+                                        : 'bg-white border-gray-200 hover:border-gray-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`p-1.5 rounded ${isActive ? 'bg-yellow-100' : 'bg-gray-100'}`}>
+                                          {getBreakIcon(brk.type)}
+                                        </div>
+                                        <span className="font-semibold text-gray-900">
+                                          {brk.type.charAt(0) + brk.type.slice(1).toLowerCase()}
+                                        </span>
+                                      </div>
+                                      {isActive && (
+                                        <Badge className="bg-yellow-500 text-white border-yellow-600 animate-pulse">
+                                          <Pause className="h-3 w-3 mr-1" />
+                                          Active
+                                        </Badge>
+                                      )}
                                     </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">End:</span>
-                                      <span className="font-medium">{formatTime(brk.actualEnd)}</span>
+                                    
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500 font-medium">Start</span>
+                                        <span className="font-semibold text-gray-900">
+                                          {startTime ? formatTime(startTime) : "—"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-500 font-medium">End</span>
+                                        <span className="font-semibold">
+                                          {isActive ? (
+                                            <span className="text-yellow-600">In Progress</span>
+                                          ) : endTime ? (
+                                            <span className="text-gray-900">{formatTime(endTime)}</span>
+                                          ) : (
+                                            <span className="text-gray-400">—</span>
+                                          )}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+                                        <span className="text-gray-500 font-medium">Duration</span>
+                                        <span className={`font-bold text-base ${isActive ? 'text-yellow-600' : 'text-blue-600'}`}>
+                                          {displayDuration !== null && displayDuration >= 0 ? (
+                                            <>
+                                              {formatDuration(displayDuration)}
+                                              {isActive && <span className="text-xs ml-1 font-normal">(ongoing)</span>}
+                                            </>
+                                          ) : (
+                                            <span className="text-gray-400">—</span>
+                                          )}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">Duration:</span>
-                                      <span className="font-medium">{formatDuration(brk.duration)}</span>
-                                    </div>
+                                    
                                     {brk.isLate && (
-                                      <Badge className="bg-red-100 text-red-700 border-red-200 text-xs w-full justify-center mt-1">
-                                        Late {brk.lateBy}m
-                                      </Badge>
+                                      <div className="mt-3 pt-3 border-t border-red-200">
+                                        <Badge className="bg-red-100 text-red-700 border-red-200 w-full justify-center">
+                                          <AlertCircle className="h-3 w-3 mr-1" />
+                                          Late by {brk.lateBy}m
+                                        </Badge>
+                                      </div>
                                     )}
                                   </div>
-                                </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           </div>
                         )}
                       </Card>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </div>
