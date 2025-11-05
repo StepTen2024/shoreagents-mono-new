@@ -419,7 +419,7 @@ export async function POST(
 
     // Create empty welcome form record
     try {
-      const welcomeForm = await prisma.staff_welcome_forms.create({
+      const welcomeForm = await prisma.staff_interests.create({
         data: {
           staffUserId: staffUser.id,
           name: fullName,

@@ -623,7 +623,7 @@ model staff_users {
   post_comments                   post_comments[]
   post_reactions                  post_reactions[]
   reviews                         reviews[]
-  staff_welcome_forms             staff_welcome_forms?
+  staff_interests                 staff_interests?
   staff_offboarding               staff_offboarding?
   staff_onboarding                staff_onboarding?
   staff_personal_records          staff_personal_records?
@@ -636,7 +636,7 @@ model staff_users {
   time_entries                    time_entries[]
 }
 
-model staff_welcome_forms {
+model staff_interests {
   id               String      @id
   staffUserId      String      @unique
   name             String
@@ -661,8 +661,6 @@ model staff_welcome_forms {
   petName          String?
   submittedAt      DateTime    @default(now())
   staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-
-  @@map("staff_interests")
 }
 
 model subtasks {
@@ -823,6 +821,63 @@ model work_schedules {
 
   @@index([profileId])
   @@index([companyId])
+}
+
+model comments {
+  id              String     @id
+  commentableType String
+  commentableId   String
+  content         String
+  attachments     String[]   @default([])
+  authorType      String
+  authorId        String
+  parentId        String?
+  createdAt       DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime   @default(now()) @db.Timestamp(6)
+  editedAt        DateTime?  @db.Timestamp(6)
+  isEdited        Boolean    @default(false)
+  isDeleted       Boolean    @default(false)
+  deletedAt       DateTime?  @db.Timestamp(6)
+  comments        comments?  @relation("commentsTocomments", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "comments_parentid_fkey")
+  other_comments  comments[] @relation("commentsTocomments")
+
+  @@index([authorType, authorId])
+  @@index([commentableType, commentableId])
+  @@index([createdAt])
+  @@index([parentId])
+}
+
+model reactions {
+  id            String   @id
+  reactableType String
+  reactableId   String
+  emoji         String
+  authorType    String
+  authorId      String
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([reactableType, reactableId, authorType, authorId, emoji], map: "reactions_reactabletype_reactableid_authortype_authorid_emo_key")
+  @@index([authorType, authorId])
+  @@index([reactableType, reactableId])
+}
+
+model shares {
+  id            String   @id
+  shareableType String
+  shareableId   String
+  message       String?
+  authorType    String
+  authorId      String
+  sharedTo      String
+  targetUserId  String?
+  targetType    String?
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([authorType, authorId])
+  @@index([createdAt])
+  @@index([shareableType, shareableId])
+  @@index([sharedTo])
+  @@index([targetUserId])
 }
 
 enum AwayReason {
