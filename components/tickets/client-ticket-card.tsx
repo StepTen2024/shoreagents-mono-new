@@ -54,10 +54,10 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
   return (
     <div
       onClick={onClick}
-      className="group relative rounded-2xl bg-slate-900/50 backdrop-blur-xl shadow-xl border border-white/10 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 cursor-pointer overflow-visible hover:scale-[1.02] transform"
+      className="group relative rounded-xl bg-white shadow-md border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-100 transition-all duration-300 cursor-pointer overflow-hidden hover:scale-[1.02] transform"
     >
       {/* Status indicator bar - PROMINENT TOP BORDER! */}
-      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg`} />
+      <div className={`h-1 w-full ${statusColors[ticket.status]}`} />
 
       <div className="p-5">
         {/* Header */}
@@ -75,7 +75,7 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
                 {priorityEmojis[ticket.priority]} {ticket.priority}
               </span>
             </div>
-            <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-600 group-hover:to-purple-600 transition-all">
+            <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-blue-700 transition-colors">
               {ticket.title}
             </h3>
           </div>
@@ -180,7 +180,7 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
       </div>
 
       {/* Hover effect overlay - Subtle shimmer for white background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-purple-500/5 to-pink-500/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/0 via-blue-50/30 to-purple-50/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
     </div>
   )
 }

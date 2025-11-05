@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getStaffUser } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
+import crypto from "crypto"
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,15 +27,18 @@ export async function POST(request: NextRequest) {
     }
     
     // Create scheduled break records
+    const now = new Date()
     const createdBreaks = await Promise.all(
       breaks.map((b: any) => 
         prisma.breaks.create({
           data: {
+            id: crypto.randomUUID(),
             staffUserId: staffUser.id,
             timeEntryId,
             type: b.type,
             scheduledStart: b.scheduledStart,
-            scheduledEnd: b.scheduledEnd
+            scheduledEnd: b.scheduledEnd,
+            updatedAt: now
           }
         })
       )

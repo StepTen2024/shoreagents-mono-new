@@ -103,21 +103,40 @@ export default function TimeTracking() {
 
   // WebSocket automatically handles data fetching, no need for manual API calls
   
-  // Check for late clock-in and show modal
+  // Track which time entries have already shown their modals (persists across sessions)
+  const hasShownModal = (entryId: string, type: 'late' | 'early'): boolean => {
+    if (typeof window === 'undefined') return false
+    const key = `modal_shown_${type}_${entryId}`
+    return localStorage.getItem(key) === 'true'
+  }
+  
+  const markModalShown = (entryId: string, type: 'late' | 'early') => {
+    if (typeof window === 'undefined') return
+    const key = `modal_shown_${type}_${entryId}`
+    localStorage.setItem(key, 'true')
+  }
+  
+  // Check for late clock-in and show modal (only once per time entry)
   useEffect(() => {
-    if (isClockedIn && activeEntry?.wasLate && activeEntry?.lateBy) {
-      setLateMinutes(activeEntry.lateBy)
-      setShowLateModal(true)
+    if (isClockedIn && activeEntry?.wasLate && activeEntry?.lateBy && activeEntry?.id) {
+      if (!hasShownModal(activeEntry.id, 'late')) {
+        setLateMinutes(activeEntry.lateBy)
+        setShowLateModal(true)
+        markModalShown(activeEntry.id, 'late')
+      }
     }
-  }, [isClockedIn, activeEntry?.wasLate || false, activeEntry?.lateBy || 0])
+  }, [isClockedIn, activeEntry?.id, activeEntry?.wasLate, activeEntry?.lateBy])
 
-  // Check for early clock-in and show modal
+  // Check for early clock-in and show modal (only once per time entry)
   useEffect(() => {
-    if (isClockedIn && activeEntry?.wasEarly && activeEntry?.earlyBy) {
-      setEarlyMinutes(activeEntry.earlyBy)
-      setShowEarlyModal(true)
+    if (isClockedIn && activeEntry?.wasEarly && activeEntry?.earlyBy && activeEntry?.id) {
+      if (!hasShownModal(activeEntry.id, 'early')) {
+        setEarlyMinutes(activeEntry.earlyBy)
+        setShowEarlyModal(true)
+        markModalShown(activeEntry.id, 'early')
+      }
     }
-  }, [isClockedIn, activeEntry?.wasEarly || false, activeEntry?.earlyBy || 0])
+  }, [isClockedIn, activeEntry?.id, activeEntry?.wasEarly, activeEntry?.earlyBy])
   
   // Auto clock-out effect - runs when clocked in
   useEffect(() => {
@@ -273,8 +292,16 @@ export default function TimeTracking() {
       if (period === 'PM' && hour !== 12) hour += 12
       if (period === 'AM' && hour === 12) hour = 0
       
+      const now = new Date()
       const date = new Date()
       date.setHours(hour, parseInt(minutes), 0, 0)
+      
+      // If shift end time is earlier than now, it means it ends tomorrow
+      // (e.g., shift is 3 PM - 12 AM, and it's currently 4 PM)
+      if (date.getTime() < now.getTime()) {
+        date.setDate(date.getDate() + 1)
+      }
+      
       return date
     }
     

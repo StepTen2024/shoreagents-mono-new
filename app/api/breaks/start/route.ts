@@ -3,6 +3,7 @@ import { getStaffUser } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import { BreakType, AwayReason } from "@prisma/client"
 import { logBreakStarted } from "@/lib/activity-generator"
+import crypto from "crypto"
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,11 +51,13 @@ export async function POST(request: NextRequest) {
     if (type && !breakId) {
       breakRecord = await prisma.breaks.create({
         data: {
+          id: crypto.randomUUID(),
           staffUserId: staffUser.id,
           timeEntryId: activeTimeEntry.id,
           type: type as BreakType,
           actualStart: now,
-          awayReason: type === "AWAY" ? (awayReason as AwayReason) : null
+          awayReason: type === "AWAY" ? (awayReason as AwayReason) : null,
+          updatedAt: now
         }
       })
       

@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from "next/server"
+/**
+ * Get all management users for assignment
+ * GET /api/admin/management-users
+ */
+
+import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await auth()
     
@@ -10,7 +15,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/management (allow both ADMIN and MANAGER)
+    // Check if user is admin/manager (allow both ADMIN and MANAGER)
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id }
     })
@@ -19,26 +24,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
     }
 
-    // Get all companies
-    const companies = await prisma.company.findMany({
+    // Get all management users
+    const users = await prisma.management_users.findMany({
       select: {
         id: true,
-        companyName: true,
-        industry: true,
-        location: true,
-        accountManagerId: true,
+        name: true,
+        email: true,
+        department: true,
+        role: true,
+        avatar: true
       },
       orderBy: {
-        companyName: "asc"
+        name: 'asc'
       }
     })
 
-    return NextResponse.json({ companies })
+    return NextResponse.json({ users })
 
   } catch (error) {
-    console.error("Admin companies list error:", error)
+    console.error('Error fetching management users:', error)
     return NextResponse.json(
-      { error: "Failed to fetch companies" },
+      { error: "Failed to fetch management users" },
       { status: 500 }
     )
   }

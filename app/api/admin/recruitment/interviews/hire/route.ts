@@ -23,8 +23,9 @@ export async function POST(request: NextRequest) {
       where: { authUserId: session.user.id }
     })
 
-    if (!managementUser || managementUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Access denied. Admin role required.' }, { status: 403 })
+    // Allow both ADMIN and MANAGER roles
+    if (!managementUser || (managementUser.role !== 'ADMIN' && managementUser.role !== 'MANAGER')) {
+      return NextResponse.json({ error: 'Access denied. Admin or Manager role required.' }, { status: 403 })
     }
 
     const body = await request.json()
