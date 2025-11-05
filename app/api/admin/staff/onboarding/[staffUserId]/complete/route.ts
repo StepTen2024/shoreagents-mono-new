@@ -157,26 +157,68 @@ export async function POST(
         // Continue even if this fails - don't block the whole process
       }
 
-      // UPDATE staff_profiles with additional onboarding data (gender, DOB, civil status, phone)
+      // UPDATE staff_profiles with onboarding data + employment details from admin form
       try {
         // Build update data object only with non-null values
         const profileUpdateData: any = {
           updatedAt: new Date()
         }
         
+        // Personal info from onboarding
         if (onboarding.contactNo) profileUpdateData.phone = onboarding.contactNo
         if (onboarding.gender) profileUpdateData.gender = onboarding.gender
         if (onboarding.civilStatus) profileUpdateData.civilStatus = onboarding.civilStatus
         if (onboarding.dateOfBirth) profileUpdateData.dateOfBirth = onboarding.dateOfBirth
         
+        // Employment details from admin completion form (body data)
+        if (employmentStatus) profileUpdateData.employmentStatus = employmentStatus
+        if (startDate) {
+          profileUpdateData.startDate = new Date(startDate)
+          // Recalculate days employed
+          const daysEmployed = Math.floor((new Date().getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+          profileUpdateData.daysEmployed = daysEmployed >= 0 ? daysEmployed : 0
+        }
+        if (currentRole) profileUpdateData.currentRole = currentRole
+        if (salary && salary > 0) profileUpdateData.salary = salary
+        if (hmo !== undefined) profileUpdateData.hmo = hmo
+        
         await prisma.staff_profiles.update({
           where: { staffUserId: staffUser.id },
           data: profileUpdateData
         })
-        console.log("✅ STAFF PROFILE UPDATED with personal details:", profileUpdateData)
+        console.log("✅ STAFF PROFILE UPDATED with personal & employment details:", profileUpdateData)
       } catch (error) {
         console.error("❌ STAFF PROFILE UPDATE FAILED:", error)
         // Continue even if this fails
+      }
+
+      // UPDATE work schedule if shiftTime is provided
+      if (shiftTime && staffUser.staff_profiles) {
+        try {
+          const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
+          const startTime = shiftParts[0] || "9:00 AM"
+          const endTime = shiftParts[1] || "6:00 PM"
+
+          // Delete existing schedules and create new ones
+          await prisma.work_schedules.deleteMany({
+            where: { profileId: staffUser.staff_profiles.id }
+          })
+
+          const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+          const schedules = days.map((day: string) => ({
+            profileId: staffUser.staff_profiles!.id,
+            dayOfWeek: day,
+            startTime: ["Saturday", "Sunday"].includes(day) ? "" : startTime,
+            endTime: ["Saturday", "Sunday"].includes(day) ? "" : endTime,
+            isWorkday: !["Saturday", "Sunday"].includes(day)
+          }))
+
+          await prisma.work_schedules.createMany({ data: schedules })
+          console.log("✅ WORK SCHEDULE UPDATED")
+        } catch (error) {
+          console.error("❌ WORK SCHEDULE UPDATE FAILED:", error)
+          // Continue even if this fails
+        }
       }
       
       // Mark onboarding as complete
