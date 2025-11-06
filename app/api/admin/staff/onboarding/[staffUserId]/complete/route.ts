@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logStaffOnboarded } from "@/lib/activity-generator"
-import crypto from "crypto"
 
 export async function POST(
   req: NextRequest,
@@ -15,13 +14,13 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/management (allow both ADMIN and MANAGER)
+    // Check if user is admin/management
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id }
     })
 
-    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
-      return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
+    if (!managementUser || managementUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { staffUserId } = await context.params
@@ -404,13 +403,11 @@ export async function POST(
     ]
 
     const schedules = days.map((day: string) => ({
-      id: crypto.randomUUID(),
       profileId: profile.id,
       dayOfWeek: day,
       startTime: ["Saturday", "Sunday"].includes(day) ? "" : startTime,
       endTime: ["Saturday", "Sunday"].includes(day) ? "" : endTime,
-      isWorkday: !["Saturday", "Sunday"].includes(day),
-      updatedAt: new Date()
+      isWorkday: !["Saturday", "Sunday"].includes(day)
     }))
 
     await prisma.work_schedules.createMany({ data: schedules })
