@@ -628,6 +628,7 @@ model staff_users {
   staff_onboarding                staff_onboarding?
   staff_personal_records          staff_personal_records?
   staff_profiles                  staff_profiles?
+  staff_gamified_daily            staff_gamified_daily[]
   company                         company?                @relation(fields: [companyId], references: [id])
   task_assignments                task_assignments[]
   tasks                           tasks[]
@@ -1195,4 +1196,53 @@ model shares {
   @@index([sharedTo])
   @@index([targetUserId])
   @@index([createdAt])
+}
+
+// ============================================
+// 🎮 GAMIFICATION SYSTEM
+// ============================================
+model staff_gamified_daily {
+  id              String   @id @default(uuid())
+  staffUserId     String
+  date            DateTime
+  
+  // 🎯 DAILY SCORE (0-100)
+  totalScore      Int      // Main score
+  
+  // 📊 SCORE BREAKDOWN
+  attendanceScore Int      // Clock in/out timing (0-25)
+  breakScore      Int      // Break discipline (0-15)
+  activityScore   Int      // Mouse/keyboard activity (0-30)
+  focusScore      Int      // Low idle time (0-30)
+  
+  // 🏆 ACHIEVEMENTS
+  achievements    String[] @default([])
+  
+  // 📈 METRICS SNAPSHOT (for reference)
+  clockedInAt     DateTime?
+  clockedOutAt    DateTime?
+  wasLate         Boolean  @default(false)
+  lateBy          Int?
+  wasEarly        Boolean  @default(false)
+  earlyBy         Int?
+  
+  totalBreaks     Int      @default(0)
+  activeTime      Int      @default(0) // minutes
+  idleTime        Int      @default(0) // minutes
+  keystrokes      Int      @default(0)
+  mouseClicks     Int      @default(0)
+  
+  // 🎮 GAMIFICATION
+  energyLevel     String   // "HIGH", "MEDIUM", "LOW"
+  streak          Int      @default(1) // Consecutive perfect days
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  staff_users     staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([staffUserId, date])
+  @@index([date])
+  @@index([totalScore])
+  @@index([staffUserId, date])
 }

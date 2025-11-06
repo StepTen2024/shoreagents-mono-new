@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
       orderBy: { date: "desc" },
     })
 
-    // Get today's metrics
+    // Get today's metrics (SUM all records for today in case of multiple entries)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    const todayMetric = await prisma.performance_metrics.findFirst({
+    const allTodayMetrics = await prisma.performance_metrics.findMany({
       where: {
         staffUserId: staffUser.id,
         date: {
@@ -55,6 +55,29 @@ export async function GET(request: NextRequest) {
         },
       },
     })
+
+    // SUM all metrics from multiple records (in case Electron creates multiple entries per day)
+    const todayMetric = allTodayMetrics.length > 0 ? {
+      id: allTodayMetrics[0].id,
+      staffUserId: allTodayMetrics[0].staffUserId,
+      date: allTodayMetrics[0].date,
+      mouseMovements: allTodayMetrics.reduce((sum, m) => sum + m.mouseMovements, 0),
+      mouseClicks: allTodayMetrics.reduce((sum, m) => sum + m.mouseClicks, 0),
+      keystrokes: allTodayMetrics.reduce((sum, m) => sum + m.keystrokes, 0),
+      activeTime: allTodayMetrics.reduce((sum, m) => sum + m.activeTime, 0),
+      idleTime: allTodayMetrics.reduce((sum, m) => sum + m.idleTime, 0),
+      screenTime: allTodayMetrics.reduce((sum, m) => sum + m.screenTime, 0),
+      downloads: allTodayMetrics.reduce((sum, m) => sum + m.downloads, 0),
+      uploads: allTodayMetrics.reduce((sum, m) => sum + m.uploads, 0),
+      bandwidth: allTodayMetrics.reduce((sum, m) => sum + m.bandwidth, 0),
+      clipboardActions: allTodayMetrics.reduce((sum, m) => sum + m.clipboardActions, 0),
+      filesAccessed: allTodayMetrics.reduce((sum, m) => sum + m.filesAccessed, 0),
+      urlsVisited: allTodayMetrics.reduce((sum, m) => sum + m.urlsVisited, 0),
+      tabsSwitched: allTodayMetrics.reduce((sum, m) => sum + m.tabsSwitched, 0),
+      productivityScore: Math.round(allTodayMetrics.reduce((sum, m) => sum + m.productivityScore, 0) / allTodayMetrics.length),
+      createdAt: allTodayMetrics[0].createdAt,
+      updatedAt: allTodayMetrics[allTodayMetrics.length - 1].updatedAt, // Most recent update
+    } : null
 
     // Calculate total screenshot count (sum of all clipboardActions)
     const allMetrics = await prisma.performance_metrics.findMany({
@@ -67,16 +90,16 @@ export async function GET(request: NextRequest) {
     })
     const totalScreenshotCount = allMetrics.reduce((sum, m) => sum + m.clipboardActions, 0)
 
-    // Format metrics for frontend (convert minutes to seconds for consistent display)
+    // Format metrics for frontend (values already in seconds - no conversion needed)
     const formattedMetrics = metrics.map((m) => ({
       id: m.id,
       date: m.date.toISOString(),
       mouseMovements: m.mouseMovements,
       mouseClicks: m.mouseClicks,
       keystrokes: m.keystrokes,
-      activeTime: m.activeTime * 60, // Convert minutes to seconds
-      idleTime: m.idleTime * 60, // Convert minutes to seconds
-      screenTime: m.screenTime * 60, // Convert minutes to seconds
+      activeTime: m.activeTime, // Already in seconds
+      idleTime: m.idleTime, // Already in seconds
+      screenTime: m.screenTime, // Already in seconds
       downloads: m.downloads,
       uploads: m.uploads,
       bandwidth: m.bandwidth,
@@ -97,9 +120,9 @@ export async function GET(request: NextRequest) {
           mouseMovements: todayMetric.mouseMovements,
           mouseClicks: todayMetric.mouseClicks,
           keystrokes: todayMetric.keystrokes,
-          activeTime: todayMetric.activeTime * 60, // Convert minutes to seconds
-          idleTime: todayMetric.idleTime * 60, // Convert minutes to seconds
-          screenTime: todayMetric.screenTime * 60, // Convert minutes to seconds
+          activeTime: todayMetric.activeTime, // Already in seconds
+          idleTime: todayMetric.idleTime, // Already in seconds
+          screenTime: todayMetric.screenTime, // Already in seconds
           downloads: todayMetric.downloads,
           uploads: todayMetric.uploads,
           bandwidth: todayMetric.bandwidth,
@@ -185,27 +208,35 @@ export async function POST(request: NextRequest) {
     let metric
 
     if (existingMetric) {
-      // Update existing metric
+      // Update existing metric: Use MAX value (Electron sends cumulative totals)
+      // If Electron restarts, new values will be lower, so keep the higher existing values
       metric = await prisma.performance_metrics.update({
         where: { id: existingMetric.id },
         data: {
-          mouseMovements: mouseMovements ?? existingMetric.mouseMovements,
-          mouseClicks: mouseClicks ?? existingMetric.mouseClicks,
-          keystrokes: keystrokes ?? existingMetric.keystrokes,
-          activeTime: activeTime ?? existingMetric.activeTime,
-          idleTime: idleTime ?? existingMetric.idleTime,
-          screenTime: screenTime ?? existingMetric.screenTime,
-          downloads: downloads ?? existingMetric.downloads,
-          uploads: uploads ?? existingMetric.uploads,
-          bandwidth: bandwidth ?? existingMetric.bandwidth,
+          // Use MAXIMUM value (handles both: new activity increasing count, and Electron restarts)
+          mouseMovements: Math.max(existingMetric.mouseMovements || 0, mouseMovements || 0),
+          mouseClicks: Math.max(existingMetric.mouseClicks || 0, mouseClicks || 0),
+          keystrokes: Math.max(existingMetric.keystrokes || 0, keystrokes || 0),
+          activeTime: Math.max(existingMetric.activeTime || 0, activeTime || 0),
+          idleTime: Math.max(existingMetric.idleTime || 0, idleTime || 0),
+          screenTime: Math.max(existingMetric.screenTime || 0, screenTime || 0),
+          downloads: Math.max(existingMetric.downloads || 0, downloads || 0),
+          uploads: Math.max(existingMetric.uploads || 0, uploads || 0),
+          bandwidth: Math.max(existingMetric.bandwidth || 0, bandwidth || 0),
           // NEVER overwrite clipboardActions from sync - it's managed by screenshot service
           clipboardActions: existingMetric.clipboardActions,
-          filesAccessed: filesAccessed ?? existingMetric.filesAccessed,
-          urlsVisited: urlsVisited ?? existingMetric.urlsVisited,
-          tabsSwitched: tabsSwitched ?? existingMetric.tabsSwitched,
+          filesAccessed: Math.max(existingMetric.filesAccessed || 0, filesAccessed || 0),
+          urlsVisited: Math.max(existingMetric.urlsVisited || 0, urlsVisited || 0),
+          tabsSwitched: Math.max(existingMetric.tabsSwitched || 0, tabsSwitched || 0),
+          // Use latest productivity score
           productivityScore: productivityScore ?? existingMetric.productivityScore,
-          ...(applicationsUsed !== undefined && { applicationsused: applicationsUsed }),
-          ...(visitedUrls !== undefined && { visitedurls: visitedUrls }),
+          // Merge arrays for applications and URLs (deduplicate)
+          ...(applicationsUsed !== undefined && { 
+            applicationsused: [...new Set([...(existingMetric.applicationsused || []), ...applicationsUsed])]
+          }),
+          ...(visitedUrls !== undefined && { 
+            visitedurls: [...new Set([...(existingMetric.visitedurls || []), ...visitedUrls])]
+          }),
         } as any,
       })
     } else {

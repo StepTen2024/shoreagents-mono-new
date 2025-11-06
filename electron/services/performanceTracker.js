@@ -65,10 +65,78 @@ class PerformanceTracker {
   }
 
   /**
+   * Load previous metrics from database (to handle Electron restarts)
+   * This ensures activeTime/idleTime continue from where they left off
+   */
+  async loadPreviousMetrics() {
+    try {
+      const syncService = require('./syncService')
+      const sessionCookie = await syncService.getSessionCookie()
+      
+      if (!sessionCookie) {
+        this.log('⚠️  No session cookie - starting with fresh metrics')
+        return
+      }
+
+      const response = await fetch(`${config.API_BASE_URL}${config.API_PERFORMANCE_ENDPOINT}`, {
+        headers: {
+          'Cookie': `${sessionCookie.name}=${sessionCookie.value}`
+        }
+      })
+
+      if (!response.ok) {
+        this.log(`⚠️  Failed to load previous metrics: ${response.status}`)
+        return
+      }
+
+      const data = await response.json()
+      const todayMetrics = data.today
+
+      if (todayMetrics) {
+        // Load previous cumulative values (convert from API format)
+        // API sends seconds, so we keep as-is
+        this.metrics.mouseMovements = todayMetrics.mouseMovements || 0
+        this.metrics.mouseClicks = todayMetrics.mouseClicks || 0
+        this.metrics.keystrokes = todayMetrics.keystrokes || 0
+        this.metrics.activeTime = todayMetrics.activeTime || 0 // Already in seconds from API
+        this.metrics.idleTime = todayMetrics.idleTime || 0 // Already in seconds from API
+        this.metrics.screenTime = todayMetrics.screenTime || 0 // Already in seconds from API
+        this.metrics.downloads = todayMetrics.downloads || 0
+        this.metrics.uploads = todayMetrics.uploads || 0
+        this.metrics.bandwidth = todayMetrics.bandwidth || 0
+        this.metrics.filesAccessed = todayMetrics.filesAccessed || 0
+        this.metrics.urlsVisited = todayMetrics.urlsVisited || 0
+        this.metrics.tabsSwitched = todayMetrics.tabsSwitched || 0
+        
+        // 🔥 LOAD PREVIOUS URLS AND APPS (to handle Electron restarts)
+        if (todayMetrics.visitedUrls && Array.isArray(todayMetrics.visitedUrls)) {
+          this.visitedUrls = new Set(todayMetrics.visitedUrls)
+          this.log(`   Loaded ${this.visitedUrls.size} previous URLs`)
+        }
+        
+        if (todayMetrics.applicationsUsed && Array.isArray(todayMetrics.applicationsUsed)) {
+          this.activeApps = new Set(todayMetrics.applicationsUsed)
+          this.metrics.applicationsUsed = todayMetrics.applicationsUsed
+          this.log(`   Loaded ${this.activeApps.size} previous apps`)
+        }
+        
+        this.log(`✅ Loaded previous metrics - Active Time: ${Math.floor(this.metrics.activeTime / 60)} minutes`)
+        this.log(`   Continuing from: ${this.metrics.keystrokes} keystrokes, ${this.metrics.mouseClicks} clicks`)
+        this.log(`   ${this.visitedUrls.size} URLs, ${this.activeApps.size} apps`)
+      } else {
+        this.log('✅ No previous metrics for today - starting fresh')
+      }
+    } catch (error) {
+      this.log(`⚠️  Error loading previous metrics: ${error.message}`)
+      // Continue with fresh metrics if load fails
+    }
+  }
+
+  /**
    * Start tracking user activity
    * Note: Keyboard and mouse input tracking is handled by Activity Tracker (uiohook-napi)
    */
-  start() {
+  async start() {
     if (this.isTracking) {
       this.log('Tracker already running')
       return
@@ -79,6 +147,9 @@ class PerformanceTracker {
       this.log('🚫 Performance tracking disabled - non-staff portal detected')
       return
     }
+
+    // 🔥 LOAD PREVIOUS METRICS FROM DATABASE (to handle Electron restarts)
+    await this.loadPreviousMetrics()
 
     this.isTracking = true
     this.sessionStartTime = Date.now()
@@ -447,7 +518,8 @@ class PerformanceTracker {
   }
 
   /**
-   * Get metrics for API (formatted - converts seconds to minutes)
+   * Get metrics for API (RAW VALUES - no conversion)
+   * All values sent as cumulative totals (like keystrokes)
    */
   getMetricsForAPI() {
     const metrics = this.metrics
@@ -456,10 +528,10 @@ class PerformanceTracker {
       mouseMovements: metrics.mouseMovements,
       mouseClicks: metrics.mouseClicks,
       keystrokes: metrics.keystrokes,
-      // Convert seconds to minutes for API/database storage
-      activeTime: Math.round(metrics.activeTime / 60),
-      idleTime: Math.round(metrics.idleTime / 60),
-      screenTime: Math.round(metrics.screenTime / 60),
+      // Send RAW SECONDS (no conversion) - API will use Math.max() like keystrokes
+      activeTime: Math.round(metrics.activeTime),
+      idleTime: Math.round(metrics.idleTime),
+      screenTime: Math.round(metrics.screenTime),
       downloads: metrics.downloads,
       uploads: metrics.uploads,
       bandwidth: metrics.bandwidth,

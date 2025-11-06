@@ -94,15 +94,23 @@ export default function ClientTimeTrackingPage() {
     fetchTimeEntries()
   }, [selectedDate])
 
-  // Update active staff hours every minute
+  // 🔥 AUTO-REFRESH: Fetch new data every 30 seconds to show new clock-ins/clock-outs
   useEffect(() => {
     const interval = setInterval(() => {
-      // Force re-render to update calculated hours for active staff
-      setStaffData(prevData => [...prevData])
-    }, 60000) // Update every minute
+      // Silently fetch updated data (don't show loading spinner)
+      fetch(`/api/client/time-tracking?startDate=${selectedDate}&endDate=${selectedDate}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setStaffData(data.staffTimeEntries)
+            setSummary(data.summary)
+          }
+        })
+        .catch(err => console.error('Auto-refresh failed:', err))
+    }, 30000) // Refresh every 30 seconds
 
     return () => clearInterval(interval)
-  }, [])
+  }, [selectedDate])
 
   async function fetchTimeEntries() {
     try {
