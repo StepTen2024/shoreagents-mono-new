@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       
       // 2.6. Update interview request status to HIRED
       if (jobAcceptance.interviewRequestId) {
-        const interview = await prisma.interview_requests.update({
+        await prisma.interview_requests.update({
           where: { id: jobAcceptance.interviewRequestId },
           data: {
             status: 'HIRED',
@@ -150,59 +150,10 @@ export async function POST(req: NextRequest) {
           }
         })
         console.log('✅ [SIGNUP] Interview request status updated to HIRED:', jobAcceptance.interviewRequestId)
-        
-        // 2.7. Create staff_profiles with position and start date
-        const startDate = interview.finalStartDate || new Date()
-        
-        // Fetch address and phone from BPOC
-        let location = null
-        let phone = null
-        if (jobAcceptance.interviewRequestId) {
-          try {
-            const { getCandidateById } = await import('@/lib/bpoc-db')
-            const candidate = await getCandidateById(interview.bpocCandidateId)
-            if (candidate) {
-              // Build location string
-              const locationParts = [
-                candidate.location_city,
-                candidate.location_province,
-                candidate.location_country
-              ].filter(Boolean)
-              location = locationParts.join(', ') || null
-              phone = candidate.phone
-              console.log('✅ [SIGNUP] BPOC location fetched:', location)
-            }
-          } catch (error) {
-            console.error('❌ [SIGNUP] Error fetching BPOC location:', error)
-          }
-        }
-        
-        // Get salary from job acceptance
-        const salary = jobAcceptance.salary ? parseFloat(jobAcceptance.salary) : 50000.00
-        
-        await prisma.staff_profiles.create({
-          data: {
-            id: crypto.randomUUID(),
-            staffUserId: staffUser.id,
-            currentRole: position || 'Staff Member',
-            startDate: startDate,
-            salary: salary,
-            phone: phone,
-            location: location,
-            employmentStatus: 'PROBATION',
-            daysEmployed: 0,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
-        })
-        console.log('✅ [SIGNUP] Staff profile created:', {
-          position,
-          salary,
-          location,
-          phone
-        })
       }
     }
+    
+    // NOTE: staff_profiles will be created during onboarding completion by admin
 
     // NOTE: Onboarding and contracts are separate features - will be created later in the flow
 

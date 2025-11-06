@@ -29,7 +29,13 @@ export async function GET(
       where: { id: staffUserId },
       include: {
         staff_onboarding: true,
-        staff_profiles: true
+        staff_profiles: true,
+        employment_contracts: true,
+        job_acceptances: {
+          include: {
+            company: true
+          }
+        }
       }
     })
 
@@ -42,19 +48,19 @@ export async function GET(
     if (staffUser.staff_onboarding) {
       const sections = [
         staffUser.staff_onboarding.personalInfoStatus,
+        staffUser.staff_onboarding.resumeStatus,
         staffUser.staff_onboarding.govIdStatus,
         staffUser.staff_onboarding.documentsStatus,
-        staffUser.staff_onboarding.signatureStatus,
-        staffUser.staff_onboarding.emergencyContactStatus,
-        staffUser.staff_onboarding.resumeStatus,
         staffUser.staff_onboarding.educationStatus,
         staffUser.staff_onboarding.medicalStatus,
-        staffUser.staff_onboarding.dataPrivacyStatus
+        staffUser.staff_onboarding.dataPrivacyStatus,
+        staffUser.staff_onboarding.signatureStatus,
+        staffUser.staff_onboarding.emergencyContactStatus
       ]
 
-      // Admin progress: Only count APPROVED/REJECTED sections (11.11% each for 9 sections)
+      // Admin progress: Only count APPROVED sections (11.11% each for 9 sections)
       sections.forEach(status => {
-        if (status === "APPROVED" || status === "REJECTED") {
+        if (status === "APPROVED") {
           adminProgress += 11.11
         }
       })
@@ -62,6 +68,10 @@ export async function GET(
       // Round to nearest whole number
       adminProgress = Math.round(adminProgress)
     }
+
+    // Get contract data for auto-fill
+    const contract = staffUser.employment_contracts
+    const jobAcceptance = staffUser.job_acceptances
 
     // Transform to match frontend expectations (camelCase)
     return NextResponse.json({ 
@@ -81,7 +91,17 @@ export async function GET(
         daysEmployed: staffUser.staff_profiles.startDate 
           ? Math.floor((new Date().getTime() - new Date(staffUser.staff_profiles.startDate).getTime()) / (1000 * 60 * 60 * 24))
           : 0
-      } : null
+      } : null,
+      // Auto-fill data from contract and job acceptance
+      autoFillData: {
+        companyId: contract?.companyId || jobAcceptance?.companyId || staffUser.companyId || "",
+        position: contract?.position || jobAcceptance?.position || "",
+        startDate: contract?.startDate ? new Date(contract.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        workSchedule: contract?.workSchedule || "",
+        salary: contract?.basicSalary ? parseFloat(contract.basicSalary.toString()) : 0,
+        hmo: contract?.hmoOffer ? contract.hmoOffer !== "None" && contract.hmoOffer !== "No HMO" : true,
+        employmentStatus: contract?.probationaryPeriod ? "PROBATION" : "PROBATION" // Default to PROBATION
+      }
     })
 
   } catch (error) {

@@ -127,6 +127,8 @@ export default function OnboardingForm() {
   const [viewFileModal, setViewFileModal] = useState<{ url: string; title: string } | null>(null)
   const [imageLoading, setImageLoading] = useState(true)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [savingField, setSavingField] = useState<string | null>(null)
+  const [focusedField, setFocusedField] = useState<string | null>(null)
   
   const [formData, setFormData] = useState<Partial<OnboardingData>>({})
   
@@ -261,7 +263,9 @@ export default function OnboardingForm() {
             ? new Date(data.onboarding.dateOfBirth).toISOString().split('T')[0]
             : ""
         }
-        setFormData(onboardingData)
+        // When preserving the current step (e.g., after file uploads), 
+        // merge the new data with existing form data to preserve unsaved text inputs
+        setFormData(prev => preserveCurrentStep ? { ...prev, ...onboardingData } : onboardingData)
         
         // Only auto-navigate to incomplete steps on initial load (not after uploads/saves)
         if (!preserveCurrentStep) {
@@ -373,6 +377,39 @@ export default function OnboardingForm() {
       setError(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Save individual government ID field
+  const handleGovIdSave = async (field: 'sss' | 'tin' | 'philhealth' | 'pagibig') => {
+    setSavingField(field)
+    setError("")
+    try {
+      const response = await fetch('/api/onboarding/gov-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sss: formData.sss,
+          tin: formData.tin,
+          philhealthNo: formData.philhealthNo,
+          pagibigNo: formData.pagibigNo,
+          sssDocUrl: formData.sssDocUrl,
+          tinDocUrl: formData.tinDocUrl,
+          philhealthDocUrl: formData.philhealthDocUrl,
+          pagibigDocUrl: formData.pagibigDocUrl
+        })
+      })
+      const data = await response.json()
+      if (data.success) {
+        await fetchOnboardingData(true) // Preserve current step
+      } else {
+        setError(data.error || 'Failed to save')
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      setError('Failed to save')
+    } finally {
+      setSavingField(null)
     }
   }
 
@@ -716,32 +753,15 @@ export default function OnboardingForm() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="loader"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
-      <div className="max-w-6xl mx-auto w-full space-y-6 animate-in fade-in duration-700">
-        {/* Header */}
-        <div className="text-center mb-8 mt-12">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Welcome to ShoreAgents! <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
-          </h1>
-          <p className="text-slate-300 mb-4">
-            Complete your onboarding to get started
-          </p>
-          <Button
-            onClick={() => router.push("/onboarding/status")}
-            variant="outline"
-            className="border-blue-600 text-blue-300 hover:bg-blue-900/20 hover:border-blue-500"
-          >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            View Onboarding Status
-          </Button>
-        </div>
+    <div className="min-h-screen p-4 pt-20 md:p-8 lg:pt-8">
+      <div className="max-w-6xl mx-auto w-full space-y-6">
 
         {/* Progress */}
         <Card className="mb-6 bg-slate-900/50 backdrop-blur-xl ring-1 ring-white/10 border-0">
@@ -1272,14 +1292,32 @@ export default function OnboardingForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="sss" className="text-slate-300 text-sm">SSS Number (XX-XXXXXXX-X)</Label>
-                    <Input
-                      id="sss"
-                      value={formData.sss || ""}
-                      onChange={(e) => setFormData({ ...formData, sss: e.target.value })}
-                      placeholder="02-3731640-2"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      disabled={formData.govIdStatus === "APPROVED"}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="sss"
+                        value={formData.sss || ""}
+                        onChange={(e) => setFormData({ ...formData, sss: e.target.value })}
+                        onFocus={() => setFocusedField('sss')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        placeholder="02-3731640-2"
+                        className="bg-slate-700 border-slate-600 text-white"
+                        disabled={formData.govIdStatus === "APPROVED"}
+                      />
+                      {focusedField === 'sss' && (
+                        <Button
+                          onClick={() => handleGovIdSave('sss')}
+                          disabled={formData.govIdStatus === "APPROVED" || savingField === 'sss'}
+                          className="bg-green-600 hover:bg-green-700"
+                          size="icon"
+                        >
+                          {savingField === 'sss' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-slate-300 text-sm">SSS Document</Label>
@@ -1341,14 +1379,32 @@ export default function OnboardingForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="tin" className="text-slate-300 text-sm">TIN ID (XXX-XXX-XXX-XXX)</Label>
-                    <Input
-                      id="tin"
-                      value={formData.tin || ""}
-                      onChange={(e) => setFormData({ ...formData, tin: e.target.value })}
-                      placeholder="474-887-785-000"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      disabled={formData.govIdStatus === "APPROVED"}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="tin"
+                        value={formData.tin || ""}
+                        onChange={(e) => setFormData({ ...formData, tin: e.target.value })}
+                        onFocus={() => setFocusedField('tin')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        placeholder="474-887-785-000"
+                        className="bg-slate-700 border-slate-600 text-white"
+                        disabled={formData.govIdStatus === "APPROVED"}
+                      />
+                      {focusedField === 'tin' && (
+                        <Button
+                          onClick={() => handleGovIdSave('tin')}
+                          disabled={formData.govIdStatus === "APPROVED" || savingField === 'tin'}
+                          className="bg-green-600 hover:bg-green-700"
+                          size="icon"
+                        >
+                          {savingField === 'tin' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-slate-300 text-sm">BIR Form 1902 (TIN)</Label>
@@ -1410,14 +1466,32 @@ export default function OnboardingForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="philhealth" className="text-slate-300 text-sm">PhilHealth Number (XX-XXXXXXXXX-X)</Label>
-                    <Input
-                      id="philhealth"
-                      value={formData.philhealthNo || ""}
-                      onChange={(e) => setFormData({ ...formData, philhealthNo: e.target.value })}
-                      placeholder="07-025676881-8"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      disabled={formData.govIdStatus === "APPROVED"}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="philhealth"
+                        value={formData.philhealthNo || ""}
+                        onChange={(e) => setFormData({ ...formData, philhealthNo: e.target.value })}
+                        onFocus={() => setFocusedField('philhealth')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        placeholder="07-025676881-8"
+                        className="bg-slate-700 border-slate-600 text-white"
+                        disabled={formData.govIdStatus === "APPROVED"}
+                      />
+                      {focusedField === 'philhealth' && (
+                        <Button
+                          onClick={() => handleGovIdSave('philhealth')}
+                          disabled={formData.govIdStatus === "APPROVED" || savingField === 'philhealth'}
+                          className="bg-green-600 hover:bg-green-700"
+                          size="icon"
+                        >
+                          {savingField === 'philhealth' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-slate-300 text-sm">PhilHealth Document</Label>
@@ -1479,14 +1553,32 @@ export default function OnboardingForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="pagibig" className="text-slate-300 text-sm">Pag-IBIG Number (XXXX-XXXX-XXXX)</Label>
-                    <Input
-                      id="pagibig"
-                      value={formData.pagibigNo || ""}
-                      onChange={(e) => setFormData({ ...formData, pagibigNo: e.target.value })}
-                      placeholder="1211-5400-1513"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      disabled={formData.govIdStatus === "APPROVED"}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="pagibig"
+                        value={formData.pagibigNo || ""}
+                        onChange={(e) => setFormData({ ...formData, pagibigNo: e.target.value })}
+                        onFocus={() => setFocusedField('pagibig')}
+                        onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                        placeholder="1211-5400-1513"
+                        className="bg-slate-700 border-slate-600 text-white"
+                        disabled={formData.govIdStatus === "APPROVED"}
+                      />
+                      {focusedField === 'pagibig' && (
+                        <Button
+                          onClick={() => handleGovIdSave('pagibig')}
+                          disabled={formData.govIdStatus === "APPROVED" || savingField === 'pagibig'}
+                          className="bg-green-600 hover:bg-green-700"
+                          size="icon"
+                        >
+                          {savingField === 'pagibig' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-slate-300 text-sm">Pag-IBIG Document</Label>
@@ -1958,6 +2050,7 @@ export default function OnboardingForm() {
                     onClick={async () => {
                       // Save government ID numbers before moving to next step
                       setSaving(true)
+                      setError("")
                       try {
                         const response = await fetch('/api/onboarding/gov-ids', {
                           method: 'POST',
@@ -1990,7 +2083,7 @@ export default function OnboardingForm() {
                         setSaving(false)
                       }
                     }}
-                    className="flex-1 bg-linear-to-r from-purple-600 to-indigo-600"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600"
                     disabled={saving}
                   >
                     {saving ? 'Saving...' : 'Save & Next'}
@@ -2893,7 +2986,7 @@ export default function OnboardingForm() {
 
       {/* Completion Modal */}
       <Dialog open={showCompletionModal} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md bg-linear-to-br from-green-900/90 to-emerald-900/90 border-green-500/50" showCloseButton={false}>
+        <DialogContent className="max-w-md bg-slate-900 border-green-500/50" showCloseButton={false}>
           <div className="text-center py-6 px-2">
             <div className="mb-6 flex flex-col items-center">
               <div className="w-24 h-24 flex items-center justify-center mb-4">

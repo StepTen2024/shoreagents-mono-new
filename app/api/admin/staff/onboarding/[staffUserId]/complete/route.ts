@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logStaffOnboarded } from "@/lib/activity-generator"
+import crypto from "crypto"
 
 export async function POST(
   req: NextRequest,
@@ -14,13 +15,13 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/management
+    // Check if user is admin/management (allow both ADMIN and MANAGER)
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id }
     })
 
-    if (!managementUser || managementUser.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
+      return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
     }
 
     const { staffUserId } = await context.params
@@ -61,18 +62,18 @@ export async function POST(
       return NextResponse.json({ error: "Onboarding not found" }, { status: 404 })
     }
 
-    // Check if all 9 sections are approved (GUNTING 9-step system)
+    // Check if all 9 sections are approved
     const onboarding = staffUser.staff_onboarding
     const sections = [
       { name: "Personal Info", status: onboarding.personalInfoStatus },
+      { name: "Resume", status: onboarding.resumeStatus },
       { name: "Government ID", status: onboarding.govIdStatus },
       { name: "Documents", status: onboarding.documentsStatus },
-      { name: "Signature", status: onboarding.signatureStatus },
-      { name: "Emergency Contact", status: onboarding.emergencyContactStatus },
-      { name: "Resume", status: onboarding.resumeStatus },
       { name: "Education", status: onboarding.educationStatus },
       { name: "Medical", status: onboarding.medicalStatus },
-      { name: "Data Privacy", status: onboarding.dataPrivacyStatus }
+      { name: "Data Privacy", status: onboarding.dataPrivacyStatus },
+      { name: "Signature", status: onboarding.signatureStatus },
+      { name: "Emergency Contact", status: onboarding.emergencyContactStatus }
     ]
     
     const unapprovedSections = sections.filter(s => s.status !== "APPROVED")
@@ -192,29 +193,83 @@ export async function POST(
         // Continue even if this fails
       }
 
-      // UPDATE work schedule if shiftTime is provided
-      if (shiftTime && staffUser.staff_profiles) {
+      // UPDATE work schedule from job_acceptances data or shiftTime
+      if (staffUser.staff_profiles) {
         try {
-          const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
-          const startTime = shiftParts[0] || "9:00 AM"
-          const endTime = shiftParts[1] || "6:00 PM"
+          // First, try to get work schedule from job_acceptances
+          const jobAcceptance = await prisma.job_acceptances.findFirst({
+            where: { staffUserId: staffUser.id }
+          })
+
+          let workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+          let hasCustomHours = false
+          let customHours: any = null
+          let startTime = "9:00 AM"
+          let endTime = "6:00 PM"
+
+          if (jobAcceptance) {
+            workDays = jobAcceptance.workDays
+            hasCustomHours = jobAcceptance.hasCustomHours
+            customHours = jobAcceptance.customHours
+
+            if (!hasCustomHours && jobAcceptance.workStartTime && jobAcceptance.workEndTime) {
+              // Use uniform start/end times from job_acceptances
+              startTime = jobAcceptance.workStartTime
+              endTime = jobAcceptance.workEndTime
+            }
+          }
+
+          // Fallback to shiftTime if provided and no job_acceptances data
+          if (!jobAcceptance && shiftTime) {
+            const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
+            startTime = shiftParts[0] || "9:00 AM"
+            endTime = shiftParts[1] || "6:00 PM"
+          }
 
           // Delete existing schedules and create new ones
           await prisma.work_schedules.deleteMany({
             where: { profileId: staffUser.staff_profiles.id }
           })
 
-          const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-          const schedules = days.map((day: string) => ({
-            profileId: staffUser.staff_profiles!.id,
-            dayOfWeek: day,
-            startTime: ["Saturday", "Sunday"].includes(day) ? "" : startTime,
-            endTime: ["Saturday", "Sunday"].includes(day) ? "" : endTime,
-            isWorkday: !["Saturday", "Sunday"].includes(day)
-          }))
+          const allDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+          
+          const schedules = allDays.map((day: string) => {
+            const isWorkday = workDays.includes(day)
+            let dayStartTime = ""
+            let dayEndTime = ""
+
+            if (isWorkday) {
+              if (hasCustomHours && customHours && customHours[day]) {
+                // Use custom hours for this specific day
+                dayStartTime = customHours[day]
+                // Calculate end time (start + 9 hours)
+                const [hours, minutes] = dayStartTime.split(':').map(Number)
+                const endHour = (hours + 9) % 24
+                dayEndTime = `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+              } else {
+                // Use uniform start/end times
+                dayStartTime = startTime
+                dayEndTime = endTime
+              }
+            }
+
+            return {
+              id: crypto.randomUUID(),
+              profileId: staffUser.staff_profiles!.id,
+              dayOfWeek: day,
+              startTime: dayStartTime,
+              endTime: dayEndTime,
+              isWorkday,
+              updatedAt: new Date()
+            }
+          })
 
           await prisma.work_schedules.createMany({ data: schedules })
-          console.log("✅ WORK SCHEDULE UPDATED")
+          console.log("✅ WORK SCHEDULE UPDATED", { 
+            hasCustomHours, 
+            workDays: workDays.length,
+            source: jobAcceptance ? 'job_acceptances' : 'shiftTime'
+          })
         } catch (error) {
           console.error("❌ WORK SCHEDULE UPDATE FAILED:", error)
           // Continue even if this fails
@@ -306,6 +361,7 @@ export async function POST(
     // Create StaffProfile with data from onboarding + management input
     const profile = await prisma.staff_profiles.create({
       data: {
+        id: crypto.randomUUID(),
         staffUserId: staffUser.id,
         phone: onboarding.contactNo || "",
         location: "Philippines", // Default location
@@ -322,6 +378,7 @@ export async function POST(
         vacationUsed: 0,
         sickUsed: 0,
         hmo: hmo !== undefined ? hmo : true,
+        updatedAt: new Date()
       }
     })
     console.log("✅ PROFILE CREATED:", { 
@@ -386,13 +443,36 @@ export async function POST(
       throw error
     }
 
-    // Create work schedule based on shift time
-    // Parse shift time (e.g., "9:00 AM - 6:00 PM")
-    const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
-    const startTime = shiftParts[0] || "9:00 AM"
-    const endTime = shiftParts[1] || "6:00 PM"
+    // Create work schedule from job_acceptances data or shift time
+    // First, try to get work schedule from job_acceptances
+    const jobAcceptance = await prisma.job_acceptances.findFirst({
+      where: { staffUserId: staffUser.id }
+    })
 
-    const days = [
+    let workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    let hasCustomHours = false
+    let customHours: any = null
+    let startTime = "9:00 AM"
+    let endTime = "6:00 PM"
+
+    if (jobAcceptance) {
+      workDays = jobAcceptance.workDays
+      hasCustomHours = jobAcceptance.hasCustomHours
+      customHours = jobAcceptance.customHours
+
+      if (!hasCustomHours && jobAcceptance.workStartTime && jobAcceptance.workEndTime) {
+        // Use uniform start/end times from job_acceptances
+        startTime = jobAcceptance.workStartTime
+        endTime = jobAcceptance.workEndTime
+      }
+    } else if (shiftTime) {
+      // Fallback to shiftTime if provided and no job_acceptances data
+      const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
+      startTime = shiftParts[0] || "9:00 AM"
+      endTime = shiftParts[1] || "6:00 PM"
+    }
+
+    const allDays = [
       "Monday",
       "Tuesday",
       "Wednesday",
@@ -402,31 +482,58 @@ export async function POST(
       "Sunday"
     ]
 
-    const schedules = days.map((day: string) => ({
-      profileId: profile.id,
-      dayOfWeek: day,
-      startTime: ["Saturday", "Sunday"].includes(day) ? "" : startTime,
-      endTime: ["Saturday", "Sunday"].includes(day) ? "" : endTime,
-      isWorkday: !["Saturday", "Sunday"].includes(day)
-    }))
+    const schedules = allDays.map((day: string) => {
+      const isWorkday = workDays.includes(day)
+      let dayStartTime = ""
+      let dayEndTime = ""
+
+      if (isWorkday) {
+        if (hasCustomHours && customHours && customHours[day]) {
+          // Use custom hours for this specific day
+          dayStartTime = customHours[day]
+          // Calculate end time (start + 9 hours)
+          const [hours, minutes] = dayStartTime.split(':').map(Number)
+          const endHour = (hours + 9) % 24
+          dayEndTime = `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        } else {
+          // Use uniform start/end times
+          dayStartTime = startTime
+          dayEndTime = endTime
+        }
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        profileId: profile.id,
+        dayOfWeek: day,
+        startTime: dayStartTime,
+        endTime: dayEndTime,
+        isWorkday,
+        updatedAt: new Date()
+      }
+    })
 
     await prisma.work_schedules.createMany({ data: schedules })
     console.log("✅ WORK SCHEDULE CREATED:", { 
       profileId: profile.id, 
       schedulesCount: schedules.length,
-      workdays: schedules.filter((s: { isWorkday: boolean }) => s.isWorkday).length
+      workdays: schedules.filter((s: { isWorkday: boolean }) => s.isWorkday).length,
+      hasCustomHours,
+      source: jobAcceptance ? 'job_acceptances' : 'shiftTime'
     })
 
     // Create empty welcome form record
     try {
       const welcomeForm = await prisma.staff_interests.create({
         data: {
+          id: crypto.randomUUID(),
           staffUserId: staffUser.id,
           name: fullName,
           client: company.companyName,
           startDate: new Date(startDate).toLocaleDateString(),
           favoriteFastFood: "", // Empty - to be filled by staff
-          completed: false
+          completed: false,
+          updatedAt: new Date()
         }
       })
       console.log("✅ WELCOME FORM RECORD CREATED:", { 

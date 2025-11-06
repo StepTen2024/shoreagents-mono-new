@@ -209,6 +209,33 @@ export default function AdminOnboardingDetailPage() {
       setStaff(data.staff)
       setOnboarding(data.onboarding)
       setProfile(data.profile)
+      
+      // Auto-fill employment details from contract/job acceptance if available
+      if (data.autoFillData) {
+        console.log("🎯 AUTO-FILL DATA:", data.autoFillData)
+        
+        if (data.autoFillData.companyId) {
+          setSelectedCompanyId(data.autoFillData.companyId)
+        }
+        if (data.autoFillData.position) {
+          setCurrentRole(data.autoFillData.position)
+        }
+        if (data.autoFillData.startDate) {
+          setStartDate(data.autoFillData.startDate)
+        }
+        if (data.autoFillData.workSchedule) {
+          setShiftTime(data.autoFillData.workSchedule)
+        }
+        if (data.autoFillData.salary && data.autoFillData.salary > 0) {
+          setSalary(data.autoFillData.salary.toString())
+        }
+        if (data.autoFillData.hmo !== undefined) {
+          setHmo(data.autoFillData.hmo)
+        }
+        if (data.autoFillData.employmentStatus) {
+          setEmploymentStatus(data.autoFillData.employmentStatus)
+        }
+      }
     } catch (err) {
       setError("Failed to load onboarding details")
     } finally {
@@ -710,6 +737,16 @@ export default function AdminOnboardingDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Auto-fill indicator */}
+              {(selectedCompanyId || currentRole || (salary && parseFloat(salary) > 0)) && (
+                <Alert className="mb-4 bg-blue-900/30 border-blue-700">
+                  <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                  <AlertDescription className="text-blue-200">
+                    <strong>Auto-filled from Employment Contract:</strong> Employment details have been pre-populated from the signed contract. You can review and modify them as needed before completing.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="space-y-4">
                 
                 {/* Employment Contract Section */}

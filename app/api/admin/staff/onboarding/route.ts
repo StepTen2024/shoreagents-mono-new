@@ -82,13 +82,44 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Transform to match frontend expectations (camelCase)
-    const transformedStaff = staffList.map(staff => ({
-      id: staff.id,
-      name: staff.name,
-      email: staff.email,
-      onboarding: staff.staff_onboarding // Transform snake_case to camelCase
-    }))
+    // Transform and calculate admin-specific progress
+    const transformedStaff = staffList.map(staff => {
+      let adminProgress = 0
+      
+      if (staff.staff_onboarding) {
+        const sections = [
+          staff.staff_onboarding.personalInfoStatus,
+          staff.staff_onboarding.resumeStatus,
+          staff.staff_onboarding.govIdStatus,
+          staff.staff_onboarding.documentsStatus,
+          staff.staff_onboarding.educationStatus,
+          staff.staff_onboarding.medicalStatus,
+          staff.staff_onboarding.dataPrivacyStatus,
+          staff.staff_onboarding.signatureStatus,
+          staff.staff_onboarding.emergencyContactStatus
+        ]
+
+        // Admin progress: Only count APPROVED sections (11.11% each for 9 sections)
+        sections.forEach(status => {
+          if (status === "APPROVED") {
+            adminProgress += 11.11
+          }
+        })
+        
+        // Round to nearest whole number
+        adminProgress = Math.round(adminProgress)
+      }
+
+      return {
+        id: staff.id,
+        name: staff.name,
+        email: staff.email,
+        onboarding: staff.staff_onboarding ? {
+          ...staff.staff_onboarding,
+          completionPercent: adminProgress // Override with admin-specific progress
+        } : null
+      }
+    })
 
     return NextResponse.json({ staff: transformedStaff })
 

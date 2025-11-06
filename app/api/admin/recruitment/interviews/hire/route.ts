@@ -138,29 +138,48 @@ export async function POST(request: NextRequest) {
 
     // Parse work schedule from client's hire request
     let workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    let workStartTime = "09:00"
-    let workEndTime = "18:00"
+    let workStartTime: string | null = "09:00"
+    let workEndTime: string | null = "18:00"
     let scheduleTimezone = clientTimezone || "UTC"
     let isDefaultSchedule = true
+    let hasCustomHours = false
+    let customHours: Record<string, string> | null = null
 
     if (workSchedule) {
       workDays = workSchedule.workDays || workDays
-      workStartTime = workSchedule.workStartTime || workStartTime
       isDefaultSchedule = workSchedule.isMonToFri !== false
       scheduleTimezone = workSchedule.clientTimezone || scheduleTimezone
+      hasCustomHours = workSchedule.hasCustomHours || false
       
-      // Calculate end time (start + 9 hours)
-      const [startHour, startMinute] = workStartTime.split(':').map(Number)
-      const endHour = (startHour + 9) % 24
-      workEndTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
-      
-      console.log(`📅 [ADMIN] Work schedule from client:`, {
-        workDays,
-        workStartTime,
-        workEndTime,
-        scheduleTimezone,
-        isDefaultSchedule
-      })
+      if (hasCustomHours && workSchedule.customHours) {
+        // Use custom hours for different start times per day
+        customHours = workSchedule.customHours
+        workStartTime = null
+        workEndTime = null
+        
+        console.log(`📅 [ADMIN] Work schedule with custom hours:`, {
+          workDays,
+          customHours,
+          scheduleTimezone,
+          isDefaultSchedule
+        })
+      } else {
+        // Use single start/end time for all days
+        workStartTime = workSchedule.workStartTime || workStartTime
+        
+        // Calculate end time (start + 9 hours)
+        const [startHour, startMinute] = workStartTime.split(':').map(Number)
+        const endHour = (startHour + 9) % 24
+        workEndTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
+        
+        console.log(`📅 [ADMIN] Work schedule with uniform hours:`, {
+          workDays,
+          workStartTime,
+          workEndTime,
+          scheduleTimezone,
+          isDefaultSchedule
+        })
+      }
     }
 
     // Create job acceptance record (pending candidate acceptance)
@@ -177,6 +196,8 @@ export async function POST(request: NextRequest) {
         workDays,
         workStartTime,
         workEndTime,
+        hasCustomHours,
+        customHours,
         clientTimezone: scheduleTimezone,
         isDefaultSchedule,
         updatedAt: new Date()
