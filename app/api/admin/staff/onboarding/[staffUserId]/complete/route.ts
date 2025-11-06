@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logStaffOnboarded } from "@/lib/activity-generator"
+import { convertTime } from "@/lib/timezone-converter"
+import { randomUUID } from "crypto"
 
 export async function POST(
   req: NextRequest,
@@ -195,9 +197,38 @@ export async function POST(
       // UPDATE work schedule if shiftTime is provided
       if (shiftTime && staffUser.staff_profiles) {
         try {
+          // Get job_acceptances to fetch client timezone
+          const jobAcceptance = await prisma.job_acceptances.findFirst({
+            where: { 
+              candidateEmail: staffUser.email,
+              staffUserId: staffUser.id
+            },
+            orderBy: { createdAt: 'desc' }
+          })
+
+          const clientTimezone = jobAcceptance?.clientTimezone || "Australia/Brisbane" // Fallback to Brisbane if not found
+          const staffTimezone = "Asia/Manila" // Staff always work in Manila time
+
           const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
           const startTime = shiftParts[0] || "9:00 AM"
           const endTime = shiftParts[1] || "6:00 PM"
+
+          console.log("🌍 TIMEZONE CONVERSION:", {
+            clientTimezone,
+            staffTimezone,
+            originalStartTime: startTime,
+            originalEndTime: endTime
+          })
+
+          // Convert times from client timezone to Manila timezone
+          const convertedStartTime = convertTime(startTime, clientTimezone, staffTimezone)
+          const convertedEndTime = convertTime(endTime, clientTimezone, staffTimezone)
+
+          console.log("✅ CONVERTED TIMES:", {
+            convertedStartTime,
+            convertedEndTime,
+            offsetInfo: `${clientTimezone} → ${staffTimezone}`
+          })
 
           // Delete existing schedules and create new ones
           await prisma.work_schedules.deleteMany({
@@ -206,15 +237,27 @@ export async function POST(
 
           const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
           const schedules = days.map((day: string) => ({
+            id: randomUUID(), // ✅ ADD REQUIRED ID FIELD
             profileId: staffUser.staff_profiles!.id,
             dayOfWeek: day,
-            startTime: ["Saturday", "Sunday"].includes(day) ? "" : startTime,
-            endTime: ["Saturday", "Sunday"].includes(day) ? "" : endTime,
-            isWorkday: !["Saturday", "Sunday"].includes(day)
+            startTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedStartTime, // ✅ USE CONVERTED TIME
+            endTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedEndTime, // ✅ USE CONVERTED TIME
+            timezone: staffTimezone, // Store Manila timezone
+            clientTimezone: clientTimezone, // ✅ STORE ORIGINAL CLIENT TIMEZONE
+            isWorkday: !["Saturday", "Sunday"].includes(day),
+            createdAt: new Date(),
+            updatedAt: new Date()
           }))
 
           await prisma.work_schedules.createMany({ data: schedules })
-          console.log("✅ WORK SCHEDULE UPDATED")
+          console.log("✅ WORK SCHEDULE UPDATED WITH TIMEZONE CONVERSION:", { 
+            profileId: staffUser.staff_profiles.id,
+            schedulesCount: schedules.length,
+            clientTimezone,
+            staffTimezone,
+            originalTimes: `${startTime} - ${endTime}`,
+            convertedTimes: `${convertedStartTime} - ${convertedEndTime}`
+          })
         } catch (error) {
           console.error("❌ WORK SCHEDULE UPDATE FAILED:", error)
           // Continue even if this fails
@@ -386,11 +429,41 @@ export async function POST(
       throw error
     }
 
-    // Create work schedule based on shift time
+    // Create work schedule based on shift time with timezone conversion
+    // Get job_acceptances to fetch client timezone
+    const jobAcceptance = await prisma.job_acceptances.findFirst({
+      where: { 
+        candidateEmail: staffUser.email,
+        staffUserId: staffUser.id
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    const clientTimezone = jobAcceptance?.clientTimezone || "Australia/Brisbane" // Fallback to Brisbane if not found
+    const staffTimezone = "Asia/Manila" // Staff always work in Manila time
+
     // Parse shift time (e.g., "9:00 AM - 6:00 PM")
     const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
     const startTime = shiftParts[0] || "9:00 AM"
     const endTime = shiftParts[1] || "6:00 PM"
+
+    console.log("🌍 TIMEZONE CONVERSION FOR NEW PROFILE:", {
+      staffUserId: staffUser.id,
+      clientTimezone,
+      staffTimezone,
+      originalStartTime: startTime,
+      originalEndTime: endTime
+    })
+
+    // Convert times from client timezone to Manila timezone
+    const convertedStartTime = convertTime(startTime, clientTimezone, staffTimezone)
+    const convertedEndTime = convertTime(endTime, clientTimezone, staffTimezone)
+
+    console.log("✅ CONVERTED TIMES FOR NEW PROFILE:", {
+      convertedStartTime,
+      convertedEndTime,
+      offsetInfo: `${clientTimezone} → ${staffTimezone}`
+    })
 
     const days = [
       "Monday",
@@ -403,18 +476,27 @@ export async function POST(
     ]
 
     const schedules = days.map((day: string) => ({
+      id: randomUUID(), // ✅ ADD REQUIRED ID FIELD
       profileId: profile.id,
       dayOfWeek: day,
-      startTime: ["Saturday", "Sunday"].includes(day) ? "" : startTime,
-      endTime: ["Saturday", "Sunday"].includes(day) ? "" : endTime,
-      isWorkday: !["Saturday", "Sunday"].includes(day)
+      startTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedStartTime, // ✅ USE CONVERTED TIME
+      endTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedEndTime, // ✅ USE CONVERTED TIME
+      timezone: staffTimezone, // Store Manila timezone
+      clientTimezone: clientTimezone, // ✅ STORE ORIGINAL CLIENT TIMEZONE
+      isWorkday: !["Saturday", "Sunday"].includes(day),
+      createdAt: new Date(),
+      updatedAt: new Date()
     }))
 
     await prisma.work_schedules.createMany({ data: schedules })
-    console.log("✅ WORK SCHEDULE CREATED:", { 
+    console.log("✅ WORK SCHEDULE CREATED WITH TIMEZONE CONVERSION:", { 
       profileId: profile.id, 
       schedulesCount: schedules.length,
-      workdays: schedules.filter((s: { isWorkday: boolean }) => s.isWorkday).length
+      workdays: schedules.filter((s: { isWorkday: boolean }) => s.isWorkday).length,
+      clientTimezone,
+      staffTimezone,
+      originalTimes: `${startTime} - ${endTime}`,
+      convertedTimes: `${convertedStartTime} - ${convertedEndTime}`
     })
 
     // Create empty welcome form record

@@ -220,6 +220,7 @@ model interview_requests {
   scheduledTime        DateTime?
   status               InterviewRequestStatus @default(PENDING)
   workSchedule         Json?
+  clientTimezone       String?                // Client's timezone at time of hire request
   client_users         client_users           @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   job_acceptances      job_acceptances?
 }
@@ -755,6 +756,7 @@ model work_schedules {
   notes          String?
   shiftType      ShiftType?        @default(DAY_SHIFT)
   timezone       String?           @default("Asia/Manila")
+  clientTimezone String?           // Original timezone from client (e.g., "Australia/Brisbane")
   workLocation   WorkLocationType? @default(WORK_FROM_HOME)
   time_entries   time_entries[]
   company        company?          @relation(fields: [companyId], references: [id])

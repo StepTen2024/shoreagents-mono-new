@@ -959,7 +959,7 @@ function RequestInterviewModal({ candidate, onClose }: { candidate: CandidatePro
       if (data.success) {
         setSuccess(true)
         setTimeout(() => {
-          router.push('/client/interviews')
+          router.push('/client/recruitment?tab=interviews')
         }, 2000)
       } else {
         alert('Failed to submit request: ' + (data.error || 'Unknown error'))
