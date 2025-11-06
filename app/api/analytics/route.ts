@@ -208,27 +208,28 @@ export async function POST(request: NextRequest) {
     let metric
 
     if (existingMetric) {
-      // Update existing metric by INCREMENTING values (not replacing)
+      // Update existing metric: Use MAX value (Electron sends cumulative totals)
+      // If Electron restarts, new values will be lower, so keep the higher existing values
       metric = await prisma.performance_metrics.update({
         where: { id: existingMetric.id },
         data: {
-          // INCREMENT all activity metrics instead of replacing
-          mouseMovements: (existingMetric.mouseMovements || 0) + (mouseMovements || 0),
-          mouseClicks: (existingMetric.mouseClicks || 0) + (mouseClicks || 0),
-          keystrokes: (existingMetric.keystrokes || 0) + (keystrokes || 0),
-          activeTime: (existingMetric.activeTime || 0) + (activeTime || 0),
-          idleTime: (existingMetric.idleTime || 0) + (idleTime || 0),
-          screenTime: (existingMetric.screenTime || 0) + (screenTime || 0),
-          downloads: (existingMetric.downloads || 0) + (downloads || 0),
-          uploads: (existingMetric.uploads || 0) + (uploads || 0),
-          bandwidth: (existingMetric.bandwidth || 0) + (bandwidth || 0),
+          // Use MAXIMUM value (handles both: new activity increasing count, and Electron restarts)
+          mouseMovements: Math.max(existingMetric.mouseMovements || 0, mouseMovements || 0),
+          mouseClicks: Math.max(existingMetric.mouseClicks || 0, mouseClicks || 0),
+          keystrokes: Math.max(existingMetric.keystrokes || 0, keystrokes || 0),
+          activeTime: Math.max(existingMetric.activeTime || 0, activeTime || 0),
+          idleTime: Math.max(existingMetric.idleTime || 0, idleTime || 0),
+          screenTime: Math.max(existingMetric.screenTime || 0, screenTime || 0),
+          downloads: Math.max(existingMetric.downloads || 0, downloads || 0),
+          uploads: Math.max(existingMetric.uploads || 0, uploads || 0),
+          bandwidth: Math.max(existingMetric.bandwidth || 0, bandwidth || 0),
           // NEVER overwrite clipboardActions from sync - it's managed by screenshot service
           clipboardActions: existingMetric.clipboardActions,
-          filesAccessed: (existingMetric.filesAccessed || 0) + (filesAccessed || 0),
-          urlsVisited: (existingMetric.urlsVisited || 0) + (urlsVisited || 0),
-          tabsSwitched: (existingMetric.tabsSwitched || 0) + (tabsSwitched || 0),
-          // Average productivity score instead of replacing
-          productivityScore: Math.round(((existingMetric.productivityScore || 0) + (productivityScore || 0)) / 2),
+          filesAccessed: Math.max(existingMetric.filesAccessed || 0, filesAccessed || 0),
+          urlsVisited: Math.max(existingMetric.urlsVisited || 0, urlsVisited || 0),
+          tabsSwitched: Math.max(existingMetric.tabsSwitched || 0, tabsSwitched || 0),
+          // Use latest productivity score
+          productivityScore: productivityScore ?? existingMetric.productivityScore,
           // Merge arrays for applications and URLs (deduplicate)
           ...(applicationsUsed !== undefined && { 
             applicationsused: [...new Set([...(existingMetric.applicationsused || []), ...applicationsUsed])]
