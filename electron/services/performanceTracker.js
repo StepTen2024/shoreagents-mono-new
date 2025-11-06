@@ -108,8 +108,21 @@ class PerformanceTracker {
         this.metrics.urlsVisited = todayMetrics.urlsVisited || 0
         this.metrics.tabsSwitched = todayMetrics.tabsSwitched || 0
         
+        // 🔥 LOAD PREVIOUS URLS AND APPS (to handle Electron restarts)
+        if (todayMetrics.visitedUrls && Array.isArray(todayMetrics.visitedUrls)) {
+          this.visitedUrls = new Set(todayMetrics.visitedUrls)
+          this.log(`   Loaded ${this.visitedUrls.size} previous URLs`)
+        }
+        
+        if (todayMetrics.applicationsUsed && Array.isArray(todayMetrics.applicationsUsed)) {
+          this.activeApps = new Set(todayMetrics.applicationsUsed)
+          this.metrics.applicationsUsed = todayMetrics.applicationsUsed
+          this.log(`   Loaded ${this.activeApps.size} previous apps`)
+        }
+        
         this.log(`✅ Loaded previous metrics - Active Time: ${Math.floor(this.metrics.activeTime / 60)} minutes`)
         this.log(`   Continuing from: ${this.metrics.keystrokes} keystrokes, ${this.metrics.mouseClicks} clicks`)
+        this.log(`   ${this.visitedUrls.size} URLs, ${this.activeApps.size} apps`)
       } else {
         this.log('✅ No previous metrics for today - starting fresh')
       }
