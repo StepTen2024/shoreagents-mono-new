@@ -82,6 +82,7 @@ export default function CandidateProfilePage() {
   const [activeTab, setActiveTab] = useState<TabType>('profile')
   const [existingInterview, setExistingInterview] = useState<any>(null)
   const [checkingInterview, setCheckingInterview] = useState(true)
+  const [clientTimezone, setClientTimezone] = useState<string>('Australia/Brisbane')
   
   // Get return navigation info from URL params
   const returnTo = searchParams.get('returnTo')
@@ -110,7 +111,20 @@ export default function CandidateProfilePage() {
   useEffect(() => {
     fetchCandidate()
     checkExistingInterview()
+    fetchClientTimezone()
   }, [candidateId])
+  
+  async function fetchClientTimezone() {
+    try {
+      const response = await fetch('/api/client/profile')
+      const data = await response.json()
+      if (data.profile?.timezone) {
+        setClientTimezone(data.profile.timezone)
+      }
+    } catch (error) {
+      console.error('Failed to fetch client timezone:', error)
+    }
+  }
 
   async function fetchCandidate() {
     try {
@@ -388,7 +402,7 @@ export default function CandidateProfilePage() {
                   )}
                 </button>
               ) : (
-                <InterviewStatusCard interview={existingInterview} />
+                <InterviewStatusCard interview={existingInterview} clientTimezone={clientTimezone} />
               )}
 
               {/* Quick Snapshot */}
@@ -949,7 +963,7 @@ function DISCBar({ label, score, color }: { label: string; score: number; color:
 // INTERVIEW STATUS CARD
 // ============================================================================
 
-function InterviewStatusCard({ interview }: { interview: any }) {
+function InterviewStatusCard({ interview, clientTimezone }: { interview: any; clientTimezone?: string }) {
   const getStatusConfig = (status: string) => {
     const statusUpper = status.toUpperCase()
     
@@ -1115,12 +1129,14 @@ function InterviewStatusCard({ interview }: { interview: any }) {
     try {
       const date = new Date(time)
       return date.toLocaleString('en-US', {
+        timeZone: clientTimezone || undefined,
         weekday: 'short',
         month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
+        timeZoneName: 'short'
       })
     } catch {
       return null
