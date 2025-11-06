@@ -200,6 +200,14 @@ export async function POST(request: NextRequest) {
         customHours,
         clientTimezone: scheduleTimezone,
         isDefaultSchedule,
+        // Job offer details
+        salary: salary ? parseFloat(salary) : null,
+        shiftType: shiftType || null,
+        workLocation: workLocation || null,
+        hmoIncluded: hmoIncluded || false,
+        leaveCredits: leaveCredits || 12,
+        workHours: workHours || null,
+        preferredStartDate: clientPreferredStart ? new Date(clientPreferredStart) : null,
         updatedAt: new Date()
       }
     })

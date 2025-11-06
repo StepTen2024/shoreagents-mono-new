@@ -98,9 +98,18 @@ export async function GET(
         position: contract?.position || jobAcceptance?.position || "",
         startDate: contract?.startDate ? new Date(contract.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         workSchedule: contract?.workSchedule || "",
-        salary: contract?.basicSalary ? parseFloat(contract.basicSalary.toString()) : 0,
-        hmo: contract?.hmoOffer ? contract.hmoOffer !== "None" && contract.hmoOffer !== "No HMO" : true,
-        employmentStatus: contract?.probationaryPeriod ? "PROBATION" : "PROBATION" // Default to PROBATION
+        workDays: jobAcceptance?.workDays || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        hasCustomHours: (jobAcceptance as any)?.hasCustomHours || false,
+        customHours: (jobAcceptance as any)?.customHours || null,
+        clientTimezone: (jobAcceptance as any)?.clientTimezone || "UTC",
+        salary: contract?.totalMonthlyGross ? parseFloat(contract.totalMonthlyGross.toString()) : 0,
+        basicSalary: contract?.basicSalary ? parseFloat(contract.basicSalary.toString()) : 0,
+        deMinimis: contract?.deMinimis ? parseFloat(contract.deMinimis.toString()) : 0,
+        totalMonthlyGross: contract?.totalMonthlyGross ? parseFloat(contract.totalMonthlyGross.toString()) : 0,
+        hmo: contract?.hmoOffer ? (contract.hmoOffer !== "None" && contract.hmoOffer !== "No HMO") : true,
+        employmentStatus: contract?.probationaryPeriod ? "PROBATION" : "PROBATION", // Default to PROBATION
+        contractSigned: contract?.signed || false,
+        contractSignedAt: contract?.signedAt ? contract.signedAt.toISOString() : null
       }
     })
 

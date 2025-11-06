@@ -332,13 +332,18 @@ export default function OnboardingForm() {
         })
       })
       
+      const data = await response.json()
+      
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || "Failed to save")
       }
       
+      // Update completion percent from response
+      if (data.completionPercent !== undefined) {
+        setFormData(prev => ({ ...prev, completionPercent: data.completionPercent, personalInfoStatus: "SUBMITTED" }))
+      }
+      
       setSuccess("Personal information saved!")
-      await fetchOnboardingData()
       setTimeout(() => setCurrentStep(2), 1000)
     } catch (err: any) {
       setError(err.message)
@@ -365,13 +370,18 @@ export default function OnboardingForm() {
         })
       })
       
+      const data = await response.json()
+      
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || "Failed to save")
       }
       
+      // Update completion percent from response
+      if (data.completionPercent !== undefined) {
+        setFormData(prev => ({ ...prev, completionPercent: data.completionPercent, govIdStatus: "SUBMITTED" }))
+      }
+      
       setSuccess("Government IDs saved!")
-      await fetchOnboardingData()
       setTimeout(() => setCurrentStep(3), 1000)
     } catch (err: any) {
       setError(err.message)
@@ -401,7 +411,10 @@ export default function OnboardingForm() {
       })
       const data = await response.json()
       if (data.success) {
-        await fetchOnboardingData(true) // Preserve current step
+        // Update completion percent from response
+        if (data.completionPercent !== undefined) {
+          setFormData(prev => ({ ...prev, completionPercent: data.completionPercent, govIdStatus: "SUBMITTED" }))
+        }
       } else {
         setError(data.error || 'Failed to save')
       }
@@ -455,11 +468,16 @@ export default function OnboardingForm() {
       console.log("✅ Save successful:", responseData)
       console.log("📊 Completion percent from response:", responseData.completionPercent)
       
-      setSuccess("Emergency contact saved!")
+      // Update completion percent from response
+      if (responseData.completionPercent !== undefined) {
+        setFormData(prev => ({ 
+          ...prev, 
+          completionPercent: responseData.completionPercent, 
+          emergencyContactStatus: "SUBMITTED" 
+        }))
+      }
       
-      console.log("🔄 Refreshing onboarding data...")
-      await fetchOnboardingData(true) // Preserve current step
-      console.log("✅ Onboarding data refreshed!")
+      setSuccess("Emergency contact saved!")
       
       clearTimeout(timeoutId) // Clear timeout on success
       
@@ -523,12 +541,19 @@ export default function OnboardingForm() {
         body: formData
       })
       
+      const data = await response.json()
+      
       if (!response.ok) {
-        const data = await response.json()
         throw new Error(data.error || "Failed to upload")
       }
       
-      await fetchOnboardingData(true) // Preserve current step
+      // Update completion percent from response
+      setFormData(prev => ({
+        ...prev,
+        signatureUrl: data.url,
+        signatureStatus: 'SUBMITTED',
+        completionPercent: data.completionPercent !== undefined ? data.completionPercent : prev.completionPercent
+      }))
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -618,8 +643,13 @@ export default function OnboardingForm() {
       
       const data = await response.json()
       if (data.success) {
-        // Refresh onboarding data to get latest from database
-        await fetchOnboardingData()
+        // Update completion percent from response
+        setFormData(prev => ({
+          ...prev,
+          resumeUrl: data.resumeUrl,
+          resumeStatus: 'SUBMITTED',
+          completionPercent: data.completionPercent !== undefined ? data.completionPercent : prev.completionPercent
+        }))
         setSuccess('Resume uploaded successfully!')
         // Automatically move to next step after successful upload
         setTimeout(() => {
@@ -651,8 +681,9 @@ export default function OnboardingForm() {
         // Update formData directly without calling fetchOnboardingData to avoid step redirection
         setFormData(prev => ({
           ...prev,
-          diplomaTorUrl: data.diplomaTorUrl,
-          educationStatus: 'SUBMITTED'
+          diplomaTorUrl: data.educationUrl || data.diplomaTorUrl,
+          educationStatus: 'SUBMITTED',
+          completionPercent: data.completionPercent !== undefined ? data.completionPercent : prev.completionPercent
         }))
         setSuccess('Education document uploaded successfully!')
         // Move to next step after successful upload
@@ -685,8 +716,9 @@ export default function OnboardingForm() {
         // Update formData directly without calling fetchOnboardingData to avoid step redirection
         setFormData(prev => ({
           ...prev,
-          medicalCertUrl: data.medicalCertUrl,
-          medicalStatus: 'SUBMITTED'
+          medicalCertUrl: data.medicalUrl || data.medicalCertUrl,
+          medicalStatus: 'SUBMITTED',
+          completionPercent: data.completionPercent !== undefined ? data.completionPercent : prev.completionPercent
         }))
         setSuccess('Medical certificate uploaded successfully!')
         // Move to next step after successful upload
@@ -727,7 +759,8 @@ export default function OnboardingForm() {
             accountName: privacyData.accountName,
             accountNumber: privacyData.accountNumber
           }),
-          dataPrivacyStatus: 'SUBMITTED'
+          dataPrivacyStatus: 'SUBMITTED',
+          completionPercent: data.completionPercent !== undefined ? data.completionPercent : prev.completionPercent
         }))
         setSuccess('Data privacy and bank details saved successfully!')
         // Move to next step after successful save
