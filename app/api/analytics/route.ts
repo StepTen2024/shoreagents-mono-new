@@ -208,27 +208,34 @@ export async function POST(request: NextRequest) {
     let metric
 
     if (existingMetric) {
-      // Update existing metric
+      // Update existing metric by INCREMENTING values (not replacing)
       metric = await prisma.performance_metrics.update({
         where: { id: existingMetric.id },
         data: {
-          mouseMovements: mouseMovements ?? existingMetric.mouseMovements,
-          mouseClicks: mouseClicks ?? existingMetric.mouseClicks,
-          keystrokes: keystrokes ?? existingMetric.keystrokes,
-          activeTime: activeTime ?? existingMetric.activeTime,
-          idleTime: idleTime ?? existingMetric.idleTime,
-          screenTime: screenTime ?? existingMetric.screenTime,
-          downloads: downloads ?? existingMetric.downloads,
-          uploads: uploads ?? existingMetric.uploads,
-          bandwidth: bandwidth ?? existingMetric.bandwidth,
+          // INCREMENT all activity metrics instead of replacing
+          mouseMovements: (existingMetric.mouseMovements || 0) + (mouseMovements || 0),
+          mouseClicks: (existingMetric.mouseClicks || 0) + (mouseClicks || 0),
+          keystrokes: (existingMetric.keystrokes || 0) + (keystrokes || 0),
+          activeTime: (existingMetric.activeTime || 0) + (activeTime || 0),
+          idleTime: (existingMetric.idleTime || 0) + (idleTime || 0),
+          screenTime: (existingMetric.screenTime || 0) + (screenTime || 0),
+          downloads: (existingMetric.downloads || 0) + (downloads || 0),
+          uploads: (existingMetric.uploads || 0) + (uploads || 0),
+          bandwidth: (existingMetric.bandwidth || 0) + (bandwidth || 0),
           // NEVER overwrite clipboardActions from sync - it's managed by screenshot service
           clipboardActions: existingMetric.clipboardActions,
-          filesAccessed: filesAccessed ?? existingMetric.filesAccessed,
-          urlsVisited: urlsVisited ?? existingMetric.urlsVisited,
-          tabsSwitched: tabsSwitched ?? existingMetric.tabsSwitched,
-          productivityScore: productivityScore ?? existingMetric.productivityScore,
-          ...(applicationsUsed !== undefined && { applicationsused: applicationsUsed }),
-          ...(visitedUrls !== undefined && { visitedurls: visitedUrls }),
+          filesAccessed: (existingMetric.filesAccessed || 0) + (filesAccessed || 0),
+          urlsVisited: (existingMetric.urlsVisited || 0) + (urlsVisited || 0),
+          tabsSwitched: (existingMetric.tabsSwitched || 0) + (tabsSwitched || 0),
+          // Average productivity score instead of replacing
+          productivityScore: Math.round(((existingMetric.productivityScore || 0) + (productivityScore || 0)) / 2),
+          // Merge arrays for applications and URLs (deduplicate)
+          ...(applicationsUsed !== undefined && { 
+            applicationsused: [...new Set([...(existingMetric.applicationsused || []), ...applicationsUsed])]
+          }),
+          ...(visitedUrls !== undefined && { 
+            visitedurls: [...new Set([...(existingMetric.visitedurls || []), ...visitedUrls])]
+          }),
         } as any,
       })
     } else {
