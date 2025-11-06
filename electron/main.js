@@ -388,8 +388,8 @@ async function initializeTracking() {
   // Initialize break handler
   breakHandler.initialize(performanceTracker)
   
-  // Start performance tracking
-  performanceTracker.start()
+  // Start performance tracking (async - loads previous metrics)
+  await performanceTracker.start()
   console.log('[Main] Performance tracking started')
   
   // Initialize activity tracker with performance tracker and screenshot service integration
