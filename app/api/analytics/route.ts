@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
       orderBy: { date: "desc" },
     })
 
-    // Get today's metrics
+    // Get today's metrics (SUM all records for today in case of multiple entries)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    const todayMetric = await prisma.performance_metrics.findFirst({
+    const allTodayMetrics = await prisma.performance_metrics.findMany({
       where: {
         staffUserId: staffUser.id,
         date: {
@@ -55,6 +55,29 @@ export async function GET(request: NextRequest) {
         },
       },
     })
+
+    // SUM all metrics from multiple records (in case Electron creates multiple entries per day)
+    const todayMetric = allTodayMetrics.length > 0 ? {
+      id: allTodayMetrics[0].id,
+      staffUserId: allTodayMetrics[0].staffUserId,
+      date: allTodayMetrics[0].date,
+      mouseMovements: allTodayMetrics.reduce((sum, m) => sum + m.mouseMovements, 0),
+      mouseClicks: allTodayMetrics.reduce((sum, m) => sum + m.mouseClicks, 0),
+      keystrokes: allTodayMetrics.reduce((sum, m) => sum + m.keystrokes, 0),
+      activeTime: allTodayMetrics.reduce((sum, m) => sum + m.activeTime, 0),
+      idleTime: allTodayMetrics.reduce((sum, m) => sum + m.idleTime, 0),
+      screenTime: allTodayMetrics.reduce((sum, m) => sum + m.screenTime, 0),
+      downloads: allTodayMetrics.reduce((sum, m) => sum + m.downloads, 0),
+      uploads: allTodayMetrics.reduce((sum, m) => sum + m.uploads, 0),
+      bandwidth: allTodayMetrics.reduce((sum, m) => sum + m.bandwidth, 0),
+      clipboardActions: allTodayMetrics.reduce((sum, m) => sum + m.clipboardActions, 0),
+      filesAccessed: allTodayMetrics.reduce((sum, m) => sum + m.filesAccessed, 0),
+      urlsVisited: allTodayMetrics.reduce((sum, m) => sum + m.urlsVisited, 0),
+      tabsSwitched: allTodayMetrics.reduce((sum, m) => sum + m.tabsSwitched, 0),
+      productivityScore: Math.round(allTodayMetrics.reduce((sum, m) => sum + m.productivityScore, 0) / allTodayMetrics.length),
+      createdAt: allTodayMetrics[0].createdAt,
+      updatedAt: allTodayMetrics[allTodayMetrics.length - 1].updatedAt, // Most recent update
+    } : null
 
     // Calculate total screenshot count (sum of all clipboardActions)
     const allMetrics = await prisma.performance_metrics.findMany({
