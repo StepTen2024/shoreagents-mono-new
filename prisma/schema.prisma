@@ -1,0 +1,1095 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model activity_posts {
+  id               String            @id
+  staffUserId      String?
+  type             PostType
+  content          String
+  achievement      Json?
+  images           String[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  clientUserId     String?
+  taggedUserIds    String[]          @default([])
+  audience         PostAudience?     @default(ALL)
+  managementUserId String?
+  client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_clientuserid_fkey")
+  management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_managementuserid_fkey")
+  staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  notifications    notifications[]
+
+  @@index([audience])
+  @@index([taggedUserIds], map: "activity_posts_tagged_users_idx", type: Gin)
+  @@index([audience, createdAt(sort: Desc)], map: "idx_posts_audience_created")
+  @@index([taggedUserIds], map: "idx_posts_tagged_users", type: Gin)
+  @@index([type, createdAt(sort: Desc)], map: "idx_posts_type_created")
+}
+
+model breaks {
+  id             String        @id
+  staffUserId    String
+  type           BreakType
+  awayReason     AwayReason?
+  scheduledStart String?
+  scheduledEnd   String?
+  actualStart    DateTime?
+  actualEnd      DateTime?
+  duration       Int?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
+  isLate         Boolean       @default(false)
+  lateBy         Int?
+  timeEntryId    String?
+  shiftDate      DateTime?     // The date of the SHIFT this break belongs to (handles night shift crossover)
+  shiftDayOfWeek String?       // "Monday", "Tuesday", etc. - inherited from time_entry
+  isPaused       Boolean?      @default(false)
+  pauseUsed      Boolean?      @default(false)
+  pausedAt       DateTime?     @db.Timestamp(6)
+  pausedDuration Int?          @default(0)
+  staff_users    staff_users   @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  time_entries   time_entries? @relation(fields: [timeEntryId], references: [id])
+  
+  @@index([shiftDate])
+  @@index([shiftDayOfWeek])
+}
+
+model client_profiles {
+  id                  String       @id
+  clientUserId        String       @unique
+  position            String?
+  department          String?
+  directPhone         String?
+  mobilePhone         String?
+  timezone            String?
+  bio                 String?
+  notifyTaskCreate    Boolean      @default(true)
+  notifyTaskComplete  Boolean      @default(true)
+  notifyReviews       Boolean      @default(true)
+  notifyWeeklyReports Boolean      @default(true)
+  tasksCreated        Int          @default(0)
+  reviewsSubmitted    Int          @default(0)
+  lastLoginAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime
+  client_users        client_users @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+}
+
+model client_users {
+  id                 String               @id
+  authUserId         String               @unique
+  name               String
+  role               ClientRole           @default(MANAGER)
+  avatar             String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  email              String               @unique
+  companyId          String
+  coverPhoto         String?
+  activity_posts     activity_posts[]
+  client_profiles    client_profiles?
+  company            company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  interview_requests interview_requests[]
+  tasks              tasks[]
+  tickets            tickets[]
+}
+
+model company {
+  id                   String                 @id
+  companyName          String
+  industry             String?
+  location             String?
+  billingEmail         String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  organizationId       String                 @unique
+  logo                 String?
+  accountManagerId     String?
+  bio                  String?
+  contractStart        DateTime?
+  isActive             Boolean                @default(true)
+  phone                String?
+  tradingName          String?
+  website              String?
+  coverPhoto           String?
+  client_users         client_users[]
+  management_users     management_users?      @relation(fields: [accountManagerId], references: [id])
+  employment_contracts employment_contracts[]
+  job_acceptances      job_acceptances[]
+  staff_users          staff_users[]
+  tasks                tasks[]
+  work_schedules       work_schedules[]
+}
+
+// REMOVED: Consolidated into universal 'comments' table
+
+model documents {
+  id            String           @id
+  title         String
+  category      DocumentCategory
+  uploadedBy    String
+  size          String
+  fileUrl       String?
+  content       String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime
+  staffUserId   String
+  source        DocumentSource   @default(STAFF)
+  sharedWithAll Boolean          @default(false)
+  sharedWith    String[]         @default([])
+  staff_users   staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+model employment_contracts {
+  id                 String          @id
+  jobAcceptanceId    String          @unique
+  staffUserId        String          @unique
+  companyId          String
+  employeeName       String
+  employeeAddress    String
+  contactType        String
+  assignedClient     String
+  position           String
+  startDate          DateTime
+  workSchedule       String
+  basicSalary        Decimal         @db.Decimal(10, 2)
+  deMinimis          Decimal         @db.Decimal(10, 2)
+  totalMonthlyGross  Decimal         @db.Decimal(10, 2)
+  hmoOffer           String
+  paidLeave          String
+  probationaryPeriod String
+  pageInitials       Json?
+  finalSignatureUrl  String?
+  pagesInitialed     Int             @default(0)
+  totalPages         Int             @default(5)
+  fullyInitialed     Boolean         @default(false)
+  signed             Boolean         @default(false)
+  signedAt           DateTime?
+  adminApproved      Boolean         @default(false)
+  adminApprovedAt    DateTime?
+  adminApprovedBy    String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime
+  company            company         @relation(fields: [companyId], references: [id])
+  job_acceptances    job_acceptances @relation(fields: [jobAcceptanceId], references: [id], onDelete: Cascade)
+  staff_users        staff_users     @relation(fields: [staffUserId], references: [id])
+}
+
+model gamification_profiles {
+  id               String        @id
+  staffUserId      String        @unique
+  level            Int           @default(1)
+  points           Int           @default(0)
+  rank             Int?
+  streak           Int           @default(0)
+  tasksCompleted   Int           @default(0)
+  performanceScore Int           @default(0)
+  reviewRating     Decimal?      @db.Decimal(2, 1)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime
+  staff_users      staff_users   @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  user_badges      user_badges[]
+}
+
+model interview_requests {
+  id                   String                 @id
+  clientUserId         String
+  bpocCandidateId      String
+  candidateFirstName   String
+  preferredTimes       Json
+  clientNotes          String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  adminNotes           String?
+  clientPreferredStart DateTime?
+  finalStartDate       DateTime?
+  hireRequestedAt      DateTime?
+  hireRequestedBy      String?
+  meetingLink          String?
+  offerDeclineReason   String?
+  offerResponseAt      DateTime?
+  offerSentAt          DateTime?
+  scheduledTime        DateTime?
+  status               InterviewRequestStatus @default(PENDING)
+  workSchedule         Json?
+  client_users         client_users           @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+  job_acceptances      job_acceptances?
+}
+
+model job_acceptances {
+  id                   String                @id
+  interviewRequestId   String                @unique
+  bpocCandidateId      String
+  candidateEmail       String
+  candidatePhone       String?
+  position             String
+  companyId            String
+  acceptedByAdminId    String
+  acceptedAt           DateTime              @default(now())
+  signupEmailSent      Boolean               @default(false)
+  signupEmailSentAt    DateTime?
+  staffUserId          String?               @unique
+  contractSigned       Boolean               @default(false)
+  contractSignedAt     DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  clientTimezone       String                @default("UTC")
+  isDefaultSchedule    Boolean               @default(true)
+  workDays             String[]              @default(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
+  workEndTime          String                @default("18:00")
+  workStartTime        String                @default("09:00")
+  employment_contracts employment_contracts?
+  company              company               @relation(fields: [companyId], references: [id])
+  interview_requests   interview_requests    @relation(fields: [interviewRequestId], references: [id], onDelete: Cascade)
+  staff_users          staff_users?          @relation(fields: [staffUserId], references: [id])
+}
+
+model kudos {
+  id                                    String      @id
+  fromId                                String
+  toId                                  String
+  message                               String
+  createdAt                             DateTime    @default(now())
+  staff_users_kudos_fromIdTostaff_users staff_users @relation("kudos_fromIdTostaff_users", fields: [fromId], references: [id], onDelete: Cascade)
+  staff_users_kudos_toIdTostaff_users   staff_users @relation("kudos_toIdTostaff_users", fields: [toId], references: [id], onDelete: Cascade)
+}
+
+model management_users {
+  id                  String               @id
+  authUserId          String               @unique
+  name                String
+  role                ManagementRole       @default(MANAGER)
+  avatar              String?
+  phone               String?
+  department          Department
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime
+  email               String               @unique
+  coverPhoto          String?
+  activity_posts      activity_posts[]
+  company             company[]
+  management_profiles management_profiles?
+  tickets             tickets[]
+}
+
+model management_profiles {
+  id                 String           @id
+  managementUserId   String           @unique
+  phone              String?
+  timezone           String?          @default("Asia/Manila")
+  startDate          DateTime
+  daysEmployed       Int              @default(0)
+  currentRole        String
+  roleDescription    String?
+  salary             Decimal?         @db.Decimal(10, 2)
+  lastPayIncrease    DateTime?
+  lastIncreaseAmount Decimal?         @db.Decimal(10, 2)
+  totalLeave         Int              @default(12)
+  usedLeave          Int              @default(0)
+  vacationUsed       Int              @default(0)
+  sickUsed           Int              @default(0)
+  hmo                Boolean          @default(true)
+  bio                String?
+  responsibilities   String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime
+  civilStatus        String?
+  dateOfBirth        DateTime?
+  gender             String?
+  management_users   management_users @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
+}
+
+model salary_history {
+  id              String   @id
+  userId          String
+  userType        String
+  previousSalary  Decimal  @db.Decimal(10, 2)
+  newSalary       Decimal  @db.Decimal(10, 2)
+  increaseAmount  Decimal  @db.Decimal(10, 2)
+  increasePercent Decimal? @db.Decimal(5, 2)
+  reason          String?
+  notes           String?
+  approvedBy      String?
+  effectiveDate   DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([effectiveDate])
+  @@index([userId, effectiveDate])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model notifications {
+  id             String           @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId         String
+  type           NotificationType @default(TAG)
+  title          String
+  message        String
+  postId         String?
+  actionUrl      String?
+  read           Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  readAt         DateTime?
+  activity_posts activity_posts?  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  staff_users    staff_users      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId], map: "idx_notifications_post")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user_created")
+  @@index([userId, read], map: "idx_notifications_user_read")
+}
+
+model performance_metrics {
+  id                String      @id
+  staffUserId       String
+  date              DateTime    @default(now())
+  shiftDate         DateTime?   // The date of the SHIFT (not calendar date) - handles night shift crossover
+  shiftDayOfWeek    String?     // "Monday", "Tuesday", etc. - for grouping by shift
+  mouseMovements    Int         @default(0)
+  mouseClicks       Int         @default(0)
+  keystrokes        Int         @default(0)
+  activeTime        Int         @default(0)
+  idleTime          Int         @default(0)
+  screenTime        Int         @default(0)
+  downloads         Int         @default(0)
+  uploads           Int         @default(0)
+  bandwidth         Int         @default(0)
+  clipboardActions  Int         @default(0)
+  filesAccessed     Int         @default(0)
+  urlsVisited       Int         @default(0)
+  tabsSwitched      Int         @default(0)
+  productivityScore Int         @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  applicationsused  Json?       @default("[]")
+  visitedurls       Json?       @default("[]")
+  screenshoturls    Json?       @default("[]")
+  staff_users       staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  
+  @@index([shiftDate])
+  @@index([shiftDayOfWeek])
+}
+
+// REMOVED: Consolidated into universal 'comments' table
+
+// REMOVED: Consolidated into universal 'reactions' table
+
+model reviews {
+  id                 String       @id
+  staffUserId        String
+  type               ReviewType
+  status             ReviewStatus @default(PENDING)
+  client             String
+  reviewer           String
+  reviewerTitle      String?
+  submittedDate      DateTime?
+  evaluationPeriod   String
+  overallScore       Decimal?     @db.Decimal(5, 2)
+  acknowledgedDate   DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime
+  dueDate            DateTime
+  ratings            Json?
+  performanceLevel   String?
+  strengths          String?
+  improvements       String?
+  additionalComments String?
+  managementNotes    String?
+  reviewedBy         String?
+  reviewedDate       DateTime?
+  staff_users        staff_users  @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+model staff_offboarding {
+  id                     String            @id
+  staffUserId            String            @unique
+  initiatedBy            String
+  reason                 OffboardingReason
+  reasonDetails          String?
+  lastWorkingDate        DateTime
+  offboardingNotes       String?
+  status                 OffboardingStatus @default(INITIATED)
+  exitInterviewCompleted Boolean           @default(false)
+  exitInterviewData      String?
+  equipmentReturned      Boolean           @default(false)
+  accessRevoked          Boolean           @default(false)
+  finalPaymentProcessed  Boolean           @default(false)
+  clearanceIssued        Boolean           @default(false)
+  clearanceDate          DateTime?
+  clearanceSignatureUrl  String?
+  createdAt              DateTime          @default(now())
+  completedAt            DateTime?
+  updatedAt              DateTime
+  staff_users            staff_users       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@index([lastWorkingDate])
+  @@index([status])
+}
+
+model staff_onboarding {
+  id                         String           @id
+  staffUserId                String           @unique
+  sss                        String?
+  tin                        String?
+  philhealthNo               String?
+  pagibigNo                  String?
+  firstName                  String?
+  middleName                 String?
+  lastName                   String?
+  gender                     String?
+  civilStatus                String?
+  dateOfBirth                DateTime?
+  contactNo                  String?
+  email                      String?
+  emergencyContactName       String?
+  emergencyContactNo         String?
+  emergencyRelationship      String?
+  validIdUrl                 String?
+  birthCertUrl               String?
+  nbiClearanceUrl            String?
+  birForm2316Url             String?
+  idPhotoUrl                 String?
+  signatureUrl               String?
+  policeClearanceUrl         String?
+  certificateEmpUrl          String?
+  sssDocUrl                  String?
+  tinDocUrl                  String?
+  philhealthDocUrl           String?
+  pagibigDocUrl              String?
+  personalInfoStatus         OnboardingStatus @default(PENDING)
+  govIdStatus                OnboardingStatus @default(PENDING)
+  documentsStatus            OnboardingStatus @default(PENDING)
+  signatureStatus            OnboardingStatus @default(PENDING)
+  emergencyContactStatus     OnboardingStatus @default(PENDING)
+  personalInfoFeedback       String?
+  govIdFeedback              String?
+  documentsFeedback          String?
+  signatureFeedback          String?
+  emergencyContactFeedback   String?
+  personalInfoVerifiedAt     DateTime?
+  govIdVerifiedAt            DateTime?
+  documentsVerifiedAt        DateTime?
+  signatureVerifiedAt        DateTime?
+  emergencyContactVerifiedAt DateTime?
+  verifiedBy                 String?
+  isComplete                 Boolean          @default(false)
+  completionPercent          Int              @default(0)
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime
+  educationFeedback          String?
+  educationStatus            OnboardingStatus @default(PENDING)
+  educationVerifiedAt        DateTime?
+  medicalCertUrl             String?
+  medicalFeedback            String?
+  medicalStatus              OnboardingStatus @default(PENDING)
+  medicalVerifiedAt          DateTime?
+  resumeFeedback             String?
+  resumeStatus               OnboardingStatus @default(PENDING)
+  resumeUrl                  String?
+  resumeVerifiedAt           DateTime?
+  bankAccountDetails         String?
+  dataPrivacyConsentUrl      String?
+  dataPrivacyFeedback        String?
+  dataPrivacyStatus          OnboardingStatus @default(PENDING)
+  dataPrivacyVerifiedAt      DateTime?
+  diplomaTorUrl              String?
+  staff_users                staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+model staff_personal_records {
+  id                    String      @id
+  staffUserId           String      @unique
+  sss                   String?
+  tin                   String?
+  philhealthNo          String?
+  pagibigNo             String?
+  emergencyContactName  String?
+  emergencyContactNo    String?
+  emergencyRelationship String?
+  validIdUrl            String?
+  birthCertUrl          String?
+  nbiClearanceUrl       String?
+  policeClearanceUrl    String?
+  sssDocUrl             String?
+  tinDocUrl             String?
+  philhealthDocUrl      String?
+  pagibigDocUrl         String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime
+  birForm2316Url        String?
+  certificateEmpUrl     String?
+  employmentContractUrl String?
+  idPhotoUrl            String?
+  medicalCertUrl        String?
+  resumeUrl             String?
+  signatureUrl          String?
+  staff_users           staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+model staff_profiles {
+  id                 String           @id
+  staffUserId        String           @unique
+  phone              String?
+  location           String?
+  employmentStatus   EmploymentStatus @default(PROBATION)
+  startDate          DateTime
+  daysEmployed       Int              @default(0)
+  currentRole        String
+  salary             Decimal          @db.Decimal(10, 2)
+  lastPayIncrease    DateTime?
+  lastIncreaseAmount Decimal?         @db.Decimal(10, 2)
+  totalLeave         Int              @default(12)
+  usedLeave          Int              @default(0)
+  vacationUsed       Int              @default(0)
+  sickUsed           Int              @default(0)
+  hmo                Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime
+  civilStatus        String?
+  dateOfBirth        DateTime?
+  gender             String?
+  timezone           String?          @default("Asia/Manila")
+  staff_users        staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  work_schedules     work_schedules[]
+}
+
+model staff_users {
+  id                              String                  @id
+  authUserId                      String                  @unique
+  name                            String
+  role                            StaffRole               @default(STAFF)
+  avatar                          String?
+  coverPhoto                      String?
+  createdAt                       DateTime                @default(now())
+  updatedAt                       DateTime
+  email                           String                  @unique
+  companyId                       String?
+  active                          Boolean                 @default(true)
+  activity_posts                  activity_posts[]
+  breaks                          breaks[]
+  documents                       documents[]
+  employment_contracts            employment_contracts?
+  gamification_profiles           gamification_profiles?
+  job_acceptances                 job_acceptances?
+  kudos_kudos_fromIdTostaff_users kudos[]                 @relation("kudos_fromIdTostaff_users")
+  kudos_kudos_toIdTostaff_users   kudos[]                 @relation("kudos_toIdTostaff_users")
+  notifications                   notifications[]
+  performance_metrics             performance_metrics[]
+  reviews                         reviews[]
+  staff_welcome_forms             staff_welcome_forms?
+  staff_offboarding               staff_offboarding?
+  staff_onboarding                staff_onboarding?
+  staff_personal_records          staff_personal_records?
+  staff_profiles                  staff_profiles?
+  company                         company?                @relation(fields: [companyId], references: [id])
+  task_assignments                task_assignments[]
+  tasks                           tasks[]
+  tickets                         tickets[]
+  time_entries                    time_entries[]
+}
+
+model staff_welcome_forms {
+  id               String      @id
+  staffUserId      String      @unique
+  name             String
+  favoriteFastFood String
+  favoriteMovie    String?
+  completed        Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime
+  startDate        String
+  additionalInfo   String?
+  client           String
+  dreamDestination String?
+  favoriteBook     String?
+  favoriteColor    String?
+  favoriteGame     String?
+  favoriteMusic    String?
+  favoriteQuote    String?
+  favoriteSeason   String?
+  favoriteSport    String?
+  funFact          String?
+  hobby            String?
+  petName          String?
+  submittedAt      DateTime    @default(now())
+  staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@map("staff_interests")
+}
+
+model subtasks {
+  id          String    @id
+  taskId      String
+  title       String
+  completed   Boolean   @default(false)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  completedAt DateTime?
+  tasks       tasks     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model task_assignments {
+  id          String      @id
+  taskId      String
+  staffUserId String
+  createdAt   DateTime    @default(now())
+  staff_users staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  tasks       tasks       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, staffUserId])
+}
+
+// REMOVED: Consolidated into universal 'comments' table
+
+model tasks {
+  id               String             @id
+  staffUserId      String?
+  title            String
+  description      String?
+  status           TaskStatus         @default(TODO)
+  priority         TaskPriority       @default(MEDIUM)
+  source           TaskSource         @default(SELF)
+  deadline         DateTime?
+  completedAt      DateTime?
+  timeSpent        Int?
+  tags             String[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  companyId        String?
+  createdById      String?
+  createdByType    CreatorType        @default(STAFF)
+  attachments      String[]           @default([])
+  clientUserId     String?
+  subtasks         subtasks[]
+  task_assignments task_assignments[]
+  client_users     client_users?      @relation(fields: [clientUserId], references: [id])
+  company          company?           @relation(fields: [companyId], references: [id])
+  staff_users      staff_users?       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+// REMOVED: Consolidated into universal 'comments' table
+
+model tickets {
+  id               String            @id
+  ticketId         String            @unique
+  staffUserId      String?
+  title            String
+  description      String
+  category         TicketCategory
+  priority         TicketPriority    @default(MEDIUM)
+  status           TicketStatus      @default(OPEN)
+  assignedTo       String?
+  resolvedDate     DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  attachments      String[]          @default([])
+  createdByType    String            @default("STAFF")
+  managementUserId String?
+  clientUserId     String?
+  client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+  management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+model time_entries {
+  id               String          @id
+  staffUserId      String
+  clockIn          DateTime
+  clockOut         DateTime?
+  shiftDate        DateTime?       // The date of the SHIFT (not clock-in date) - handles night shift crossover
+  shiftDayOfWeek   String?         // "Monday", "Tuesday", etc. - for performance queries
+  totalHours       Decimal?        @db.Decimal(5, 2)
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime
+  breaksScheduled  Boolean         @default(false)
+  clockOutReason   ClockOutReason?
+  expectedClockIn  DateTime?
+  lateBy           Int?
+  wasLate          Boolean         @default(false)
+  earlyBy          Int?
+  earlyClockOutBy  Int?
+  lateReason       LateReason?
+  wasEarly         Boolean         @default(false)
+  wasEarlyClockOut Boolean         @default(false)
+  workScheduleId   String?
+  workedFullShift  Boolean         @default(false)
+  breaks           breaks[]
+  staff_users      staff_users     @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  work_schedule    work_schedules? @relation(fields: [workScheduleId], references: [id])
+  
+  @@index([shiftDate])
+  @@index([shiftDayOfWeek])
+}
+
+model user_badges {
+  id                    String                @id
+  profileId             String
+  badgeType             BadgeType
+  earnedAt              DateTime              @default(now())
+  gamification_profiles gamification_profiles @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, badgeType])
+}
+
+model work_schedules {
+  id             String            @id
+  profileId      String
+  dayOfWeek      String
+  startTime      String
+  endTime        String
+  isWorkday      Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime
+  companyId      String?
+  createdBy      String?
+  lastModifiedBy String?
+  notes          String?
+  shiftType      ShiftType?        @default(DAY_SHIFT)
+  timezone       String?           @default("Asia/Manila")
+  workLocation   WorkLocationType? @default(WORK_FROM_HOME)
+  time_entries   time_entries[]
+  company        company?          @relation(fields: [companyId], references: [id])
+  staff_profiles staff_profiles    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([companyId])
+}
+
+enum AwayReason {
+  MEETING
+  NURSE
+  BATHROOM
+  MANAGEMENT
+  DOLE
+  OTHER
+}
+
+enum BadgeType {
+  SPEEDSTER
+  PERFECTIONIST
+  FIRE
+  EARLY_BIRD
+  TEAM_PLAYER
+  TOP_PERFORMER
+  CONSISTENT
+  INNOVATOR
+}
+
+enum BreakType {
+  MORNING
+  LUNCH
+  AFTERNOON
+  AWAY
+}
+
+enum ClientRole {
+  OWNER
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+enum ClockOutReason {
+  END_OF_SHIFT
+  EMERGENCY
+  SICK
+  EARLY_LEAVE_APPROVED
+  INTERNET_ISSUE
+  POWER_OUTAGE
+  PERSONAL
+  OTHER
+}
+
+enum LateReason {
+  TRAFFIC
+  OVERSLEPT
+  EMERGENCY
+  POWER_OUTAGE
+  INTERNET_ISSUE
+  FAMILY_MATTER
+  HEALTH_ISSUE
+  TRANSPORTATION
+  WEATHER
+  OTHER
+}
+
+enum CreatorType {
+  STAFF
+  CLIENT
+  ADMIN
+}
+
+enum Department {
+  CEO_EXECUTIVE
+  IT_DEPARTMENT
+  HR_DEPARTMENT
+  NURSE_DEPARTMENT
+  RECRUITMENT_DEPARTMENT
+  ACCOUNT_MANAGEMENT
+  FINANCE_DEPARTMENT
+  NERDS_DEPARTMENT
+  OPERATIONS
+}
+
+enum DocumentCategory {
+  CLIENT
+  TRAINING
+  PROCEDURE
+  CULTURE
+  SEO
+  OTHER
+}
+
+enum DocumentSource {
+  STAFF
+  CLIENT
+  ADMIN
+}
+
+enum EmploymentStatus {
+  PROBATION
+  REGULAR
+  TERMINATED
+}
+
+enum InterviewRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULE_REQUESTED
+  HIRE_REQUESTED
+  OFFER_SENT
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  HIRED
+}
+
+enum ManagementRole {
+  ADMIN
+  MANAGER
+}
+
+enum NotificationType {
+  TAG
+  MENTION
+  COMMENT
+  REACTION
+  SYSTEM
+}
+
+enum OffboardingReason {
+  RESIGNATION
+  TERMINATION
+  END_OF_CONTRACT
+  MUTUAL_AGREEMENT
+  RETIREMENT
+  OTHER
+}
+
+enum OffboardingStatus {
+  INITIATED
+  PENDING_EXIT
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum OnboardingStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum PostAudience {
+  STAFF
+  CLIENT
+  MANAGEMENT
+  ALL
+}
+
+enum PostType {
+  ACHIEVEMENT
+  MILESTONE
+  KUDOS
+  WIN
+  CELEBRATION
+  UPDATE
+  ANNOUNCEMENT
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  CELEBRATE
+  FIRE
+  CLAP
+  LAUGH
+  POO
+  ROCKET
+  SHOCKED
+  MIND_BLOWN
+}
+
+enum ReviewStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  COMPLETED
+}
+
+enum ReviewType {
+  MONTH_1
+  MONTH_3
+  MONTH_5
+  RECURRING
+}
+
+enum StaffRole {
+  STAFF
+  TEAM_LEAD
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskSource {
+  SELF
+  CLIENT
+  MANAGEMENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  STUCK
+  FOR_REVIEW
+  COMPLETED
+}
+
+enum TicketCategory {
+  IT
+  HR
+  MANAGEMENT
+  EQUIPMENT
+  OTHER
+  STATION
+  SURROUNDINGS
+  COMPENSATION
+  TRANSPORT
+  ONBOARDING
+  OFFBOARDING
+  CLINIC
+  MEETING_ROOM
+  MAINTENANCE
+  CLEANING
+  FINANCE
+  OPERATIONS
+  ACCOUNT_SUPPORT
+  STAFF_PERFORMANCE
+  PURCHASE_REQUEST
+  BONUS_REQUEST
+  REFERRAL
+  REPORTING_ISSUES
+  SYSTEM_ACCESS
+  GENERAL_INQUIRY
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum ShiftType {
+  DAY_SHIFT
+  NIGHT_SHIFT
+  MID_SHIFT
+}
+
+enum WorkLocationType {
+  WORK_FROM_HOME
+  OFFICE
+  HYBRID
+}
+
+// ============================================
+// UNIVERSAL TABLES (Polymorphic)
+// ============================================
+
+model comments {
+  id              String   @id @default(uuid())
+  commentableType String   // 'post', 'task', 'document', 'ticket'
+  commentableId   String   // UUID of the thing being commented on
+  authorType      String   // 'staff', 'client', 'management'
+  authorId        String   // UUID of the user
+  authorName      String
+  authorAvatar    String?
+  content         String   @db.Text
+  attachments     String[] @default([])
+  parentId        String?  // For threaded replies
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([commentableType, commentableId])
+  @@index([authorType, authorId])
+  @@index([parentId])
+}
+
+model reactions {
+  id            String       @id @default(uuid())
+  reactableType String       // 'post', 'task', 'document', 'comment', 'ticket'
+  reactableId   String       // UUID of the thing
+  authorType    String       // 'staff', 'client', 'management'
+  authorId      String       // UUID of the user
+  authorName    String
+  authorAvatar  String?
+  type          ReactionType // LIKE, LOVE, FIRE, etc.
+  createdAt     DateTime     @default(now())
+
+  @@unique([reactableType, reactableId, authorId])
+  @@index([reactableType, reactableId])
+  @@index([authorType, authorId])
+}
+
+model shares {
+  id             String   @id @default(uuid())
+  shareableType  String   // 'post', 'document', 'task', 'achievement'
+  shareableId    String   // UUID of the thing
+  sharedByType   String   // 'staff', 'client', 'management'
+  sharedById     String   // UUID of who shared it
+  sharedByName   String
+  sharedByAvatar String?
+  sharedWithType String   // 'staff', 'client', 'team', 'company', 'all'
+  sharedWithId   String?  // UUID if specific person/team, null for 'all'
+  message        String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([shareableType, shareableId])
+  @@index([sharedByType, sharedById])
+  @@index([sharedWithType, sharedWithId])
+}
