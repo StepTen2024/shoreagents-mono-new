@@ -105,19 +105,31 @@ export default function TimeTracking() {
   
   // Check for late clock-in and show modal
   useEffect(() => {
-    if (isClockedIn && activeEntry?.wasLate && activeEntry?.lateBy) {
-      setLateMinutes(activeEntry.lateBy)
-      setShowLateModal(true)
+    if (isClockedIn && activeEntry?.wasLate && activeEntry?.lateBy && activeEntry?.id) {
+      // Check if user already saw this modal for this time entry
+      const seenKey = `late-modal-seen-${activeEntry.id}`
+      const alreadySeen = localStorage.getItem(seenKey)
+      
+      if (!alreadySeen) {
+        setLateMinutes(activeEntry.lateBy)
+        setShowLateModal(true)
+      }
     }
-  }, [isClockedIn, activeEntry?.wasLate || false, activeEntry?.lateBy || 0])
+  }, [isClockedIn, activeEntry?.wasLate || false, activeEntry?.lateBy || 0, activeEntry?.id])
 
   // Check for early clock-in and show modal
   useEffect(() => {
-    if (isClockedIn && activeEntry?.wasEarly && activeEntry?.earlyBy) {
-      setEarlyMinutes(activeEntry.earlyBy)
-      setShowEarlyModal(true)
+    if (isClockedIn && activeEntry?.wasEarly && activeEntry?.earlyBy && activeEntry?.id) {
+      // Check if user already saw this modal for this time entry
+      const seenKey = `early-modal-seen-${activeEntry.id}`
+      const alreadySeen = localStorage.getItem(seenKey)
+      
+      if (!alreadySeen) {
+        setEarlyMinutes(activeEntry.earlyBy)
+        setShowEarlyModal(true)
+      }
     }
-  }, [isClockedIn, activeEntry?.wasEarly || false, activeEntry?.earlyBy || 0])
+  }, [isClockedIn, activeEntry?.wasEarly || false, activeEntry?.earlyBy || 0, activeEntry?.id])
   
   // Auto clock-out effect - runs when clocked in
   useEffect(() => {
@@ -1952,6 +1964,10 @@ export default function TimeTracking() {
               console.error('Failed to save late reason:', error)
             }
           }
+          // Mark as seen in localStorage
+          if (activeEntry?.id) {
+            localStorage.setItem(`late-modal-seen-${activeEntry.id}`, 'true')
+          }
           setShowLateModal(false)
           // Break scheduler will be shown automatically via WebSocket state
         }}
@@ -1963,6 +1979,10 @@ export default function TimeTracking() {
         type="early-clock-in"
         data={{ earlyBy: earlyMinutes, expectedTime: activeEntry?.expectedClockIn }}
         onAction={() => {
+          // Mark as seen in localStorage
+          if (activeEntry?.id) {
+            localStorage.setItem(`early-modal-seen-${activeEntry.id}`, 'true')
+          }
           setShowEarlyModal(false)
           // Break scheduler will be shown automatically via WebSocket state
         }}

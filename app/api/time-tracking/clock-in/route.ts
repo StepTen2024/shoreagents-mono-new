@@ -186,6 +186,38 @@ export async function POST(request: NextRequest) {
       isNightShift
     })
     
+    // ✅ NEW: Create empty performance_metrics row for this shift
+    // This allows Electron to immediately start populating data without creation logic
+    await prisma.performance_metrics.create({
+      data: {
+        id: randomUUID(),
+        staffUserId: staffUser.id,
+        shiftDate: shiftDate,
+        shiftDayOfWeek: shiftDayOfWeek,
+        mouseMovements: 0,
+        mouseClicks: 0,
+        keystrokes: 0,
+        activeTime: 0,
+        idleTime: 0,
+        screenTime: 0,
+        downloads: 0,
+        uploads: 0,
+        bandwidth: 0,
+        clipboardActions: 0,
+        filesAccessed: 0,
+        urlsVisited: 0,
+        tabsSwitched: 0,
+        productivityScore: 0,
+        applicationsused: [],
+        visitedurls: []
+      } as any
+    })
+    
+    console.log(`📊 Empty performance_metrics row created for shift:`, {
+      shiftDate,
+      shiftDayOfWeek
+    })
+    
     // Check if any breaks exist for this shift (we already fetched this data above)
     const existingBreaksThisShift = existingShiftEntry?.breaks && existingShiftEntry.breaks.length > 0
     
