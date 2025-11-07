@@ -13,8 +13,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, MapPin, Calendar, Briefcase, Award, Book, Languages,
-  Brain, Zap, Target, TrendingUp, Video, CheckCircle, X, Plus, FileText
+  Brain, Zap, Target, TrendingUp, Video, CheckCircle, X, Plus, FileText, Clock, UserCheck, Mail, XCircle, CalendarCheck
 } from 'lucide-react'
+import { CommentSection } from '@/components/engagement/comment-section'
 
 interface CandidateProfile {
   id: string
@@ -79,6 +80,9 @@ export default function CandidateProfilePage() {
   const [loading, setLoading] = useState(true)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('profile')
+  const [existingInterview, setExistingInterview] = useState<any>(null)
+  const [checkingInterview, setCheckingInterview] = useState(true)
+  const [clientTimezone, setClientTimezone] = useState<string>('Australia/Brisbane')
   
   // Get return navigation info from URL params
   const returnTo = searchParams.get('returnTo')
@@ -106,7 +110,21 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     fetchCandidate()
+    checkExistingInterview()
+    fetchClientTimezone()
   }, [candidateId])
+  
+  async function fetchClientTimezone() {
+    try {
+      const response = await fetch('/api/client/profile')
+      const data = await response.json()
+      if (data.profile?.timezone) {
+        setClientTimezone(data.profile.timezone)
+      }
+    } catch (error) {
+      console.error('Failed to fetch client timezone:', error)
+    }
+  }
 
   async function fetchCandidate() {
     try {
@@ -123,6 +141,26 @@ export default function CandidateProfilePage() {
       console.error('Error fetching candidate:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function checkExistingInterview() {
+    try {
+      setCheckingInterview(true)
+      const response = await fetch('/api/client/interviews')
+      const data = await response.json()
+
+      if (data.success && data.interviews) {
+        // Check if there's already an interview for this candidate
+        const interview = data.interviews.find(
+          (interview: any) => interview.bpocCandidateId === candidateId
+        )
+        setExistingInterview(interview || null)
+      }
+    } catch (error) {
+      console.error('Error checking existing interviews:', error)
+    } finally {
+      setCheckingInterview(false)
     }
   }
 
@@ -344,14 +382,28 @@ export default function CandidateProfilePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             <div className="sticky top-36">
-              {/* Request Interview Button */}
-              <button
-                onClick={() => setShowRequestModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all text-lg flex items-center justify-center gap-2"
-              >
-                <Video className="w-5 h-5" />
-                Request Interview
-              </button>
+              {/* Request Interview Button or Status */}
+              {!existingInterview ? (
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={checkingInterview}
+                >
+                  {checkingInterview ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <Video className="w-5 h-5" />
+                      Request Interview
+                    </>
+                  )}
+                </button>
+              ) : (
+                <InterviewStatusCard interview={existingInterview} clientTimezone={clientTimezone} />
+              )}
 
               {/* Quick Snapshot */}
               <div className="mt-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-5 border border-blue-200">
@@ -434,6 +486,21 @@ export default function CandidateProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* 🎯 UNIFIED COMMENT SYSTEM */}
+        <div className="max-w-7xl mx-auto px-6 pb-8">
+          <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">💬 Internal Notes & Comments</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Share insights and notes about this candidate with your team. These comments are only visible to your organization.
+            </p>
+            <CommentSection
+              commentableType="CANDIDATE"
+              commentableId={candidate.id}
+              darkMode={false}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Request Interview Modal */}
@@ -441,6 +508,7 @@ export default function CandidateProfilePage() {
         <RequestInterviewModal
           candidate={candidate}
           onClose={() => setShowRequestModal(false)}
+          onSuccess={checkExistingInterview}
         />
       )}
     </div>
@@ -892,10 +960,381 @@ function DISCBar({ label, score, color }: { label: string; score: number; color:
 }
 
 // ============================================================================
+// INTERVIEW STATUS CARD
+// ============================================================================
+
+function InterviewStatusCard({ interview, clientTimezone }: { interview: any; clientTimezone?: string }) {
+  const getStatusConfig = (status: string) => {
+    const statusUpper = status.toUpperCase()
+    
+    switch (statusUpper) {
+      case 'PENDING':
+        return {
+          label: 'Waiting for Coordination',
+          description: 'Our team is coordinating to schedule your interview. You\'ll be notified once confirmed.',
+          icon: Clock,
+          bgColor: 'from-yellow-50 to-yellow-100',
+          borderColor: 'border-l-yellow-500',
+          titleColor: 'text-yellow-900',
+          descColor: 'text-yellow-800',
+          iconColor: 'text-yellow-700',
+          iconBgColor: 'bg-yellow-200'
+        }
+      case 'SCHEDULED':
+        return {
+          label: 'Interview Scheduled',
+          description: 'Your interview has been confirmed.',
+          icon: CalendarCheck,
+          bgColor: 'from-blue-50 to-blue-100',
+          borderColor: 'border-l-blue-500',
+          titleColor: 'text-blue-900',
+          descColor: 'text-blue-800',
+          iconColor: 'text-blue-700',
+          iconBgColor: 'bg-blue-200'
+        }
+      case 'RESCHEDULE_REQUESTED':
+      case 'RESCHEDULE-REQUESTED':
+        return {
+          label: 'Reschedule Requested',
+          description: 'Your reschedule request has been submitted. We\'re coordinating a new time.',
+          icon: Calendar,
+          bgColor: 'from-yellow-50 to-yellow-100',
+          borderColor: 'border-l-yellow-500',
+          titleColor: 'text-amber-900',
+          descColor: 'text-amber-800',
+          iconColor: 'text-amber-700',
+          iconBgColor: 'bg-amber-200'
+        }
+      case 'COMPLETED':
+        return {
+          label: 'Interview Complete',
+          description: 'Great work! You can now request to hire this candidate.',
+          icon: CheckCircle,
+          bgColor: 'from-green-50 to-green-100',
+          borderColor: 'border-l-green-500',
+          titleColor: 'text-green-900',
+          descColor: 'text-green-800',
+          iconColor: 'text-green-700',
+          iconBgColor: 'bg-green-200'
+        }
+      case 'CANCELLED':
+        return {
+          label: 'Interview Cancelled',
+          description: 'This interview request has been closed.',
+          icon: XCircle,
+          bgColor: 'from-gray-50 to-gray-100',
+          borderColor: 'border-l-gray-500',
+          titleColor: 'text-gray-900',
+          descColor: 'text-gray-800',
+          iconColor: 'text-gray-700',
+          iconBgColor: 'bg-gray-200'
+        }
+      case 'HIRE_REQUESTED':
+      case 'HIRE-REQUESTED':
+        return {
+          label: 'Hire Request Submitted',
+          description: 'Your hire request has been submitted. Admin will send a formal job offer.',
+          icon: UserCheck,
+          bgColor: 'from-orange-50 to-orange-100',
+          borderColor: 'border-l-orange-500',
+          titleColor: 'text-orange-900',
+          descColor: 'text-orange-800',
+          iconColor: 'text-orange-700',
+          iconBgColor: 'bg-orange-200'
+        }
+      case 'OFFER_SENT':
+      case 'OFFER-SENT':
+        return {
+          label: 'Job Offer Sent 📧',
+          description: 'A formal job offer has been sent. Waiting for response.',
+          icon: Mail,
+          bgColor: 'from-indigo-50 to-indigo-100',
+          borderColor: 'border-l-indigo-500',
+          titleColor: 'text-indigo-900',
+          descColor: 'text-indigo-800',
+          iconColor: 'text-indigo-700',
+          iconBgColor: 'bg-indigo-200'
+        }
+      case 'OFFER_ACCEPTED':
+      case 'OFFER-ACCEPTED':
+        return {
+          label: 'Offer Accepted! 🎉',
+          description: 'Great news! The candidate accepted and is completing onboarding.',
+          icon: CheckCircle,
+          bgColor: 'from-emerald-50 to-emerald-100',
+          borderColor: 'border-l-emerald-500',
+          titleColor: 'text-emerald-900',
+          descColor: 'text-emerald-800',
+          iconColor: 'text-emerald-700',
+          iconBgColor: 'bg-emerald-200'
+        }
+      case 'OFFER_DECLINED':
+      case 'OFFER-DECLINED':
+        return {
+          label: 'Offer Declined',
+          description: 'Unfortunately, the candidate declined the job offer.',
+          icon: XCircle,
+          bgColor: 'from-red-50 to-red-100',
+          borderColor: 'border-l-red-500',
+          titleColor: 'text-red-900',
+          descColor: 'text-red-800',
+          iconColor: 'text-red-700',
+          iconBgColor: 'bg-red-200'
+        }
+      case 'HIRED':
+        return {
+          label: 'Candidate Hired! 🎉',
+          description: 'Congratulations! The candidate has been hired and is moving forward with onboarding.',
+          icon: UserCheck,
+          bgColor: 'from-purple-50 to-purple-100',
+          borderColor: 'border-l-purple-500',
+          titleColor: 'text-purple-900',
+          descColor: 'text-purple-800',
+          iconColor: 'text-purple-700',
+          iconBgColor: 'bg-purple-200'
+        }
+      case 'REJECTED':
+        return {
+          label: 'Candidate Rejected',
+          description: 'You have declined to move forward with this candidate.',
+          icon: XCircle,
+          bgColor: 'from-red-50 to-red-100',
+          borderColor: 'border-l-red-500',
+          titleColor: 'text-red-900',
+          descColor: 'text-red-800',
+          iconColor: 'text-red-700',
+          iconBgColor: 'bg-red-200'
+        }
+      default:
+        return {
+          label: status,
+          description: '',
+          icon: Calendar,
+          bgColor: 'from-gray-50 to-gray-100',
+          borderColor: 'border-l-gray-500',
+          titleColor: 'text-gray-900',
+          descColor: 'text-gray-800',
+          iconColor: 'text-gray-700',
+          iconBgColor: 'bg-gray-200'
+        }
+    }
+  }
+  
+  const config = getStatusConfig(interview.status)
+  const StatusIcon = config.icon
+  
+  // Format scheduled time if available
+  const formatScheduledTime = (time: string) => {
+    if (!time) return null
+    try {
+      const date = new Date(time)
+      return date.toLocaleString('en-US', {
+        timeZone: clientTimezone || undefined,
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short'
+      })
+    } catch {
+      return null
+    }
+  }
+  
+  // Format preferred times
+  const formatPreferredTime = (time: string | any) => {
+    if (!time) return ''
+    
+    // If time is an object with datetime property
+    if (typeof time === 'object' && time.datetime) {
+      time = time.datetime
+    }
+    
+    try {
+      const date = new Date(time)
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+    } catch {
+      return String(time)
+    }
+  }
+  
+  const scheduledTimeFormatted = interview.scheduledTime 
+    ? formatScheduledTime(interview.scheduledTime) 
+    : null
+  
+  const shouldShowPreferredTimes = interview.status !== 'COMPLETED' && 
+                                   interview.status !== 'HIRE_REQUESTED' && 
+                                   interview.status !== 'HIRE-REQUESTED' && 
+                                   interview.status !== 'HIRED' &&
+                                   interview.status !== 'OFFER_SENT' &&
+                                   interview.status !== 'OFFER-SENT' &&
+                                   interview.status !== 'OFFER_DECLINED' &&
+                                   interview.status !== 'OFFER-DECLINED'
+  
+  return (
+    <div 
+      className={`w-full bg-gradient-to-br ${config.bgColor} ${config.borderColor} border-l-4 rounded-lg shadow-sm overflow-hidden`}
+    >
+      {/* Header */}
+      <div className="p-6">
+        <div className="flex items-start gap-4">
+          <div className={`h-12 w-12 rounded-full ${config.iconBgColor} flex items-center justify-center shrink-0`}>
+            <StatusIcon className={`w-6 h-6 ${config.iconColor}`} />
+          </div>
+          <div className="flex-1">
+            <h3 className={`text-lg font-bold ${config.titleColor} mb-2`}>
+              {config.label}
+            </h3>
+            {config.description && (
+              <p className={`text-sm ${config.descColor} leading-relaxed`}>
+                {config.description}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Details */}
+      <div className="px-6 pb-6 space-y-3">
+        {interview.status === 'SCHEDULED' && scheduledTimeFormatted && (
+          <div className="flex items-start gap-2">
+            <Calendar className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <div className="text-xs font-medium text-gray-600 mb-1">Scheduled Time</div>
+              <div className="text-sm font-semibold text-gray-900">{scheduledTimeFormatted}</div>
+            </div>
+          </div>
+        )}
+        
+        {interview.status === 'SCHEDULED' && interview.meetingLink && (
+          <a
+            href={interview.meetingLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            <Video className="w-4 h-4" />
+            Join Meeting
+          </a>
+        )}
+        
+        {shouldShowPreferredTimes && interview.preferredTimes && interview.preferredTimes.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Your Preferred Times:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {interview.preferredTimes.map((time: any, idx: number) => (
+                <span key={idx} className="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 gap-1 transition-colors bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">
+                  <Clock className="h-3 w-3" />
+                  {formatPreferredTime(time)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Preferred Start Date - Show for hire requested and later */}
+        {interview.clientPreferredStart && (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED' || interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT' || interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED' || interview.status === 'HIRED') && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-xs font-semibold text-gray-900">Your Preferred Start Date</span>
+            </div>
+            <p className="text-sm font-medium text-blue-700">
+              {new Date(interview.clientPreferredStart).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+        )}
+        
+        {/* Work Schedule - Show for hire requested and later */}
+        {interview.workSchedule && (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED' || interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT' || interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED' || interview.status === 'HIRED') && (
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-purple-600" />
+                <span className="text-xs font-semibold text-gray-900">Work Schedule</span>
+              </div>
+              {interview.workSchedule.isMonToFri && (
+                <p className="text-xs text-gray-500">(Mon-Fri)</p>
+              )}
+            </div>
+            {interview.workSchedule.hasCustomHours && interview.workSchedule.customHours ? (
+              <div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {Object.entries(interview.workSchedule.customHours).map(([day, time]: [string, any]) => {
+                    const [hours, minutes] = time.split(':').map(Number)
+                    const endHour = (hours + 9) % 24
+                    const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                    const convertTo12Hour = (time24: string): string => {
+                      const [h, m] = time24.split(':').map(Number)
+                      const period = h >= 12 ? 'PM' : 'AM'
+                      const hours12 = h % 12 || 12
+                      return `${hours12}:${String(m).padStart(2, '0')} ${period}`
+                    }
+                    return (
+                      <div key={day} className="flex flex-col items-center text-xs bg-white px-2 py-2 rounded border border-purple-200">
+                        <span className="text-gray-900 font-medium mb-0.5">{day.substring(0, 3)}</span>
+                        <span className="text-gray-600 text-xs">{convertTo12Hour(time)} - {convertTo12Hour(endTime24)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">(9 hrs/day, incl. break)</p>
+              </div>
+            ) : interview.workSchedule.workStartTime && interview.workSchedule.workDays ? (
+              <div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {interview.workSchedule.workDays.map((day: string) => {
+                    const workStartTime = interview.workSchedule?.workStartTime || '09:00'
+                    const [hours, minutes] = workStartTime.split(':').map(Number)
+                    const endHour = (hours + 9) % 24
+                    const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                    const convertTo12Hour = (time24: string): string => {
+                      const [h, m] = time24.split(':').map(Number)
+                      const period = h >= 12 ? 'PM' : 'AM'
+                      const hours12 = h % 12 || 12
+                      return `${hours12}:${String(m).padStart(2, '0')} ${period}`
+                    }
+                    return (
+                      <div key={day} className="flex flex-col items-center text-xs bg-white px-2 py-2 rounded border border-purple-200">
+                        <span className="text-gray-900 font-medium mb-0.5">{day.substring(0, 3)}</span>
+                        <span className="text-gray-600 text-xs">{convertTo12Hour(workStartTime)} - {convertTo12Hour(endTime24)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">(9 hrs/day, incl. break)</p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">Not specified</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
 // REQUEST INTERVIEW MODAL
 // ============================================================================
 
-function RequestInterviewModal({ candidate, onClose }: { candidate: CandidateProfile; onClose: () => void }) {
+function RequestInterviewModal({ candidate, onClose, onSuccess }: { candidate: CandidateProfile; onClose: () => void; onSuccess: () => void }) {
   const router = useRouter()
   const [preferredTimes, setPreferredTimes] = useState<string[]>(['', ''])
   const [notes, setNotes] = useState('')
@@ -958,6 +1397,8 @@ function RequestInterviewModal({ candidate, onClose }: { candidate: CandidatePro
 
       if (data.success) {
         setSuccess(true)
+        // Refresh interview status to show the newly created interview
+        onSuccess()
         setTimeout(() => {
           router.push('/client/recruitment?tab=interviews')
         }, 2000)

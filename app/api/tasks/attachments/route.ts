@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { supabaseAdmin } from "@/lib/supabase"
+import { supabaseAdmin as supabase } from "@/lib/supabase"
 
 // POST /api/tasks/attachments - Upload task attachments
 export async function POST(request: NextRequest) {
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(arrayBuffer)
 
       // Upload to Supabase
-      const { data, error } = await supabaseAdmin.storage
+      const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, buffer, {
           contentType: file.type,
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       // Get public URL
       const {
         data: { publicUrl },
-      } = supabaseAdmin.storage.from(bucketName).getPublicUrl(filePath)
+      } = supabase.storage.from(bucketName).getPublicUrl(filePath)
 
       uploadedUrls.push(publicUrl)
     }

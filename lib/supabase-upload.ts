@@ -1,4 +1,9 @@
-import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function uploadCompanyFile(
   file: File,
@@ -20,7 +25,7 @@ export async function uploadCompanyFile(
   
   const filePath = `${folder}/${fileName}`
 
-  const { data, error } = await supabaseAdmin.storage
+  const { data, error } = await supabase.storage
     .from('company')
     .upload(filePath, file, {
       cacheControl: '3600',
@@ -78,7 +83,7 @@ export async function uploadClientFile(
   const fileName = type === 'avatar' ? `avatar_${timestamp}.${fileExt}` : `cover_${timestamp}.${fileExt}`
   const filePath = `${folder}/${clientUserId}/${fileName}`
 
-  const { data, error } = await supabaseAdmin.storage
+  const { data, error } = await supabase.storage
     .from('client')
     .upload(filePath, file, {
       cacheControl: '3600',

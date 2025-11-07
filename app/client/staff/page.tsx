@@ -221,7 +221,7 @@ export default function StaffPage() {
                     {member.rate && (
                       <div className="flex items-center gap-2 text-gray-700">
                         <DollarSign className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                        <span>${member.rate}/month</span>
+                        <span>₱{member.rate.toLocaleString()}/month</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-gray-700">
@@ -357,7 +357,7 @@ export default function StaffPage() {
                       {member.rate && (
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <DollarSign className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium">${member.rate}/month</span>
+                          <span className="font-medium">₱{member.rate.toLocaleString()}/month</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-sm text-gray-700">

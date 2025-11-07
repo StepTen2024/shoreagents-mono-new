@@ -50,6 +50,7 @@ export async function PATCH(
       where: { id: ticketId },
       data: {
         status,
+        updatedAt: new Date(),
         ...(status === "RESOLVED" || status === "CLOSED"
           ? { resolvedDate: new Date() }
           : {}),
@@ -81,7 +82,7 @@ export async function PATCH(
             avatar: true,
           },
         },
-        responses: {
+        ticket_responses: {
           orderBy: { createdAt: "asc" },
           include: {
             staff_users: {

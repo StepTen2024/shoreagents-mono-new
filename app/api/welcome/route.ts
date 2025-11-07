@@ -23,7 +23,7 @@ export async function GET() {
     }
 
     // Check if welcome form already exists
-    const existingWelcomeForm = await prisma.staff_welcome_forms.findUnique({
+    const existingWelcomeForm = await prisma.staff_interests.findUnique({
       where: { staffUserId: staffUser.id }
     })
 
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if welcome form already exists
-    const existingWelcomeForm = await prisma.staff_welcome_forms.findUnique({
+    const existingWelcomeForm = await prisma.staff_interests.findUnique({
       where: { staffUserId: staffUser.id }
     })
 
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create welcome form record
-    const welcomeForm = await prisma.staff_welcome_forms.create({
+    const welcomeForm = await prisma.staff_interests.create({
       data: {
         id: crypto.randomUUID(),
         staffUserId: staffUser.id,

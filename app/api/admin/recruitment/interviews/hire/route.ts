@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,8 +24,8 @@ export async function POST(request: NextRequest) {
       where: { authUserId: session.user.id }
     })
 
-    if (!managementUser || managementUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Access denied. Admin role required.' }, { status: 403 })
+    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
+      return NextResponse.json({ error: 'Forbidden. Admin or Manager role required.' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -105,6 +106,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job offer has already been sent to this candidate' }, { status: 400 })
     }
 
+    // Add offer sent note to admin notes
+    const timestamp = new Date().toLocaleString('en-US', { 
+      year: 'numeric', 
+      month: 'numeric', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true 
+    })
+    const existingAdminNotes = interviewRequest.adminNotes?.trim() || ''
+    const offerNote = `(Offer Sent) ${timestamp} - Job offer sent to candidate for ${position} position`
+    const updatedAdminNotes = existingAdminNotes 
+      ? `${existingAdminNotes}\n\n${offerNote}` 
+      : offerNote
+
     // Update interview request status to OFFER_SENT
     await prisma.interview_requests.update({
       where: { id: interviewRequestId },
@@ -114,35 +131,55 @@ export async function POST(request: NextRequest) {
         hireRequestedAt: new Date(),
         offerSentAt: new Date(),
         clientPreferredStart: clientPreferredStart ? new Date(clientPreferredStart) : null,
+        adminNotes: updatedAdminNotes,
         updatedAt: new Date()
       }
     })
 
     // Parse work schedule from client's hire request
     let workDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    let workStartTime = "09:00"
-    let workEndTime = "18:00"
+    let workStartTime: string | null = "09:00"
+    let workEndTime: string | null = "18:00"
     let scheduleTimezone = clientTimezone || "UTC"
     let isDefaultSchedule = true
+    let hasCustomHours = false
+    let customHours: Record<string, string> | null = null
 
     if (workSchedule) {
       workDays = workSchedule.workDays || workDays
-      workStartTime = workSchedule.workStartTime || workStartTime
       isDefaultSchedule = workSchedule.isMonToFri !== false
       scheduleTimezone = workSchedule.clientTimezone || scheduleTimezone
+      hasCustomHours = workSchedule.hasCustomHours || false
       
-      // Calculate end time (start + 9 hours)
-      const [startHour, startMinute] = workStartTime.split(':').map(Number)
-      const endHour = (startHour + 9) % 24
-      workEndTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
-      
-      console.log(`📅 [ADMIN] Work schedule from client:`, {
-        workDays,
-        workStartTime,
-        workEndTime,
-        scheduleTimezone,
-        isDefaultSchedule
-      })
+      if (hasCustomHours && workSchedule.customHours) {
+        // Use custom hours for different start times per day
+        customHours = workSchedule.customHours
+        workStartTime = null
+        workEndTime = null
+        
+        console.log(`📅 [ADMIN] Work schedule with custom hours:`, {
+          workDays,
+          customHours,
+          scheduleTimezone,
+          isDefaultSchedule
+        })
+      } else {
+        // Use single start/end time for all days
+        workStartTime = workSchedule.workStartTime || workStartTime
+        
+        // Calculate end time (start + 9 hours)
+        const [startHour, startMinute] = workStartTime.split(':').map(Number)
+        const endHour = (startHour + 9) % 24
+        workEndTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`
+        
+        console.log(`📅 [ADMIN] Work schedule with uniform hours:`, {
+          workDays,
+          workStartTime,
+          workEndTime,
+          scheduleTimezone,
+          isDefaultSchedule
+        })
+      }
     }
 
     // Create job acceptance record (pending candidate acceptance)
@@ -159,8 +196,18 @@ export async function POST(request: NextRequest) {
         workDays,
         workStartTime,
         workEndTime,
+        hasCustomHours,
+        customHours,
         clientTimezone: scheduleTimezone,
         isDefaultSchedule,
+        // Job offer details
+        salary: salary ? parseFloat(salary) : null,
+        shiftType: shiftType || null,
+        workLocation: workLocation || null,
+        hmoIncluded: hmoIncluded || false,
+        leaveCredits: leaveCredits || 12,
+        workHours: workHours || null,
+        preferredStartDate: clientPreferredStart ? new Date(clientPreferredStart) : null,
         updatedAt: new Date()
       }
     })

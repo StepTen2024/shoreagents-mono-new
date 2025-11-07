@@ -80,14 +80,14 @@ export async function GET(req: NextRequest) {
     const performanceMetrics = await prisma.performance_metrics.findMany({
       where: {
         staffUserId: { in: staffIds },
-        shiftDate: {
+        date: {
           gte: startDate,
           lte: endDate
         }
       },
       orderBy: [
         { staffUserId: 'asc' },
-        { shiftDate: 'desc' }
+        { date: 'desc' }
       ]
     })
 
@@ -235,8 +235,8 @@ export async function GET(req: NextRequest) {
             urlsVisited: latestMetric.urlsVisited,
             tabsSwitched: latestMetric.tabsSwitched,
             productivityScore: latestMetric.productivityScore,
-            applicationsUsed: (latestMetric as any).applicationsused || [],
-            visitedUrls: (latestMetric as any).visitedurls || [],
+            applicationsUsed: (latestMetric as any).applicationsUsed || [],
+            visitedUrls: (latestMetric as any).visitedUrls || [],
             screenshotUrls: (latestMetric as any).screenshotUrls || []
           } : null,
           // Totals across all days
@@ -255,8 +255,8 @@ export async function GET(req: NextRequest) {
             urlsVisited: totals.urlsVisited,
             tabsSwitched: totals.tabsSwitched,
             productivityScore: productivityScore,
-            applicationsUsed: (latestMetric as any)?.applicationsused || [],
-            visitedUrls: (latestMetric as any)?.visitedurls || [],
+            applicationsUsed: (latestMetric as any)?.applicationsUsed || [],
+            visitedUrls: (latestMetric as any)?.visitedUrls || [],
             screenshotUrls: (latestMetric as any)?.screenshotUrls || []
           },
           // All historical data

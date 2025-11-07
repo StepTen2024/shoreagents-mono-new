@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CommentSection } from "@/components/engagement/comment-section"
 import { Switch } from "@/components/ui/switch"
 import { 
   Search, 
@@ -27,18 +28,20 @@ import {
   Award,
   Zap,
   CheckCircle,
+  CheckCircle2,
   Mail,
   XCircle,
   User,
   Phone,
   FileText,
   Loader2,
-  CalendarCheck
+  CalendarCheck,
+  Video,
+  Globe
 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { RecruitmentCandidatesTab } from "@/components/admin/recruitment-candidates-tab"
 
 // Types
 interface Candidate {
@@ -248,7 +251,6 @@ export default function AdminRecruitmentPage() {
       // Handle new object format
       if (typeof time === 'object' && time !== null && time.datetime) {
         const clientTimezone = time.timezone || 'UTC'
-        const clientTzDisplay = time.timezoneDisplay || time.timezone || 'UTC'
         
         const localDateStr = time.datetime
         const parts = localDateStr.split('T')
@@ -264,6 +266,12 @@ export default function AdminRecruitmentPage() {
           minute: '2-digit',
           hour12: true
         })
+        
+        // Get timezone abbreviation for client timezone
+        const clientTzAbbrev = clientDate.toLocaleString('en-US', {
+          timeZone: clientTimezone,
+          timeZoneName: 'short'
+        }).split(' ').pop() || clientTimezone
         
         // To convert timezone properly:
         // 1. Create a UTC date (arbitrary, we'll adjust it)
@@ -285,9 +293,9 @@ export default function AdminRecruitmentPage() {
         if (!match) {
           return {
             clientTime: clientTimeStr,
-            clientTimezone: clientTzDisplay,
+            clientTimezone: clientTzAbbrev,
             phTime: 'Error',
-            fullDisplay: `${clientTimeStr} (${clientTzDisplay})`
+            fullDisplay: `${clientTimeStr} (${clientTzAbbrev})`
           }
         }
         
@@ -313,9 +321,9 @@ export default function AdminRecruitmentPage() {
         
         return {
           clientTime: clientTimeStr,
-          clientTimezone: clientTzDisplay,
+          clientTimezone: clientTzAbbrev,
           phTime: phTimeStr,
-          fullDisplay: `${clientTimeStr} (${clientTzDisplay}) → ${phTimeStr} (PH)`
+          fullDisplay: `${clientTimeStr} (${clientTzAbbrev}) → ${phTimeStr} (PH)`
         }
       }
       
@@ -394,8 +402,12 @@ export default function AdminRecruitmentPage() {
     try {
       const [hours, minutes] = time24.split(':').map(Number)
       
-      // Get friendly timezone display
-      const tzDisplay = getTimezoneDisplay(clientTimezone)
+      // Get timezone abbreviation
+      const tempDate = new Date()
+      const tzAbbrev = tempDate.toLocaleString('en-US', {
+        timeZone: clientTimezone,
+        timeZoneName: 'short'
+      }).split(' ').pop() || clientTimezone
       
       // Create a date object representing today at the given time
       const today = new Date()
@@ -423,9 +435,9 @@ export default function AdminRecruitmentPage() {
         // Fallback: just display the time as-is
         return {
           clientTime: convertTo12Hour(time24),
-          clientTimezone: tzDisplay,
+          clientTimezone: tzAbbrev,
           phTime: convertTo12Hour(time24),
-          fullDisplay: `${convertTo12Hour(time24)} (${tzDisplay})`
+          fullDisplay: `${convertTo12Hour(time24)} (${tzAbbrev})`
         }
       }
       
@@ -452,18 +464,22 @@ export default function AdminRecruitmentPage() {
       
       return {
         clientTime: clientTimeStr,
-        clientTimezone: tzDisplay,
+        clientTimezone: tzAbbrev,
         phTime: phTimeStr,
-        fullDisplay: `${clientTimeStr} (${tzDisplay}) → ${phTimeStr} (PH)`
+        fullDisplay: `${clientTimeStr} (${tzAbbrev}) → ${phTimeStr} (PH)`
       }
     } catch (error) {
       console.error('Error formatting work time with timezone:', error)
-      const tzDisplay = getTimezoneDisplay(clientTimezone)
+      const tempDate = new Date()
+      const tzAbbrev = tempDate.toLocaleString('en-US', {
+        timeZone: clientTimezone,
+        timeZoneName: 'short'
+      }).split(' ').pop() || clientTimezone
       return {
         clientTime: convertTo12Hour(time24),
-        clientTimezone: tzDisplay,
+        clientTimezone: tzAbbrev,
         phTime: convertTo12Hour(time24),
-        fullDisplay: `${convertTo12Hour(time24)} (${tzDisplay})`
+        fullDisplay: `${convertTo12Hour(time24)} (${tzAbbrev})`
       }
     }
   }
@@ -604,6 +620,15 @@ export default function AdminRecruitmentPage() {
       toast({
         title: "Missing Information",
         description: "Please provide a scheduled time for the interview.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!scheduleFormData.meetingLink) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a meeting link for the interview.",
         variant: "destructive"
       })
       return
@@ -907,7 +932,7 @@ export default function AdminRecruitmentPage() {
 
       if (data.success) {
         toast({
-          title: "Job Offer Sent Successfully! 🎉",
+          title: "Job Offer Sent Successfully!",
           description: `Offer email has been sent to ${hireFormData.candidateEmail}. Waiting for candidate response.`,
         })
 
@@ -1307,7 +1332,90 @@ export default function AdminRecruitmentPage() {
 
         {/* Candidates Tab */}
         {activeTab === 'candidates' && (
-          <RecruitmentCandidatesTab />
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search candidates by name, role, location, or skills..."
+                  value={candidateSearch}
+                  onChange={(e) => setCandidateSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            {candidatesLoading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading candidates...</div>
+            ) : filteredCandidates.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">No candidates found</div>
+            ) : (
+              <div className="space-y-3">
+                {filteredCandidates.map((candidate) => {
+                  const location = [candidate.location_city, candidate.location_country].filter(Boolean).join(', ') || 'N/A'
+                  const experience = candidate.resume_data?.experience || []
+                  const skills = candidate.resume_data?.skills || []
+                  
+                  return (
+                    <div
+                      key={candidate.id}
+                      className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedCandidate(candidate)}
+                    >
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={candidate.avatar_url || undefined} />
+                        <AvatarFallback>{candidate.first_name?.[0] || '?'}</AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground">{candidate.first_name || 'Unknown'}</h3>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {candidate.position || 'Professional'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {location}
+                          </span>
+                          {experience.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {experience.length} positions
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {candidate.latest_primary_type && (
+                          <Badge className="bg-muted text-foreground border border-border">
+                            {candidate.latest_primary_type}
+                          </Badge>
+                        )}
+                        {candidate.overall_score > 0 && (
+                          <div className="flex items-center gap-1 text-sm text-foreground">
+                            <Star className="h-4 w-4" />
+                            <span className="font-semibold">{candidate.overall_score}</span>
+                          </div>
+                        )}
+                        {skills.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {skills.length} skills
+                          </Badge>
+                        )}
+                      </div>
+
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Job Requests Tab */}
@@ -1529,7 +1637,7 @@ export default function AdminRecruitmentPage() {
                                 : status === 'cancelled'
                                 ? 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30'
                                 : status === 'rejected'
-                                ? 'bg-slate-500/20 text-slate-300 border-slate-500/50 hover:bg-slate-500/30'
+                                ? 'bg-red-500/20 text-red-300 border-red-500/50 hover:bg-red-500/30'
                                   : 'bg-gray-500/20 text-gray-300 border-gray-500/50'
                               }>
                                 {status.toUpperCase().replace(/-/g, ' ')}
@@ -1644,50 +1752,19 @@ export default function AdminRecruitmentPage() {
                               )}
                             </Button>
                           )}
-                          {/* Cancel Interview - Show for pending, scheduled, or reschedule requested */}
-                          {(status === 'pending' || status === 'scheduled' || status === 'reschedule-requested') && (
+                          {status === 'hire-requested' && (
                             <Button 
-                              size="sm"
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                              variant="default" 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                setInterviewToCancel(interview)
-                                setCancelReason('')
-                                setCancelModalOpen(true)
+                                openHireModal(interview)
                               }}
                             >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Cancel
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Offer
                             </Button>
-                          )}
-                          {status === 'hire-requested' && (
-                            <>
-                              <Button 
-                                variant="default" 
-                                size="sm" 
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  openHireModal(interview)
-                                }}
-                              >
-                                <Mail className="h-4 w-4 mr-2" />
-                                Send Offer
-                              </Button>
-                              <Button 
-                                size="sm"
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setInterviewToCancel(interview)
-                                  setCancelReason('')
-                                  setCancelModalOpen(true)
-                                }}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel
-                              </Button>
-                            </>
                           )}
                           {status === 'offer-sent' && (
                             <>
@@ -1706,6 +1783,7 @@ export default function AdminRecruitmentPage() {
                             <Button 
                               variant="destructive" 
                               size="sm"
+                              className="hover:!bg-red-700 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 openDeclineModal(interview)
@@ -1758,14 +1836,60 @@ export default function AdminRecruitmentPage() {
                             </div>
                           )}
                           {status === 'scheduled' && (
-                            <div className="flex items-start gap-3">
-                              <Calendar className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <p className="font-semibold text-blue-300">Interview Scheduled</p>
-                                <p className="text-sm text-blue-400/80 mt-1">
-                                  Interview has been scheduled. Waiting for completion.
-                                </p>
+                            <div className="flex items-center gap-4 justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                <Calendar className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="font-semibold text-blue-300">Interview Scheduled</p>
+                                  {interview.scheduledTime && (() => {
+                                    const clientTimezone = interview.client_users?.client_profiles?.timezone || 'UTC'
+                                    const date = new Date(interview.scheduledTime)
+                                    
+                                    // Client timezone
+                                    const clientTime = date.toLocaleString('en-US', {
+                                      timeZone: clientTimezone,
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })
+                                    const clientTzName = date.toLocaleString('en-US', {
+                                      timeZone: clientTimezone,
+                                      timeZoneName: 'short'
+                                    }).split(' ').pop()
+                                    
+                                    // PH timezone
+                                    const phTime = date.toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })
+                                    
+                                    return (
+                                      <p className="text-sm text-blue-400/80 mt-1">
+                                        {clientTime} ({clientTzName}) → {phTime} (PH)
+                                      </p>
+                                    )
+                                  })()}
+                                </div>
                               </div>
+                              {interview.meetingLink && (
+                                <div className="flex-shrink-0">
+                                  <a 
+                                    href={interview.meetingLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Video className="h-4 w-4" />
+                                    Join Meeting
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           )}
                           {status === 'reschedule-requested' && (
@@ -1802,60 +1926,100 @@ export default function AdminRecruitmentPage() {
                                 )}
                                 
                                 {interview.workSchedule && (
-                                  <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <p className="text-xs text-orange-400">Work Schedule</p>
+                                  <div className="mt-3 p-4 bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-slate-700/50 rounded-lg shadow-lg">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <p className="text-sm text-slate-100 font-bold flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-orange-400" />
+                                        Client Preferred Schedule
+                                      </p>
                                       {interview.workSchedule.isMonToFri && (
-                                        <p className="text-xs text-orange-400/60">(Standard Mon-Fri)</p>
+                                        <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
+                                          Mon-Fri
+                                        </Badge>
                                       )}
                                     </div>
                                     {interview.workSchedule.hasCustomHours && interview.workSchedule.customHours ? (
                                       <div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                          {Object.entries(interview.workSchedule.customHours).map(([day, time]) => {
-                                            const [hours, minutes] = (time as string).split(':').map(Number)
-                                            const endHour = (hours + 9) % 24
-                                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                        <div className="grid grid-cols-7 gap-2">
+                                          {(() => {
+                                            const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                                             const clientTimezone = interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
-                                            const startFormatted = formatWorkTimeWithTimezone(time as string, clientTimezone)
-                                            const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
-                                            return (
-                                              <div key={day} className="flex flex-col items-center text-xs bg-orange-500/10 px-2 py-2 rounded border border-orange-500/20">
-                                                <span className="text-orange-200 font-medium mb-1">{day}</span>
-                                                <span className="text-orange-300 text-[9px] text-center leading-tight">{startFormatted.clientTime} ({startFormatted.clientTimezone})</span>
-                                                <span className="text-orange-400 text-[9px]">→</span>
-                                                <span className="text-orange-200 text-[9px]">{startFormatted.phTime} (PH)</span>
-                                              </div>
-                                            )
-                                          })}
+                                            
+                                            return dayOrder.map((fullDay) => {
+                                              const time = interview.workSchedule?.customHours?.[fullDay];
+                                              
+                                              if (!time) {
+                                                return (
+                                                  <div key={fullDay} className="flex flex-col items-center bg-slate-900/60 px-2 py-3 rounded-lg border-2 border-slate-700/70">
+                                                    <div className="text-slate-400 font-bold mb-2 text-xs">{fullDay}</div>
+                                                    <div className="text-slate-500 text-xs font-medium">Day Off</div>
+                                                  </div>
+                                                );
+                                              }
+                                              
+                                              const [hours, minutes] = (time as string).split(':').map(Number)
+                                              const endHour = (hours + 9) % 24
+                                              const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                              const startFormatted = formatWorkTimeWithTimezone(time as string, clientTimezone)
+                                              const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
+                                              
+                                              return (
+                                                <div key={fullDay} className="flex flex-col items-center bg-gradient-to-br from-orange-500/20 to-amber-500/20 px-2 py-3 rounded-lg border border-orange-400/40 hover:border-orange-400/70 transition-all hover:shadow-lg">
+                                                  <div className="text-orange-200 font-bold mb-2 text-xs whitespace-nowrap">{fullDay}</div>
+                                                  <div className="text-orange-100 text-[11px] text-center mb-1 font-semibold leading-tight">{startFormatted.clientTime} - {endFormatted.clientTime}</div>
+                                                  <div className="text-orange-300/80 text-[9px] mb-1.5">({startFormatted.clientTimezone})</div>
+                                                  <div className="text-orange-400 text-[10px] mb-1.5">↓</div>
+                                                  <div className="text-green-300 text-[11px] font-bold mb-1 leading-tight">{startFormatted.phTime} - {endFormatted.phTime}</div>
+                                                  <div className="text-green-400/80 text-[9px]">(PH)</div>
+                                                </div>
+                                              );
+                                            });
+                                          })()}
                                         </div>
-                                        <p className="text-xs text-orange-400/60 mt-1.5">(9 hrs/day, incl. break)</p>
+                                        <p className="text-xs text-slate-400 mt-3 text-center">(9 hours per day, including break time)</p>
                                       </div>
                                     ) : interview.workSchedule.workStartTime && interview.workSchedule.workDays ? (
                                       <div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                          {interview.workSchedule.workDays.map((day: string) => {
-                                            const workStartTime = interview.workSchedule?.workStartTime || '09:00'
-                                            const [hours, minutes] = workStartTime.split(':').map(Number)
-                                            const endHour = (hours + 9) % 24
-                                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                        <div className="grid grid-cols-7 gap-2">
+                                          {(() => {
+                                            const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                                            const workDays = interview.workSchedule?.workDays || [];
+                                            const workStartTime = interview.workSchedule?.workStartTime || '09:00';
                                             const clientTimezone = interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
-                                            const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
-                                            const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
-                                            return (
-                                              <div key={day} className="flex flex-col items-center text-xs bg-orange-500/10 px-2 py-2 rounded border border-orange-500/20">
-                                                <span className="text-orange-200 font-medium mb-1">{day}</span>
-                                                <span className="text-orange-300 text-[9px] text-center leading-tight">{startFormatted.clientTime} ({startFormatted.clientTimezone})</span>
-                                                <span className="text-orange-400 text-[9px]">→</span>
-                                                <span className="text-orange-200 text-[9px]">{startFormatted.phTime} (PH)</span>
-                                              </div>
-                                            )
-                                          })}
+                                            
+                                            return dayOrder.map((fullDay) => {
+                                              if (!workDays.includes(fullDay)) {
+                                                return (
+                                                  <div key={fullDay} className="flex flex-col items-center bg-slate-900/60 px-2 py-3 rounded-lg border-2 border-slate-700/70">
+                                                    <div className="text-slate-400 font-bold mb-2 text-xs">{fullDay}</div>
+                                                    <div className="text-slate-500 text-xs font-medium">Day Off</div>
+                                                  </div>
+                                                );
+                                              }
+                                              
+                                              const [hours, minutes] = workStartTime.split(':').map(Number)
+                                              const endHour = (hours + 9) % 24
+                                              const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                                              const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
+                                              const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
+                                              
+                                              return (
+                                                <div key={fullDay} className="flex flex-col items-center bg-gradient-to-br from-orange-500/20 to-amber-500/20 px-2 py-3 rounded-lg border border-orange-400/40 hover:border-orange-400/70 transition-all hover:shadow-lg">
+                                                  <div className="text-orange-200 font-bold mb-2 text-xs whitespace-nowrap">{fullDay}</div>
+                                                  <div className="text-orange-100 text-[11px] text-center mb-1 font-semibold leading-tight">{startFormatted.clientTime} - {endFormatted.clientTime}</div>
+                                                  <div className="text-orange-300/80 text-[9px] mb-1.5">({startFormatted.clientTimezone})</div>
+                                                  <div className="text-orange-400 text-[10px] mb-1.5">↓</div>
+                                                  <div className="text-green-300 text-[11px] font-bold mb-1 leading-tight">{startFormatted.phTime} - {endFormatted.phTime}</div>
+                                                  <div className="text-green-400/80 text-[9px]">(PH)</div>
+                                                </div>
+                                              );
+                                            });
+                                          })()}
                                         </div>
-                                        <p className="text-xs text-orange-400/60 mt-1.5">(9 hrs/day, incl. break)</p>
+                                        <p className="text-xs text-slate-400 mt-3 text-center">(9 hours per day, including break time)</p>
                                       </div>
                                     ) : (
-                                      <p className="text-xs text-orange-400/60">Not specified</p>
+                                      <p className="text-xs text-slate-400 text-center py-2">Not specified</p>
                                     )}
                                   </div>
                                 )}
@@ -1866,7 +2030,7 @@ export default function AdminRecruitmentPage() {
                             <div className="flex items-start gap-3">
                               <Mail className="h-5 w-5 text-indigo-400 mt-0.5 flex-shrink-0" />
                               <div>
-                                <p className="font-semibold text-indigo-300">Job Offer Sent 📧</p>
+                                <p className="font-semibold text-indigo-300">Job Offer Sent</p>
                                 <p className="text-sm text-indigo-400/80 mt-1">
                                   Job offer has been sent to candidate. Waiting for their response.
                                 </p>
@@ -1923,7 +2087,7 @@ export default function AdminRecruitmentPage() {
                               <div>
                                 <p className="font-semibold text-gray-300">Interview Cancelled</p>
                                 <p className="text-sm text-gray-400/80 mt-1">
-                                  This interview has been cancelled by the admin.
+                                  This interview has been cancelled.
                                 </p>
                               </div>
                             </div>
@@ -1990,11 +2154,11 @@ export default function AdminRecruitmentPage() {
                           </div>
                         </div>
 
-                        {/* Preferred Interview Times - Hide for completed, hire requested, offer sent, and offer declined */}
-                        {status !== 'completed' && status !== 'hire_requested' && status !== 'hire-requested' && status !== 'offer-sent' && status !== 'offer-declined' && (
+                        {/* Preferred Interview Times - Show only for pending and reschedule-requested */}
+                        {(status === 'pending' || status === 'reschedule-requested') && (
                         <div>
                           <h4 className="text-base font-semibold text-foreground mb-2">
-                            Client's Preferred Interview Times
+                            Client's Preferred Interview Times{status === 'reschedule-requested' ? ' (Rescheduled)' : ''}
                           </h4>
                           <div className="flex flex-wrap gap-2">
                             {(() => {
@@ -2149,7 +2313,35 @@ export default function AdminRecruitmentPage() {
                                         {entry.type === 'admin' ? 'Admin' : 'Client'}
                                       </Badge>
                                       {entry.timestamp && (
-                                        <span className="text-xs text-muted-foreground">{entry.timestamp}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {(() => {
+                                            // Extract status label and raw timestamp
+                                            const statusLabelMatch = entry.timestamp.match(/^\(([^\)]+)\)\s+(.+)$/) || 
+                                                                    entry.timestamp.match(/^\[([^\]]+)\]\s+(.+)$/);
+                                            const rawTimestamp = statusLabelMatch ? statusLabelMatch[2] : entry.timestamp;
+                                            const statusLabel = statusLabelMatch ? statusLabelMatch[1] : null;
+                                            
+                                            try {
+                                              const date = new Date(rawTimestamp);
+                                              if (!isNaN(date.getTime())) {
+                                                // Format without seconds
+                                                const formatted = date.toLocaleString('en-US', {
+                                                  month: 'numeric',
+                                                  day: 'numeric',
+                                                  year: 'numeric',
+                                                  hour: 'numeric',
+                                                  minute: '2-digit',
+                                                  hour12: true
+                                                });
+                                                const withTimezone = `${formatted} (PH)`;
+                                                return statusLabel ? `(${statusLabel}) ${withTimezone}` : withTimezone;
+                                              }
+                                            } catch {
+                                              // Fall back to original if parsing fails
+                                            }
+                                            return entry.timestamp;
+                                          })()}
+                                        </span>
                                       )}
                                     </div>
                                     <p className="text-foreground whitespace-pre-wrap">{entry.content}</p>
@@ -2234,6 +2426,15 @@ export default function AdminRecruitmentPage() {
                   </div>
                 </div>
               )}
+
+              {/* 🎯 UNIFIED COMMENT SYSTEM */}
+              <div className="mt-6 pt-6 border-t border-border">
+                <CommentSection
+                  commentableType="CANDIDATE"
+                  commentableId={selectedCandidate.id}
+                  darkMode={false}
+                />
+              </div>
             </div>
           )}
         </DialogContent>
@@ -2317,7 +2518,7 @@ export default function AdminRecruitmentPage() {
 
       {/* Interview Detail Modal */}
       <Dialog open={!!selectedInterview} onOpenChange={() => setSelectedInterview(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
           <DialogHeader className="border-b border-slate-700 pb-4">
             <DialogTitle className="text-3xl font-bold text-slate-100">
               Interview Request Details
@@ -2341,11 +2542,13 @@ export default function AdminRecruitmentPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-2xl font-bold text-slate-100">{selectedInterview.candidateFirstName}</h3>
-                      <Badge className={`text-sm px-3 py-1 ${
+                      <Badge className={
                         modalStatus === 'pending' 
                           ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50 hover:bg-yellow-500/30'
                           : modalStatus === 'scheduled'
                           ? 'bg-blue-500/20 text-blue-300 border-blue-500/50 hover:bg-blue-500/30'
+                          : modalStatus === 'reschedule-requested'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
                           : modalStatus === 'hire-requested'
                           ? 'bg-orange-500/20 text-orange-300 border-orange-500/50 hover:bg-orange-500/30'
                           : modalStatus === 'offer-sent'
@@ -2358,12 +2561,12 @@ export default function AdminRecruitmentPage() {
                           ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30'
                           : modalStatus === 'completed'
                           ? 'bg-green-500/20 text-green-300 border-green-500/50 hover:bg-green-500/30'
-                          : modalStatus === 'cancelled'
-                          ? 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30'
-                          : modalStatus === 'rejected'
-                          ? 'bg-slate-500/20 text-slate-300 border-slate-500/50 hover:bg-slate-500/30'
+                        : modalStatus === 'cancelled'
+                        ? 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30'
+                        : modalStatus === 'rejected'
+                        ? 'bg-red-500/20 text-red-300 border-red-500/50 hover:bg-red-500/30'
                           : 'bg-gray-500/20 text-gray-300 border-gray-500/50'
-                      }`}>
+                      }>
                         {modalStatus.toUpperCase().replace(/-/g, ' ')}
                       </Badge>
                     </div>
@@ -2398,51 +2601,71 @@ export default function AdminRecruitmentPage() {
                 </div>
               </div>
 
-              {/* Cancelled Interview Message */}
-              {modalStatus === 'cancelled' && (
-                <div className="bg-gray-500/10 border border-gray-500/50 rounded-xl p-4">
+              {/* Status Messages */}
+              {modalStatus === 'pending' && (
+                <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <XCircle className="h-5 w-5 text-gray-400" />
-                    <h4 className="font-semibold text-gray-300">Interview Cancelled</h4>
+                    <Clock className="h-5 w-5 text-yellow-400" />
+                    <h4 className="font-semibold text-yellow-300">Action Required</h4>
                   </div>
-                  <p className="text-sm text-gray-400">
-                    This interview has been cancelled by the admin. The client has been notified.
+                  <p className="text-sm text-yellow-400/80">
+                    Coordinate with the candidate to schedule this interview. Click "Schedule" to set a time.
                   </p>
                 </div>
               )}
 
-              {/* Scheduled Interview Details - Show if status is scheduled, completed, or hired */}
-              {(modalStatus === 'scheduled' || modalStatus === 'completed' || modalStatus === 'hired') && selectedInterview.scheduledTime && (
-                <div className="bg-green-500/10 border border-green-500/50 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="h-5 w-5 text-green-400" />
-                    <h4 className="font-semibold text-green-300">Scheduled Interview</h4>
-                  </div>
-                  <div className="space-y-2">
-              <div>
-                      <label className="text-xs text-slate-400">Date & Time</label>
-                      <p className="text-slate-100 font-medium">
-                        {new Date(selectedInterview.scheduledTime).toLocaleString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </p>
-              </div>
+              {modalStatus === 'scheduled' && (
+                <div className="bg-blue-500/10 border border-blue-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-4 justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Calendar className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-blue-300">Interview Scheduled</p>
+                        {selectedInterview.scheduledTime && (() => {
+                          const clientTimezone = selectedInterview.client_users?.client_profiles?.timezone || 'UTC'
+                          const date = new Date(selectedInterview.scheduledTime)
+                          
+                          // Client timezone
+                          const clientTime = date.toLocaleString('en-US', {
+                            timeZone: clientTimezone,
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })
+                          const clientTzName = date.toLocaleString('en-US', {
+                            timeZone: clientTimezone,
+                            timeZoneName: 'short'
+                          }).split(' ').pop()
+                          
+                          // PH timezone
+                          const phTime = date.toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })
+                          
+                          return (
+                            <p className="text-sm text-blue-400/80 mt-1">
+                              {clientTime} ({clientTzName}) → {phTime} (PH)
+                            </p>
+                          )
+                        })()}
+                      </div>
+                    </div>
                     {selectedInterview.meetingLink && (
-              <div>
-                        <label className="text-xs text-slate-400">Meeting Link</label>
+                      <div className="flex-shrink-0">
                         <a 
                           href={selectedInterview.meetingLink} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 underline block break-all"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                         >
-                          {selectedInterview.meetingLink}
+                          <Video className="h-4 w-4" />
+                          Join Meeting
                         </a>
                       </div>
                     )}
@@ -2450,10 +2673,131 @@ export default function AdminRecruitmentPage() {
                 </div>
               )}
 
+              {modalStatus === 'reschedule-requested' && (
+                <div className="bg-amber-500/10 border border-amber-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="h-5 w-5 text-amber-400" />
+                    <h4 className="font-semibold text-amber-300">Reschedule Requested</h4>
+                  </div>
+                  <p className="text-sm text-amber-400/80">
+                    Client has requested to reschedule this interview. Please coordinate a new time.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'hire-requested' && (
+                <div className="bg-orange-500/10 border border-orange-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <UserCheck className="h-5 w-5 text-orange-400" />
+                    <h4 className="font-semibold text-orange-300">Client Wants to Hire! 🎯</h4>
+                  </div>
+                  <p className="text-sm text-orange-400/80 mb-3">
+                    Client has requested to hire this candidate. Click "Send Offer" to proceed.
+                  </p>
+                  {selectedInterview.clientPreferredStart && (
+                    <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                      <p className="text-xs text-orange-400 mb-1">Client Preferred Start Date</p>
+                      <p className="text-sm font-semibold text-orange-200">
+                        📅 {new Date(selectedInterview.clientPreferredStart).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {modalStatus === 'offer-sent' && (
+                <div className="bg-indigo-500/10 border border-indigo-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Mail className="h-5 w-5 text-indigo-400" />
+                    <h4 className="font-semibold text-indigo-300">Job Offer Sent</h4>
+                  </div>
+                  <p className="text-sm text-indigo-400/80">
+                    Job offer has been sent to candidate. Waiting for their response.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'offer-accepted' && (
+                <div className="bg-emerald-500/10 border border-emerald-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle className="h-5 w-5 text-emerald-400" />
+                    <h4 className="font-semibold text-emerald-300">Offer Accepted! 🎉</h4>
+                  </div>
+                  <p className="text-sm text-emerald-400/80">
+                    Candidate has accepted the job offer! Waiting for them to create account and complete onboarding.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'offer-declined' && (
+                <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <XCircle className="h-5 w-5 text-red-400" />
+                    <h4 className="font-semibold text-red-300">Offer Declined</h4>
+                  </div>
+                  <p className="text-sm text-red-400/80">
+                    Candidate has declined the job offer. You may close this request.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'rejected' && (
+                <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <XCircle className="h-5 w-5 text-red-400" />
+                    <h4 className="font-semibold text-red-300">Candidate Rejected by Client</h4>
+                  </div>
+                  <p className="text-sm text-red-400/80">
+                    The client has decided not to move forward with this candidate.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'cancelled' && (
+                <div className="bg-gray-500/10 border border-gray-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <XCircle className="h-5 w-5 text-gray-400" />
+                    <h4 className="font-semibold text-gray-300">Interview Cancelled</h4>
+                  </div>
+                  <p className="text-sm text-gray-400/80">
+                    This interview has been cancelled.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'completed' && (
+                <div className="bg-green-500/10 border border-green-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle className="h-5 w-5 text-green-400" />
+                    <h4 className="font-semibold text-green-300">Interview Complete</h4>
+                  </div>
+                  <p className="text-sm text-green-400/80">
+                    Interview completed. Waiting for client to either reject candidate or request to hire.
+                  </p>
+                </div>
+              )}
+
+              {modalStatus === 'hired' && (
+                <div className="bg-purple-500/10 border border-purple-500/50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <UserCheck className="h-5 w-5 text-purple-400" />
+                    <h4 className="font-semibold text-purple-300">Candidate Hired! 🎉</h4>
+                  </div>
+                  <p className="text-sm text-purple-400/80">
+                    Candidate has created their account and started onboarding. They are now part of the team!
+                  </p>
+                </div>
+              )}
+
               {/* Client Details */}
-              <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
                 <h4 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-blue-400" />
+                  <Building2 className="h-5 w-5 text-indigo-400" />
                   Client Details
                 </h4>
                 <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
@@ -2498,26 +2842,30 @@ export default function AdminRecruitmentPage() {
                       <span className="text-slate-200">{selectedInterview.client_address}</span>
                     </div>
                   )}
+                  {selectedInterview.client_users?.client_profiles?.timezone && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-slate-500">Timezone:</span>
+                      <span className="text-slate-200">
+                        ({new Date().toLocaleString('en-US', {
+                          timeZone: selectedInterview.client_users.client_profiles.timezone,
+                          timeZoneName: 'short'
+                        }).split(' ').pop()})
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Work Schedule */}
+              {/* Client Preferred Schedule */}
               {selectedInterview.workSchedule && (
-                <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-green-400" />
-                      Work Schedule
+                <div className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 rounded-xl p-6 border border-slate-700/50 shadow-lg">
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-orange-400" />
+                      Client Preferred Schedule
                     </h4>
                     <div className="flex items-center gap-2">
-                      {(() => {
-                        const clientTimezone = selectedInterview.workSchedule?.clientTimezone || selectedInterview.client_users?.client_profiles?.timezone
-                        return clientTimezone && (
-                          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/50 text-xs">
-                            {getTimezoneDisplay(clientTimezone)}
-                          </Badge>
-                        )
-                      })()}
                       {selectedInterview.workSchedule.isMonToFri && (
                         <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
                           Mon-Fri
@@ -2527,52 +2875,83 @@ export default function AdminRecruitmentPage() {
                   </div>
                   {selectedInterview.workSchedule.hasCustomHours && selectedInterview.workSchedule.customHours ? (
                     <div>
-                      <div className="flex flex-wrap gap-3">
-                        {Object.entries(selectedInterview.workSchedule.customHours).map(([day, time]) => {
-                          const [hours, minutes] = time.split(':').map(Number)
-                          const endHour = (hours + 9) % 24
-                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                      <div className="grid grid-cols-7 gap-3">
+                        {(() => {
+                          const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                           const clientTimezone = selectedInterview.workSchedule?.clientTimezone || selectedInterview.client_users?.client_profiles?.timezone || 'UTC'
-                          const startFormatted = formatWorkTimeWithTimezone(time, clientTimezone)
-                          const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
-                          return (
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[140px]">
-                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
-                              <div className="text-slate-300 text-xs text-center mb-1">{startFormatted.clientTime}</div>
-                              <div className="text-slate-500 text-[10px]">({startFormatted.clientTimezone})</div>
-                              <div className="text-green-400 text-xs my-1">↓</div>
-                              <div className="text-green-300 text-xs font-medium">{startFormatted.phTime}</div>
-                              <div className="text-slate-500 text-[10px]">(PH Time)</div>
-                            </div>
-                          )
-                        })}
+                          
+                          return dayOrder.map((fullDay) => {
+                            const time = selectedInterview.workSchedule?.customHours?.[fullDay];
+                            
+                            if (!time) {
+                              return (
+                                <div key={fullDay} className="flex flex-col items-center bg-slate-900/60 px-3 py-4 rounded-lg border-2 border-slate-700/70">
+                                  <div className="text-slate-300 font-bold mb-3 text-sm">{fullDay}</div>
+                                  <div className="text-slate-400 text-sm font-semibold">Day Off</div>
+                                </div>
+                              );
+                            }
+                            
+                            const [hours, minutes] = time.split(':').map(Number)
+                            const endHour = (hours + 9) % 24
+                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                            const startFormatted = formatWorkTimeWithTimezone(time, clientTimezone)
+                            const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
+                            
+                            return (
+                              <div key={fullDay} className="flex flex-col items-center bg-gradient-to-br from-orange-500/20 to-amber-500/20 px-3 py-4 rounded-lg border border-orange-400/40 hover:border-orange-400/70 transition-all hover:shadow-lg">
+                                <div className="text-orange-200 font-bold mb-3 text-sm whitespace-nowrap">{fullDay}</div>
+                                <div className="text-orange-100 text-sm text-center mb-2 font-bold leading-tight">{startFormatted.clientTime}<br/>-<br/>{endFormatted.clientTime}</div>
+                                <div className="text-orange-300/80 text-xs mb-3">({startFormatted.clientTimezone})</div>
+                                <div className="text-orange-400 text-sm mb-3">↓</div>
+                                <div className="text-green-300 text-sm font-bold mb-2 leading-tight text-center">{startFormatted.phTime}<br/>-<br/>{endFormatted.phTime}</div>
+                                <div className="text-green-400/80 text-xs">(PH)</div>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
-                      <p className="text-xs text-slate-400 mt-4 text-center">(9 hours per day, including break time)</p>
+                      <p className="text-sm text-slate-400 mt-5 text-center">(9 hours per day, including break time)</p>
                     </div>
                   ) : selectedInterview.workSchedule.workStartTime && selectedInterview.workSchedule.workDays ? (
                     <div>
-                      <div className="flex flex-wrap gap-3">
-                        {selectedInterview.workSchedule.workDays.map((day: string) => {
-                          const workStartTime = selectedInterview.workSchedule?.workStartTime || '09:00'
-                          const [hours, minutes] = workStartTime.split(':').map(Number)
-                          const endHour = (hours + 9) % 24
-                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                      <div className="grid grid-cols-7 gap-3">
+                        {(() => {
+                          const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                          const workDays = selectedInterview.workSchedule?.workDays || [];
+                          const workStartTime = selectedInterview.workSchedule?.workStartTime || '09:00';
                           const clientTimezone = selectedInterview.workSchedule?.clientTimezone || selectedInterview.client_users?.client_profiles?.timezone || 'UTC'
-                          const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
-                          const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
-                          return (
-                            <div key={day} className="flex flex-col items-center bg-slate-900/50 px-5 py-3 rounded-lg border border-slate-700 min-w-[140px]">
-                              <div className="text-slate-200 font-bold mb-2 text-sm whitespace-nowrap">{day}</div>
-                              <div className="text-slate-300 text-xs text-center mb-1">{startFormatted.clientTime}</div>
-                              <div className="text-slate-500 text-[10px]">({startFormatted.clientTimezone})</div>
-                              <div className="text-green-400 text-xs my-1">↓</div>
-                              <div className="text-green-300 text-xs font-medium">{startFormatted.phTime}</div>
-                              <div className="text-slate-500 text-[10px]">(PH Time)</div>
-                            </div>
-                          )
-                        })}
+                          
+                          return dayOrder.map((fullDay) => {
+                            if (!workDays.includes(fullDay)) {
+                              return (
+                                <div key={fullDay} className="flex flex-col items-center bg-slate-900/60 px-3 py-4 rounded-lg border-2 border-slate-700/70">
+                                  <div className="text-slate-300 font-bold mb-3 text-sm">{fullDay}</div>
+                                  <div className="text-slate-400 text-sm font-semibold">Day Off</div>
+                                </div>
+                              );
+                            }
+                            
+                            const [hours, minutes] = workStartTime.split(':').map(Number)
+                            const endHour = (hours + 9) % 24
+                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                            const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
+                            const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
+                            
+                            return (
+                              <div key={fullDay} className="flex flex-col items-center bg-gradient-to-br from-orange-500/20 to-amber-500/20 px-3 py-4 rounded-lg border border-orange-400/40 hover:border-orange-400/70 transition-all hover:shadow-lg">
+                                <div className="text-orange-200 font-bold mb-3 text-sm whitespace-nowrap">{fullDay}</div>
+                                <div className="text-orange-100 text-sm text-center mb-2 font-bold leading-tight">{startFormatted.clientTime}<br/>-<br/>{endFormatted.clientTime}</div>
+                                <div className="text-orange-300/80 text-xs mb-3">({startFormatted.clientTimezone})</div>
+                                <div className="text-orange-400 text-sm mb-3">↓</div>
+                                <div className="text-green-300 text-sm font-bold mb-2 leading-tight text-center">{startFormatted.phTime}<br/>-<br/>{endFormatted.phTime}</div>
+                                <div className="text-green-400/80 text-xs">(PH)</div>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
-                      <p className="text-xs text-slate-400 mt-4 text-center">(9 hours per day, including break time)</p>
+                      <p className="text-sm text-slate-400 mt-5 text-center">(9 hours per day, including break time)</p>
                     </div>
                   ) : (
                     <p className="text-sm text-slate-400 text-center py-4">Not specified</p>
@@ -2580,24 +2959,25 @@ export default function AdminRecruitmentPage() {
                 </div>
               )}
 
-              {/* Client's Preferred Times - Hide for completed, hire requested, offer sent, and offer declined */}
-              {modalStatus !== 'completed' && 
-               modalStatus !== 'hire_requested' && 
-               modalStatus !== 'hire-requested' && 
-               modalStatus !== 'offer-sent' && 
-               modalStatus !== 'offer-declined' && (
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                <h4 className="text-base font-semibold text-slate-100 mb-3">Client's Preferred Interview Times</h4>
-                <div className="flex flex-wrap gap-2">
+              {/* Client's Preferred Times - Show only for pending and reschedule-requested */}
+              {(modalStatus === 'pending' || modalStatus === 'reschedule-requested') && (
+              <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/50 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Clock className="h-5 w-5 text-indigo-400" />
+                  <h4 className="text-base font-bold text-blue-200">
+                    Client's Preferred Interview Times{modalStatus === 'reschedule-requested' ? ' (Rescheduled)' : ''}
+                  </h4>
+                </div>
+                <div className="space-y-2">
                   {(() => {
                     const times = selectedInterview.preferredTimes || selectedInterview.preferred_times || [];
                     const timesArray = Array.isArray(times) ? times : (typeof times === 'string' ? JSON.parse(times) : []);
                     return timesArray.map((time: string | PreferredTime, idx: number) => {
                       const formatted = formatPreferredTimeWithTimezone(time);
                       return (
-                        <Badge key={idx} variant="outline" className="bg-blue-500/10 text-blue-300 border-blue-500/50">
+                        <div key={idx} className="text-sm text-blue-300 bg-blue-500/10 px-3 py-2 rounded-lg">
                           {formatted.fullDisplay}
-                        </Badge>
+                        </div>
                       );
                     });
                   })()}
@@ -2714,8 +3094,11 @@ export default function AdminRecruitmentPage() {
                 if (allEntries.length === 0) return null;
 
                 return (
-                  <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                    <h4 className="text-base font-semibold text-slate-100 mb-3">Notes</h4>
+                  <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+                    <h4 className="text-base font-semibold text-slate-100 mb-3 flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-amber-400" />
+                      Notes
+                    </h4>
                     <div className="space-y-3">
                       {allEntries.map((entry, idx) => (
                         <div 
@@ -2738,7 +3121,35 @@ export default function AdminRecruitmentPage() {
                               {entry.type === 'admin' ? 'Admin' : 'Client'}
                             </Badge>
                             {entry.timestamp && (
-                              <span className="text-xs text-slate-400">{entry.timestamp}</span>
+                              <span className="text-xs text-slate-400">
+                                {(() => {
+                                  // Extract status label and raw timestamp
+                                  const statusLabelMatch = entry.timestamp.match(/^\(([^\)]+)\)\s+(.+)$/) || 
+                                                          entry.timestamp.match(/^\[([^\]]+)\]\s+(.+)$/);
+                                  const rawTimestamp = statusLabelMatch ? statusLabelMatch[2] : entry.timestamp;
+                                  const statusLabel = statusLabelMatch ? statusLabelMatch[1] : null;
+                                  
+                                  try {
+                                    const date = new Date(rawTimestamp);
+                                    if (!isNaN(date.getTime())) {
+                                      // Format without seconds
+                                      const formatted = date.toLocaleString('en-US', {
+                                        month: 'numeric',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      });
+                                      const withTimezone = `${formatted} (PH)`;
+                                      return statusLabel ? `(${statusLabel}) ${withTimezone}` : withTimezone;
+                                    }
+                                  } catch {
+                                    // Fall back to original if parsing fails
+                                  }
+                                  return entry.timestamp;
+                                })()}
+                              </span>
                             )}
                           </div>
                           <p className="text-sm text-slate-300 whitespace-pre-wrap">{entry.content}</p>
@@ -2750,11 +3161,11 @@ export default function AdminRecruitmentPage() {
               })()}
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-700">
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
                 {/* Add Notes - Show for all statuses */}
                 <Button 
                   variant="outline" 
-                  className="border-slate-600 text-slate-300 hover:bg-slate-800 min-w-[120px]"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800"
                   onClick={() => {
                     setInterviewForNotes(selectedInterview)
                     setAdminNotesText('')
@@ -2769,7 +3180,7 @@ export default function AdminRecruitmentPage() {
                 {(modalStatus === 'pending' || modalStatus === 'reschedule-requested') && (
                   <Button 
                     variant="default" 
-                    className="flex-1 min-w-[150px] bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                     onClick={() => {
                       setInterviewToSchedule(selectedInterview)
                       setScheduleFormData({
@@ -2790,7 +3201,7 @@ export default function AdminRecruitmentPage() {
                 {modalStatus === 'scheduled' && (
                   <Button 
                     variant="default" 
-                    className="flex-1 min-w-[180px] bg-emerald-600 hover:bg-emerald-700"
+                    className="bg-emerald-600 hover:bg-emerald-700"
                     disabled={completing}
                     onClick={async () => {
                       setCompleting(true)
@@ -2826,32 +3237,11 @@ export default function AdminRecruitmentPage() {
                   </Button>
                 )}
 
-                {/* Reschedule - Show for scheduled interviews */}
-                {modalStatus === 'scheduled' && (
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 min-w-[150px] border-blue-500/50 text-blue-300 hover:bg-blue-500/10"
-                    onClick={() => {
-                      setInterviewToSchedule(selectedInterview)
-                      setScheduleFormData({
-                        scheduledTime: selectedInterview.scheduledTime || '',
-                        meetingLink: selectedInterview.meetingLink || '',
-                        adminNotes: ''
-                      })
-                      setSelectedInterview(null)
-                      setScheduleModalOpen(true)
-                    }}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Reschedule
-                  </Button>
-                )}
-
                 {/* Cancel Interview - Show for pending, scheduled, reschedule requested, or hire requested */}
                 {(modalStatus === 'pending' || modalStatus === 'scheduled' || modalStatus === 'reschedule-requested' || modalStatus === 'hire-requested') && (
                   <Button 
                     variant="destructive" 
-                    className="flex-1 min-w-[180px] bg-red-600 hover:bg-red-700"
+                    className="bg-red-600 hover:bg-red-700"
                     onClick={() => {
                       setInterviewToCancel(selectedInterview)
                       setCancelReason('')
@@ -2866,7 +3256,7 @@ export default function AdminRecruitmentPage() {
                 {/* Undo Cancellation - Show for cancelled interviews */}
                 {modalStatus === 'cancelled' && (
                   <Button 
-                    className="flex-1 min-w-[180px] bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => {
                       setInterviewToUndoCancel(selectedInterview)
                       setUndoCancelNotes('')
@@ -2886,46 +3276,81 @@ export default function AdminRecruitmentPage() {
 
       {/* Send Job Offer Modal */}
       <Dialog open={hireModalOpen} onOpenChange={setHireModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700 text-slate-100">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-100">
-              <Mail className="h-6 w-6 text-green-400" />
+        <DialogContent className="max-w-4xl max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
               Send Job Offer
             </DialogTitle>
           </DialogHeader>
           {interviewToHire && (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-2 pb-6">
+              {/* Candidate Info Card */}
+              <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
+                    <AvatarImage src={interviewToHire.candidate_avatar_url || undefined} />
+                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      {interviewToHire.candidateFirstName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToHire.candidateFirstName}</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      {interviewToHire.candidate_position && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-blue-400" />
+                          <span className="text-blue-400 font-medium">{interviewToHire.candidate_position}</span>
+                        </div>
+                      )}
+                      {interviewToHire.candidate_location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToHire.candidate_location}</span>
+                        </div>
+                      )}
+                      {interviewToHire.candidate_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300 truncate">{interviewToHire.candidate_email}</span>
+                        </div>
+                      )}
+                      {interviewToHire.candidate_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToHire.candidate_phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Client Company Information */}
               {interviewToHire.client_users?.company && (
-                <div className="p-4 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-2 border-blue-500/30 rounded-lg">
+                <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                  <h4 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-blue-400" />
+                    Hiring Company
+                  </h4>
                   <div className="flex items-center gap-4">
                     {interviewToHire.client_users.company.logo ? (
                       <img 
                         src={interviewToHire.client_users.company.logo} 
                         alt={interviewToHire.client_users.company.companyName}
-                        className="w-16 h-16 rounded-lg object-cover border-2 border-blue-500/50"
+                        className="w-16 h-16 rounded-lg object-cover border-2 border-slate-700"
                       />
                     ) : (
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center border-2 border-blue-500/50">
+                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center border-2 border-slate-700">
                         <Building2 className="h-8 w-8 text-white" />
                       </div>
                     )}
                     <div className="flex-1">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Hiring Company</p>
-                      <h3 className="text-lg font-bold text-foreground">{interviewToHire.client_users.company.companyName}</h3>
-                      <p className="text-sm text-muted-foreground">Client: {interviewToHire.client_users.name}</p>
+                      <h3 className="text-lg font-bold text-slate-100">{interviewToHire.client_users.company.companyName}</h3>
+                      <p className="text-sm text-slate-400">Client: {interviewToHire.client_users.name}</p>
                     </div>
                   </div>
                 </div>
               )}
-
-              <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-                <h3 className="font-semibold text-slate-200 mb-2">Candidate Information</h3>
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-slate-400">Name:</span> <span className="text-slate-100 font-medium">{interviewToHire.candidateFirstName}</span></p>
-                  <p><span className="text-slate-400">BPOC ID:</span> <span className="text-slate-300 font-mono text-xs">{interviewToHire.bpocCandidateId}</span></p>
-                </div>
-              </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -2938,36 +3363,6 @@ export default function AdminRecruitmentPage() {
                     required
                     className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="company" className="text-sm font-medium text-slate-200">Assign to Company *</Label>
-                  {interviewToHire?.client_users?.company ? (
-                    <div className="p-3 bg-blue-500/10 border-2 border-blue-500/50 rounded-xl">
-                      <p className="text-sm font-medium text-blue-300">
-                        ✓ {interviewToHire.client_users.company.companyName}
-                      </p>
-                      <p className="text-xs text-blue-400 mt-1">
-                        Pre-selected from client's hire request
-                      </p>
-                    </div>
-                  ) : (
-                  <Select
-                    value={hireFormData.companyId}
-                    onValueChange={(value) => setHireFormData(prev => ({ ...prev, companyId: value }))}
-                  >
-                    <SelectTrigger id="company" className="bg-slate-800/50 border-slate-700/50 text-slate-200">
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id} className="text-slate-200">
-                          {company.companyName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -3060,29 +3455,107 @@ export default function AdminRecruitmentPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="clientTimezone" className="text-sm font-medium text-slate-200">Client's Business Timezone</Label>
-                  <Input
-                    id="clientTimezone"
-                    placeholder="e.g., Australia/Brisbane, America/Los_Angeles"
-                    value={hireFormData.clientTimezone}
-                    onChange={(e) => setHireFormData(prev => ({ ...prev, clientTimezone: e.target.value }))}
-                    className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
-                  />
-                  <p className="text-xs text-slate-400">The timezone where the client operates their business hours.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="workHours" className="text-sm font-medium text-slate-200">Work Hours Schedule</Label>
-                  <Input
-                    id="workHours"
-                    value={hireFormData.workHours}
-                    readOnly
-                    disabled
-                    className="bg-slate-900/50 border-slate-700/50 text-slate-300 cursor-not-allowed"
-                  />
-                  <p className="text-xs text-slate-400">This is the client's offer. Any schedule changes will be negotiated with the candidate over the phone.</p>
-                </div>
+                {/* Client Preferred Schedule */}
+                {interviewToHire.workSchedule && (
+                  <div className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 rounded-xl p-6 border border-slate-700/50 shadow-lg">
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-orange-400" />
+                        Client Preferred Schedule
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        {interviewToHire.workSchedule.isMonToFri && (
+                          <Badge className="bg-green-500/20 text-green-300 border-green-500/50 text-xs">
+                            Mon-Fri
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {interviewToHire.workSchedule.hasCustomHours && interviewToHire.workSchedule.customHours ? (
+                      <div>
+                        <div className="grid grid-cols-7 gap-3">
+                          {(() => {
+                            const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                            const clientTimezone = interviewToHire.workSchedule?.clientTimezone || interviewToHire.client_users?.client_profiles?.timezone || 'UTC'
+                            
+                            return dayOrder.map((fullDay) => {
+                              const time = interviewToHire.workSchedule?.customHours?.[fullDay];
+                              
+                              if (!time) {
+                                return (
+                                  <div key={fullDay} className="flex flex-col items-center bg-slate-900/60 px-3 py-4 rounded-lg border-2 border-slate-700/70">
+                                    <div className="text-slate-300 font-bold mb-3 text-sm">{fullDay}</div>
+                                    <div className="text-slate-400 text-sm font-semibold">Day Off</div>
+                                  </div>
+                                );
+                              }
+                              
+                              const [hours, minutes] = time.split(':').map(Number)
+                              const endHour = (hours + 9) % 24
+                              const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                              const startFormatted = formatWorkTimeWithTimezone(time, clientTimezone)
+                              const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
+                              
+                              return (
+                                <div key={fullDay} className="flex flex-col items-center bg-gradient-to-br from-orange-500/20 to-amber-500/20 px-3 py-4 rounded-lg border border-orange-400/40 hover:border-orange-400/70 transition-all hover:shadow-lg">
+                                  <div className="text-orange-200 font-bold mb-3 text-sm whitespace-nowrap">{fullDay}</div>
+                                  <div className="text-orange-100 text-sm text-center mb-2 font-bold leading-tight">{startFormatted.clientTime}<br/>-<br/>{endFormatted.clientTime}</div>
+                                  <div className="text-orange-300/80 text-xs mb-3">({startFormatted.clientTimezone})</div>
+                                  <div className="text-orange-400 text-sm mb-3">↓</div>
+                                  <div className="text-green-300 text-sm font-bold mb-2 leading-tight text-center">{startFormatted.phTime}<br/>-<br/>{endFormatted.phTime}</div>
+                                  <div className="text-green-400/80 text-xs">(PH)</div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                        <p className="text-sm text-slate-400 mt-5 text-center">(9 hours per day, including break time)</p>
+                      </div>
+                    ) : interviewToHire.workSchedule.workStartTime && interviewToHire.workSchedule.workDays ? (
+                      <div>
+                        <div className="grid grid-cols-7 gap-3">
+                          {(() => {
+                            const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                            const workDays = interviewToHire.workSchedule?.workDays || [];
+                            const workStartTime = interviewToHire.workSchedule?.workStartTime || '09:00';
+                            const clientTimezone = interviewToHire.workSchedule?.clientTimezone || interviewToHire.client_users?.client_profiles?.timezone || 'UTC'
+                            
+                            return dayOrder.map((fullDay) => {
+                              if (!workDays.includes(fullDay)) {
+                                return (
+                                  <div key={fullDay} className="flex flex-col items-center bg-slate-900/60 px-3 py-4 rounded-lg border-2 border-slate-700/70">
+                                    <div className="text-slate-300 font-bold mb-3 text-sm">{fullDay}</div>
+                                    <div className="text-slate-400 text-sm font-semibold">Day Off</div>
+                                  </div>
+                                );
+                              }
+                              
+                              const [hours, minutes] = workStartTime.split(':').map(Number)
+                              const endHour = (hours + 9) % 24
+                              const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                              const startFormatted = formatWorkTimeWithTimezone(workStartTime, clientTimezone)
+                              const endFormatted = formatWorkTimeWithTimezone(endTime24, clientTimezone)
+                              
+                              return (
+                                <div key={fullDay} className="flex flex-col items-center bg-gradient-to-br from-orange-500/20 to-amber-500/20 px-3 py-4 rounded-lg border border-orange-400/40 hover:border-orange-400/70 transition-all hover:shadow-lg">
+                                  <div className="text-orange-200 font-bold mb-3 text-sm whitespace-nowrap">{fullDay}</div>
+                                  <div className="text-orange-100 text-sm text-center mb-2 font-bold leading-tight">{startFormatted.clientTime}<br/>-<br/>{endFormatted.clientTime}</div>
+                                  <div className="text-orange-300/80 text-xs mb-3">({startFormatted.clientTimezone})</div>
+                                  <div className="text-orange-400 text-sm mb-3">↓</div>
+                                  <div className="text-green-300 text-sm font-bold mb-2 leading-tight text-center">{startFormatted.phTime}<br/>-<br/>{endFormatted.phTime}</div>
+                                  <div className="text-green-400/80 text-xs">(PH)</div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                        <p className="text-sm text-slate-400 mt-5 text-center">(9 hours per day, including break time)</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-400 text-center py-4">Not specified</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -3128,15 +3601,15 @@ export default function AdminRecruitmentPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
                 <Button
                   onClick={handleHireCandidate}
                   disabled={hiring}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  className="bg-emerald-600 hover:bg-emerald-700"
                 >
                   {hiring ? (
                     <>
-                      <span className="animate-spin mr-2">⏳</span>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Sending Offer...
                     </>
                   ) : (
@@ -3150,7 +3623,7 @@ export default function AdminRecruitmentPage() {
                   variant="outline"
                   onClick={() => setHireModalOpen(false)}
                   disabled={hiring}
-                  className="border-slate-600 text-slate-300 hover:bg-slate-800"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 >
                   Cancel
                 </Button>
@@ -3162,96 +3635,156 @@ export default function AdminRecruitmentPage() {
 
       {/* Schedule Interview Modal */}
       <Dialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-100">
-              Schedule Interview with {interviewToSchedule?.candidateFirstName}
+        <DialogContent className="max-w-3xl max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
+              Schedule Interview
             </DialogTitle>
           </DialogHeader>
 
           {interviewToSchedule && (
-            <div className="space-y-4">
+            <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-2 pb-4">
+              {/* Candidate Info Card */}
+              <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
+                    <AvatarImage src={interviewToSchedule.candidate_avatar_url || undefined} />
+                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      {interviewToSchedule.candidateFirstName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToSchedule.candidateFirstName}</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      {interviewToSchedule.candidate_position && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-blue-400" />
+                          <span className="text-blue-400 font-medium">{interviewToSchedule.candidate_position}</span>
+                        </div>
+                      )}
+                      {interviewToSchedule.candidate_location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToSchedule.candidate_location}</span>
+                        </div>
+                      )}
+                      {interviewToSchedule.candidate_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300 truncate">{interviewToSchedule.candidate_email}</span>
+                        </div>
+                      )}
+                      {interviewToSchedule.candidate_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToSchedule.candidate_phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Client's Preferred Times */}
-              <div className="p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg">
-                <p className="text-sm font-medium text-blue-300 mb-2">Client's Preferred Times:</p>
-                <div className="space-y-1">
+              <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/50 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Clock className="h-5 w-5 text-indigo-400" />
+                  <h4 className="text-base font-bold text-blue-200">
+                    Client's Preferred Times{interviewToSchedule.status.toLowerCase().replace(/_/g, '-') === 'reschedule-requested' ? ' (Rescheduled)' : ''}
+                  </h4>
+                </div>
+                <div className="space-y-2">
                   {interviewToSchedule.preferredTimes.map((time, idx) => {
                     const formatted = formatPreferredTimeWithTimezone(time);
                     return (
-                      <p key={idx} className="text-xs text-blue-400/80">
-                        • {formatted.fullDisplay}
-                      </p>
+                      <div key={idx} className="text-sm text-blue-300 bg-blue-500/10 px-3 py-2 rounded-lg">
+                        {formatted.fullDisplay}
+                      </div>
                     );
                   })}
                 </div>
               </div>
 
               {/* Scheduled Time */}
-              <div className="space-y-2">
-                <Label htmlFor="scheduledTime" className="text-sm font-medium text-slate-200">
-                  Scheduled Time *
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+                <Label htmlFor="scheduledTime" className="text-base font-bold text-slate-100 mb-4 block flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-green-400" />
+                  Schedule Interview Time <span className="text-red-400">*</span>
                 </Label>
+                <p className="text-xs text-slate-400 mb-4">Select the date and time in Philippine Time (PH)</p>
                 {(() => {
                   const parsed = parseTimeSlot(scheduleFormData.scheduledTime)
                   return (
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       {/* Date */}
-                      <input
-                        type="date"
-                        value={parsed.date}
-                        onChange={(e) => {
-                          const newTime = buildTimeSlot(e.target.value, parsed.hour, parsed.minute, parsed.ampm)
-                          setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
-                        }}
-                        className="flex-1 px-3 py-2 bg-slate-800/50 border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-slate-200"
-                        min={new Date().toISOString().split('T')[0]}
-                        required
-                      />
+                      <div className="flex-1">
+                        <label className="text-xs text-slate-400 mb-1 block">Date</label>
+                        <input
+                          type="date"
+                          value={parsed.date}
+                          onChange={(e) => {
+                            const newTime = buildTimeSlot(e.target.value, parsed.hour, parsed.minute, parsed.ampm)
+                            setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
+                          }}
+                          className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-slate-200 font-medium"
+                          min={new Date().toISOString().split('T')[0]}
+                          required
+                        />
+                      </div>
                       
                       {/* Hour */}
-                      <select
-                        value={parsed.hour}
-                        onChange={(e) => {
-                          const newTime = buildTimeSlot(parsed.date, parseInt(e.target.value), parsed.minute, parsed.ampm)
-                          setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
-                        }}
-                        className="w-20 px-2 py-2 bg-slate-800/50 border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-slate-200"
-                        required
-                      >
-                        {Array.from({length: 12}, (_, i) => i + 1).map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Hour</label>
+                        <select
+                          value={parsed.hour}
+                          onChange={(e) => {
+                            const newTime = buildTimeSlot(parsed.date, parseInt(e.target.value), parsed.minute, parsed.ampm)
+                            setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
+                          }}
+                          className="w-20 px-3 py-3 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-slate-200 font-bold text-center"
+                          required
+                        >
+                          {Array.from({length: 12}, (_, i) => i + 1).map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </div>
                       
                       {/* Minute - 15 min intervals */}
-                      <select
-                        value={parsed.minute}
-                        onChange={(e) => {
-                          const newTime = buildTimeSlot(parsed.date, parsed.hour, parseInt(e.target.value), parsed.ampm)
-                          setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
-                        }}
-                        className="w-20 px-2 py-2 bg-slate-800/50 border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-slate-200"
-                        required
-                      >
-                        <option value="0">:00</option>
-                        <option value="15">:15</option>
-                        <option value="30">:30</option>
-                        <option value="45">:45</option>
-                      </select>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Minute</label>
+                        <select
+                          value={parsed.minute}
+                          onChange={(e) => {
+                            const newTime = buildTimeSlot(parsed.date, parsed.hour, parseInt(e.target.value), parsed.ampm)
+                            setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
+                          }}
+                          className="w-20 px-3 py-3 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-slate-200 font-bold text-center"
+                          required
+                        >
+                          <option value="0">:00</option>
+                          <option value="15">:15</option>
+                          <option value="30">:30</option>
+                          <option value="45">:45</option>
+                        </select>
+                      </div>
                       
                       {/* AM/PM */}
-                      <select
-                        value={parsed.ampm}
-                        onChange={(e) => {
-                          const newTime = buildTimeSlot(parsed.date, parsed.hour, parsed.minute, e.target.value)
-                          setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
-                        }}
-                        className="w-20 px-2 py-2 bg-slate-800/50 border-2 border-slate-700/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-slate-200"
-                        required
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Period</label>
+                        <select
+                          value={parsed.ampm}
+                          onChange={(e) => {
+                            const newTime = buildTimeSlot(parsed.date, parsed.hour, parsed.minute, e.target.value)
+                            setScheduleFormData(prev => ({ ...prev, scheduledTime: newTime }))
+                          }}
+                          className="w-20 px-3 py-3 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all text-slate-200 font-bold text-center"
+                          required
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
                     </div>
                   )
                 })()}
@@ -3298,14 +3831,23 @@ export default function AdminRecruitmentPage() {
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit',
-                      hour12: true,
-                      timeZoneName: 'short'
+                      hour12: true
                     })
                     
+                    // Get timezone abbreviation
+                    const clientTzName = utcDate.toLocaleString('en-US', {
+                      timeZone: clientTimezone,
+                      timeZoneName: 'short'
+                    }).split(' ').pop()
+                    
                     return (
-                      <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                        <p className="text-xs text-blue-300">
-                          <span className="font-medium">Client's Time:</span> {clientTimeStr}
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/40 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Globe className="h-4 w-4 text-blue-400" />
+                          <span className="text-sm font-semibold text-blue-200">Client's Timezone ({clientTzName})</span>
+                        </div>
+                        <p className="text-base text-blue-100 font-medium">
+                          {clientTimeStr}
                         </p>
                       </div>
                     )
@@ -3317,9 +3859,10 @@ export default function AdminRecruitmentPage() {
               </div>
 
               {/* Meeting Link */}
-              <div className="space-y-2">
-                <Label htmlFor="meetingLink" className="text-sm font-medium text-slate-200">
-                  Meeting Link (Optional)
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+                <Label htmlFor="meetingLink" className="text-base font-bold text-slate-100 mb-4 block flex items-center gap-2">
+                  <Video className="h-5 w-5 text-purple-400" />
+                  Meeting Link <span className="text-red-400">*</span>
                 </Label>
                 <Input
                   id="meetingLink"
@@ -3327,41 +3870,44 @@ export default function AdminRecruitmentPage() {
                   value={scheduleFormData.meetingLink}
                   onChange={(e) => setScheduleFormData(prev => ({ ...prev, meetingLink: e.target.value }))}
                   placeholder="https://meet.google.com/..."
-                  className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
+                  className="bg-slate-800 border-slate-600 text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 h-12 text-base"
+                  required
                 />
+                <p className="text-xs text-slate-400 mt-2">Add a video conference link for the interview</p>
               </div>
 
               {/* Admin Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="adminNotes" className="text-sm font-medium text-slate-200">
-                  Notes (Optional)
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+                <Label htmlFor="adminNotes" className="text-base font-bold text-slate-100 mb-4 block flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-amber-400" />
+                  Notes <span className="text-slate-400 font-normal text-sm">(Optional)</span>
                 </Label>
                 <Textarea
                   id="adminNotes"
                   value={scheduleFormData.adminNotes}
                   onChange={(e) => setScheduleFormData(prev => ({ ...prev, adminNotes: e.target.value }))}
-                  placeholder="Any notes about this interview..."
+                  placeholder="Add any notes about this interview..."
                   rows={3}
-                  className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
+                  className="bg-slate-800 border-slate-600 text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-base"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
                 <Button
                   onClick={handleScheduleInterview}
                   disabled={scheduling}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="bg-emerald-600 hover:bg-emerald-700"
                 >
                   {scheduling ? (
                     <>
-                      <span className="animate-spin mr-2">⏳</span>
-                      Scheduling...
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Scheduling Interview...
                     </>
                   ) : (
                     <>
                       <Calendar className="h-4 w-4 mr-2" />
-                      Confirm Schedule
+                      Schedule Interview
                     </>
                   )}
                 </Button>
@@ -3369,7 +3915,7 @@ export default function AdminRecruitmentPage() {
                   variant="outline"
                   onClick={() => setScheduleModalOpen(false)}
                   disabled={scheduling}
-                  className="border-slate-700 hover:bg-slate-800"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 >
                   Cancel
                 </Button>
@@ -3381,9 +3927,9 @@ export default function AdminRecruitmentPage() {
 
       {/* Admin Notes Modal */}
       <Dialog open={adminNotesModalOpen} onOpenChange={setAdminNotesModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-100">
+        <DialogContent className="max-w-2xl bg-slate-900 border-slate-700 text-slate-100">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
               Add Admin Notes
             </DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -3391,33 +3937,33 @@ export default function AdminRecruitmentPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-6 py-4">
             {/* Notes Text Area */}
-            <div className="space-y-2">
-              <Label htmlFor="adminNotesText" className="text-sm font-medium text-slate-200">
-                Notes
+            <div className="space-y-3">
+              <Label htmlFor="adminNotesText" className="text-slate-200 font-medium text-base">
+                Notes *
               </Label>
               <Textarea
                 id="adminNotesText"
                 value={adminNotesText}
                 onChange={(e) => setAdminNotesText(e.target.value)}
-                placeholder="Type your notes here..."
-                rows={5}
-                className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20 whitespace-pre-wrap"
+                placeholder="Type your notes here... (e.g., Spoke with candidate, they confirmed availability for interview...)"
+                rows={6}
+                className="bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 whitespace-pre-wrap"
               />
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
               <Button
                 onClick={handleSaveAdminNotes}
                 disabled={savingNotes || !adminNotesText.trim()}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               >
                 {savingNotes ? (
                   <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Saving...
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving Notes...
                   </>
                 ) : (
                   <>
@@ -3433,7 +3979,7 @@ export default function AdminRecruitmentPage() {
                   setAdminNotesText('')
                 }}
                 disabled={savingNotes}
-                className="border-slate-700 hover:bg-slate-800"
+                className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
               >
                 Cancel
               </Button>
@@ -3444,10 +3990,9 @@ export default function AdminRecruitmentPage() {
 
       {/* Finalize Hire Modal (consolidated) */}
       <Dialog open={confirmAcceptanceModalOpen} onOpenChange={setConfirmAcceptanceModalOpen}>
-        <DialogContent className="bg-slate-900 text-slate-100 border-slate-700 max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-emerald-400 flex items-center gap-2">
-              <CheckCircle className="h-6 w-6" />
+        <DialogContent className="max-w-3xl max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
               Finalize Hire & Create Staff Account
             </DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -3456,58 +4001,97 @@ export default function AdminRecruitmentPage() {
           </DialogHeader>
 
           {interviewToConfirm && (
-            <div className="space-y-6 py-4">
-              {/* Success Message */}
-              <div className="p-4 bg-emerald-500/10 border-2 border-emerald-500/50 rounded-lg">
-                <div className="flex gap-3">
-                  <CheckCircle className="h-6 w-6 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-emerald-300">Candidate: {interviewToConfirm.candidateFirstName} 🎉</p>
-                    <p className="text-xs text-emerald-400/80">
-                      The candidate has accepted the job offer! Complete the details below to finalize the hire.
-                    </p>
+            <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-2 pb-4">
+              {/* Candidate Info Card */}
+              <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
+                    <AvatarImage src={interviewToConfirm.candidate_avatar_url || undefined} />
+                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      {interviewToConfirm.candidateFirstName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToConfirm.candidateFirstName}</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      {interviewToConfirm.candidate_position && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-blue-400" />
+                          <span className="text-blue-400 font-medium">{interviewToConfirm.candidate_position}</span>
+                        </div>
+                      )}
+                      {interviewToConfirm.candidate_location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToConfirm.candidate_location}</span>
+                        </div>
+                      )}
+                      {interviewToConfirm.candidate_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300 truncate">{interviewToConfirm.candidate_email}</span>
+                        </div>
+                      )}
+                      {interviewToConfirm.candidate_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToConfirm.candidate_phone}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* Success Message */}
+              <div className="bg-emerald-500/10 border border-emerald-500/50 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle className="h-5 w-5 text-emerald-400" />
+                  <h4 className="font-semibold text-emerald-300">Ready to Finalize!</h4>
+                </div>
+                <p className="text-sm text-emerald-400/80">
+                  The candidate has accepted the job offer! Complete the details below to finalize the hire and prepare onboarding.
+                </p>
+              </div>
+
               {/* Confirmed Start Date */}
-                <div className="space-y-2">
-                <Label htmlFor="confirmedStartDate" className="text-slate-200 font-medium">
+              <div className="space-y-3">
+                <Label htmlFor="confirmedStartDate" className="text-slate-200 font-medium text-base">
                   Confirmed Start Date *
-                  </Label>
-                  <Input
+                </Label>
+                <Input
                   id="confirmedStartDate"
-                    type="date"
+                  type="date"
                   value={confirmFormData.confirmedStartDate}
                   onChange={(e) => setConfirmFormData({ ...confirmFormData, confirmedStartDate: e.target.value })}
-                  className="bg-slate-800 border-slate-700 text-slate-100"
-                  />
-                  <p className="text-xs text-slate-400">
+                  className="bg-slate-800 border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500/50"
+                />
+                <p className="text-xs text-slate-400">
                   Pre-filled from client's preferred date. Update if candidate requested a different date.
-                  </p>
-                </div>
+                </p>
+              </div>
 
               {/* Staff Email */}
-                <div className="space-y-2">
-                <Label htmlFor="staffEmail" className="text-slate-200 font-medium">
-                    Staff Email Address *
-                  </Label>
-                  <Input
-                    id="staffEmail"
-                    type="email"
+              <div className="space-y-3">
+                <Label htmlFor="staffEmail" className="text-slate-200 font-medium text-base">
+                  Staff Email Address *
+                </Label>
+                <Input
+                  id="staffEmail"
+                  type="email"
                   value={confirmFormData.staffEmail}
                   onChange={(e) => setConfirmFormData({ ...confirmFormData, staffEmail: e.target.value })}
-                    placeholder="staff@example.com"
-                  className="bg-slate-800 border-slate-700 text-slate-100 font-medium placeholder:text-slate-500"
-                  />
-                  <p className="text-xs text-slate-400">
+                  placeholder="staff@example.com"
+                  className="bg-slate-800 border-slate-700 text-slate-100 font-medium placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500/50"
+                />
+                <p className="text-xs text-slate-400">
                   Pre-filled from candidate's BPOC profile. This email will be used for staff signup and onboarding.
-                  </p>
-                </div>
+                </p>
+              </div>
 
               {/* Admin Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="confirmNotes" className="text-slate-200 font-medium">
+              <div className="space-y-3">
+                <Label htmlFor="confirmNotes" className="text-slate-200 font-medium text-base">
                   Admin Notes (Optional)
                 </Label>
                 <Textarea
@@ -3515,17 +4099,17 @@ export default function AdminRecruitmentPage() {
                   placeholder="E.g., Spoke with candidate on phone, they're excited to start..."
                   value={confirmFormData.adminNotes}
                   onChange={(e) => setConfirmFormData({ ...confirmFormData, adminNotes: e.target.value })}
-                  className="bg-slate-800 border-slate-700 text-slate-100 min-h-[100px]"
+                  className="bg-slate-800 border-slate-700 text-slate-100 min-h-[100px] focus:ring-2 focus:ring-emerald-500/50"
                 />
               </div>
 
               {/* What Happens Next Info Box */}
-              <div className="p-4 bg-blue-500/10 border border-blue-500/50 rounded-lg">
-                <div className="flex gap-2">
+              <div className="bg-blue-500/10 border border-blue-500/50 rounded-xl p-4">
+                <div className="flex items-start gap-2">
                   <UserCheck className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-300">What Happens Next?</p>
-                    <ul className="text-xs text-blue-400/80 space-y-1 list-disc list-inside">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-blue-300">What Happens Next?</p>
+                    <ul className="text-xs text-blue-400/80 space-y-1.5 list-disc list-inside">
                       <li>Job acceptance record will be created/updated</li>
                       <li>Interview status will be updated to "HIRED"</li>
                       <li>Staff member can create their account using <strong className="text-blue-300">{confirmFormData.staffEmail}</strong></li>
@@ -3538,11 +4122,11 @@ export default function AdminRecruitmentPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
                 <Button
                   onClick={handleConfirmAcceptance}
                   disabled={confirming || !confirmFormData.confirmedStartDate || !confirmFormData.staffEmail}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-emerald-600 hover:bg-emerald-700"
                 >
                   {confirming ? (
                     <>
@@ -3560,7 +4144,7 @@ export default function AdminRecruitmentPage() {
                   variant="outline"
                   onClick={() => setConfirmAcceptanceModalOpen(false)}
                   disabled={confirming}
-                  className="border-slate-700 hover:bg-slate-800"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 >
                   Cancel
                 </Button>
@@ -3572,10 +4156,10 @@ export default function AdminRecruitmentPage() {
 
       {/* Mark as Declined Modal */}
       <Dialog open={declineModalOpen} onOpenChange={setDeclineModalOpen}>
-        <DialogContent className="bg-slate-900 text-slate-100 border-slate-700 max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-red-400">
-              ❌ Mark Offer as Declined
+        <DialogContent className="max-w-3xl max-h-[90vh] bg-slate-900 border-slate-700 text-slate-100 overflow-hidden flex flex-col">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
+              Mark Offer as Declined
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               Record why the candidate declined the offer
@@ -3583,18 +4167,62 @@ export default function AdminRecruitmentPage() {
           </DialogHeader>
 
           {interviewToDecline && (
-            <div className="space-y-6 py-4">
-              {/* Candidate Info */}
-              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                <h3 className="font-semibold text-red-300 mb-2">Candidate: {interviewToDecline.candidateFirstName}</h3>
-                <p className="text-sm text-slate-300">
-                  Document the reason for declining so the team understands what happened.
+            <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-2 pb-4">
+              {/* Candidate Info Card */}
+              <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
+                    <AvatarImage src={interviewToDecline.candidate_avatar_url || undefined} />
+                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                      {interviewToDecline.candidateFirstName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToDecline.candidateFirstName}</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      {interviewToDecline.candidate_position && (
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-blue-400" />
+                          <span className="text-blue-400 font-medium">{interviewToDecline.candidate_position}</span>
+                        </div>
+                      )}
+                      {interviewToDecline.candidate_location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToDecline.candidate_location}</span>
+                        </div>
+                      )}
+                      {interviewToDecline.candidate_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300 truncate">{interviewToDecline.candidate_email}</span>
+                        </div>
+                      )}
+                      {interviewToDecline.candidate_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-slate-400" />
+                          <span className="text-slate-300">{interviewToDecline.candidate_phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Alert */}
+              <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <XCircle className="h-5 w-5 text-red-400" />
+                  <h4 className="font-semibold text-red-300">Document the Decline Reason</h4>
+                </div>
+                <p className="text-sm text-red-400/80">
+                  Record why the candidate declined so the team understands what happened and can improve future offers.
                 </p>
               </div>
 
               {/* Decline Reason */}
-              <div className="space-y-2">
-                <Label htmlFor="declineReason" className="text-slate-200 font-medium">
+              <div className="space-y-3">
+                <Label htmlFor="declineReason" className="text-slate-200 font-medium text-base">
                   Reason for Declining *
                 </Label>
                 <Textarea
@@ -3602,20 +4230,20 @@ export default function AdminRecruitmentPage() {
                   placeholder="E.g., Accepted another job offer, Personal circumstances changed, Salary expectations not met..."
                   value={declineReason}
                   onChange={(e) => setDeclineReason(e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-slate-100 min-h-[120px]"
+                  className="bg-slate-800 border-slate-700 text-slate-100 min-h-[120px] focus:ring-2 focus:ring-red-500/50"
                   required
                 />
               </div>
 
               {/* Quick Reason Buttons */}
-              <div className="space-y-2">
-                <p className="text-sm text-slate-400">Quick reasons:</p>
+              <div className="space-y-3">
+                <p className="text-sm text-slate-400 font-medium">Quick reasons:</p>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setDeclineReason('Candidate accepted another job offer')}
-                    className="border-slate-700 hover:bg-slate-800"
+                    className="border-slate-700 hover:bg-slate-800 hover:border-red-500/50 transition-colors"
                   >
                     Accepted Another Job
                   </Button>
@@ -3623,7 +4251,7 @@ export default function AdminRecruitmentPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDeclineReason('Personal circumstances changed')}
-                    className="border-slate-700 hover:bg-slate-800"
+                    className="border-slate-700 hover:bg-slate-800 hover:border-red-500/50 transition-colors"
                   >
                     Personal Circumstances
                   </Button>
@@ -3631,7 +4259,7 @@ export default function AdminRecruitmentPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDeclineReason('Salary/compensation not acceptable')}
-                    className="border-slate-700 hover:bg-slate-800"
+                    className="border-slate-700 hover:bg-slate-800 hover:border-red-500/50 transition-colors"
                   >
                     Salary Issues
                   </Button>
@@ -3639,7 +4267,7 @@ export default function AdminRecruitmentPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDeclineReason('Location/remote work requirements not met')}
-                    className="border-slate-700 hover:bg-slate-800"
+                    className="border-slate-700 hover:bg-slate-800 hover:border-red-500/50 transition-colors"
                   >
                     Location Issues
                   </Button>
@@ -3647,12 +4275,12 @@ export default function AdminRecruitmentPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
                 <Button
                   variant="destructive"
                   onClick={handleMarkDeclined}
                   disabled={declining || !declineReason.trim()}
-                  className="flex-1"
+                  className="bg-red-600 hover:bg-red-700"
                 >
                   {declining ? (
                     <>
@@ -3670,7 +4298,7 @@ export default function AdminRecruitmentPage() {
                   variant="outline"
                   onClick={() => setDeclineModalOpen(false)}
                   disabled={declining}
-                  className="border-slate-700 hover:bg-slate-800"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 >
                   Cancel
                 </Button>
@@ -3682,78 +4310,66 @@ export default function AdminRecruitmentPage() {
 
       {/* Cancel Interview Confirmation Modal */}
       <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-100">
+        <DialogContent className="max-w-2xl bg-slate-900 border-slate-700 text-slate-100">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-3xl font-bold text-slate-100">
               Cancel Interview with {interviewToCancel?.candidateFirstName}
             </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              The client will be notified. You can optionally provide a reason below.
+            </DialogDescription>
           </DialogHeader>
 
-          {interviewToCancel && (
-            <div className="space-y-4">
-              {/* Warning Info */}
-              <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-red-300">This action will cancel the interview</p>
-                    <p className="text-xs text-red-400/80 mt-1">
-                      The client will be notified. You can optionally provide a reason below.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cancel Reason */}
-              <div className="space-y-2">
-                <Label htmlFor="cancelReason" className="text-sm font-medium text-slate-200">
-                  Reason for Cancellation (Optional)
-                </Label>
-                <Textarea
-                  id="cancelReason"
-                  placeholder="E.g., Candidate no longer available, Client requested cancellation, Scheduling conflicts..."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  rows={3}
-                  className="bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-red-500/50 focus:ring-red-500/20"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="destructive"
-                  onClick={handleCancelInterview}
-                  disabled={cancelling}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                >
-                  {cancelling ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Cancelling...
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Yes, Cancel Interview
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setCancelModalOpen(false)
-                    setInterviewToCancel(null)
-                    setCancelReason('')
-                  }}
-                  disabled={cancelling}
-                  className="border-slate-700 hover:bg-slate-800"
-                >
-                  Keep Interview
-                </Button>
-              </div>
+          <div className="space-y-6 py-4">
+            {/* Cancel Reason */}
+            <div className="space-y-3">
+              <Label htmlFor="cancelReason" className="text-slate-200 font-medium text-base">
+                Reason for Cancellation (Optional)
+              </Label>
+              <Textarea
+                id="cancelReason"
+                placeholder="E.g., Candidate no longer available, Client requested cancellation, Scheduling conflicts..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={4}
+                className="bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-red-500/50 whitespace-pre-wrap"
+              />
             </div>
-          )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-700 mt-4">
+              <Button
+                variant="destructive"
+                onClick={handleCancelInterview}
+                disabled={cancelling}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {cancelling ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Cancelling...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Yes, Cancel Interview
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCancelModalOpen(false)
+                  setInterviewToCancel(null)
+                  setCancelReason('')
+                }}
+                disabled={cancelling}
+                className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+              >
+                Keep Interview
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

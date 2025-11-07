@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { CommentSection } from "@/components/engagement/comment-section"
 
 interface DocumentDetail {
   id: string
@@ -321,6 +322,19 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 🎯 UNIFIED COMMENT SYSTEM */}
+          <div className="mt-8 p-6 bg-white rounded-2xl border-2 border-gray-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">💬 Comments & Discussion</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Collaborate with your team on this document. Share insights, ask questions, or provide feedback.
+            </p>
+            <CommentSection
+              commentableType="DOCUMENT"
+              commentableId={document.id}
+              darkMode={false}
+            />
           </div>
         </div>
       </div>

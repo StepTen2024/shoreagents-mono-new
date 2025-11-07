@@ -59,7 +59,7 @@ export default function OnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">ia-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
     )
@@ -154,8 +154,32 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">te-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">te-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
       <div className="max-w-6xl mx-auto w-full space-y-6">
+        {/* Header */}
+        <div className="text-center mb-8 mt-12">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome to ShoreAgents! <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
+          </h1>
+          <p className="text-slate-300 mb-4">
+            {contractSigned 
+              ? "Complete your onboarding to get started" 
+              : "Review and sign your employment contract to begin"}
+          </p>
+        </div>
+
+        {/* Header */}
+        <div className="text-center mb-8 mt-12">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome to ShoreAgents! <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
+          </h1>
+          <p className="text-slate-300 mb-4">
+            {contractSigned 
+              ? "Complete your onboarding to get started" 
+              : "Review and sign your employment contract to begin"}
+          </p>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8 mt-12">
           <h1 className="text-4xl font-bold text-white mb-2">

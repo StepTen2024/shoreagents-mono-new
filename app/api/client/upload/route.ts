@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { supabaseAdmin } from "@/lib/supabase"
+import { supabaseAdmin as supabase } from "@/lib/supabase"
 
 // POST /api/client/upload - Upload client file with proper authentication
 export async function POST(req: NextRequest) {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
           const filePath = pathParts.slice(clientIndex + 1).join('/')
           
           console.log('Deleting old client file from path:', filePath)
-          const { error: deleteError } = await supabaseAdmin.storage
+          const { error: deleteError } = await supabase.storage
             .from('client')
             .remove([filePath])
           
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     const filePath = `${folder}/${clientUser.id}/${fileName}`
 
     // Upload to Supabase storage using service role key
-    const { data, error } = await supabaseAdmin.storage
+    const { data, error } = await supabase.storage
       .from('client')
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
+    const { data: { publicUrl } } = supabase.storage
       .from('client')
       .getPublicUrl(filePath)
 

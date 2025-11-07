@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { supabaseAdmin } from "@/lib/supabase"
+import { supabaseAdmin as supabase } from "@/lib/supabase"
 import crypto from "crypto"
 
 export async function POST(req: NextRequest) {
@@ -40,11 +40,12 @@ export async function POST(req: NextRequest) {
         }
       })
 
-      await updateCompletionPercent(onboarding.id)
+      const completionPercent = await updateCompletionPercent(onboarding.id)
 
       return NextResponse.json({ 
         success: true,
-        message: "Signature section marked for review" 
+        message: "Signature section marked for review",
+        completionPercent
       })
     }
 
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // Upload to Supabase
     const fileBuffer = await file.arrayBuffer()
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from("staff")
       .upload(filePath, fileBuffer, {
         contentType: file.type,
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
+    const { data: { publicUrl } } = supabase.storage
       .from("staff")
       .getPublicUrl(filePath)
 
@@ -133,12 +134,13 @@ export async function POST(req: NextRequest) {
     })
 
     // Recalculate completion percentage
-    await updateCompletionPercent(onboarding.id)
+    const completionPercent = await updateCompletionPercent(onboarding.id)
 
     return NextResponse.json({ 
       success: true,
       url: publicUrl,
-      message: "Signature uploaded successfully" 
+      message: "Signature uploaded successfully",
+      completionPercent
     })
 
   } catch (error) {
@@ -151,12 +153,12 @@ export async function POST(req: NextRequest) {
 }
 
 // Helper function to calculate completion percentage
-async function updateCompletionPercent(onboardingId: string) {
+async function updateCompletionPercent(onboardingId: string): Promise<number> {
   const onboarding = await prisma.staff_onboarding.findUnique({
     where: { id: onboardingId }
   })
 
-  if (!onboarding) return
+  if (!onboarding) return 0
 
   const sections = [
     onboarding.personalInfoStatus,
@@ -169,7 +171,7 @@ async function updateCompletionPercent(onboardingId: string) {
     onboarding.emergencyContactStatus
   ]
 
-  // Each section = 12.5% when SUBMITTED or APPROVED (8 sections total)
+  // Each section = 12.5% when SUBMITTED (8 sections total)
   let totalProgress = 0
   sections.forEach(status => {
     if (status === "SUBMITTED" || status === "APPROVED") {
@@ -189,5 +191,7 @@ async function updateCompletionPercent(onboardingId: string) {
       // isComplete is NOT updated here - only in admin complete route!
     }
   })
+
+  return completionPercent
 }
 

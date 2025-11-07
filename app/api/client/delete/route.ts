@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { supabaseAdmin } from "@/lib/supabase"
+import { supabaseAdmin as supabase } from "@/lib/supabase"
 
 // DELETE /api/client/delete - Delete client file with proper authentication
 export async function DELETE(req: NextRequest) {
@@ -38,7 +38,7 @@ export async function DELETE(req: NextRequest) {
         const filePath = pathParts.slice(clientIndex + 1).join('/')
         
         console.log('Deleting client file from path:', filePath)
-        const { error: deleteError } = await supabaseAdmin.storage
+        const { error: deleteError } = await supabase.storage
           .from('client')
           .remove([filePath])
         

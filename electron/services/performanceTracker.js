@@ -65,10 +65,78 @@ class PerformanceTracker {
   }
 
   /**
+   * Load previous metrics from database (to handle Electron restarts)
+   * This ensures activeTime/idleTime continue from where they left off
+   */
+  async loadPreviousMetrics() {
+    try {
+      const syncService = require('./syncService')
+      const sessionCookie = await syncService.getSessionCookie()
+      
+      if (!sessionCookie) {
+        this.log('⚠️  No session cookie - starting with fresh metrics')
+        return
+      }
+
+      const response = await fetch(`${config.API_BASE_URL}${config.API_PERFORMANCE_ENDPOINT}`, {
+        headers: {
+          'Cookie': `${sessionCookie.name}=${sessionCookie.value}`
+        }
+      })
+
+      if (!response.ok) {
+        this.log(`⚠️  Failed to load previous metrics: ${response.status}`)
+        return
+      }
+
+      const data = await response.json()
+      const todayMetrics = data.today
+
+      if (todayMetrics) {
+        // Load previous cumulative values (convert from API format)
+        // API sends seconds, so we keep as-is
+        this.metrics.mouseMovements = todayMetrics.mouseMovements || 0
+        this.metrics.mouseClicks = todayMetrics.mouseClicks || 0
+        this.metrics.keystrokes = todayMetrics.keystrokes || 0
+        this.metrics.activeTime = todayMetrics.activeTime || 0 // Already in seconds from API
+        this.metrics.idleTime = todayMetrics.idleTime || 0 // Already in seconds from API
+        this.metrics.screenTime = todayMetrics.screenTime || 0 // Already in seconds from API
+        this.metrics.downloads = todayMetrics.downloads || 0
+        this.metrics.uploads = todayMetrics.uploads || 0
+        this.metrics.bandwidth = todayMetrics.bandwidth || 0
+        this.metrics.filesAccessed = todayMetrics.filesAccessed || 0
+        this.metrics.urlsVisited = todayMetrics.urlsVisited || 0
+        this.metrics.tabsSwitched = todayMetrics.tabsSwitched || 0
+        
+        // 🔥 LOAD PREVIOUS URLS AND APPS (to handle Electron restarts)
+        if (todayMetrics.visitedUrls && Array.isArray(todayMetrics.visitedUrls)) {
+          this.visitedUrls = new Set(todayMetrics.visitedUrls)
+          this.log(`   Loaded ${this.visitedUrls.size} previous URLs`)
+        }
+        
+        if (todayMetrics.applicationsUsed && Array.isArray(todayMetrics.applicationsUsed)) {
+          this.activeApps = new Set(todayMetrics.applicationsUsed)
+          this.metrics.applicationsUsed = todayMetrics.applicationsUsed
+          this.log(`   Loaded ${this.activeApps.size} previous apps`)
+        }
+        
+        this.log(`✅ Loaded previous metrics - Active Time: ${Math.floor(this.metrics.activeTime / 60)} minutes`)
+        this.log(`   Continuing from: ${this.metrics.keystrokes} keystrokes, ${this.metrics.mouseClicks} clicks`)
+        this.log(`   ${this.visitedUrls.size} URLs, ${this.activeApps.size} apps`)
+      } else {
+        this.log('✅ No previous metrics for today - starting fresh')
+      }
+    } catch (error) {
+      this.log(`⚠️  Error loading previous metrics: ${error.message}`)
+      // Continue with fresh metrics if load fails
+    }
+  }
+
+  /**
    * Start tracking user activity
    * Note: Keyboard and mouse input tracking is handled by Activity Tracker (uiohook-napi)
    */
-  start() {
+  async start() {
     if (this.isTracking) {
       this.log('Tracker already running')
       return
@@ -79,6 +147,9 @@ class PerformanceTracker {
       this.log('🚫 Performance tracking disabled - non-staff portal detected')
       return
     }
+
+    // 🔥 LOAD PREVIOUS METRICS FROM DATABASE (to handle Electron restarts)
+    await this.loadPreviousMetrics()
 
     this.isTracking = true
     this.sessionStartTime = Date.now()
@@ -115,42 +186,6 @@ class PerformanceTracker {
     }
 
     this.log('Performance tracking started')
-    
-    // 🔧 ADD: 10-second verification check
-    setTimeout(() => {
-      console.log('\n╔═══════════════════════════════════════════════════════╗')
-      console.log('║  🔍 [PerformanceTracker] 10-SECOND VERIFICATION      ║')
-      console.log('╚═══════════════════════════════════════════════════════╝')
-      console.log(`📊 Tracking Status:`)
-      console.log(`   Is Tracking: ${this.isTracking ? '✅ YES' : '❌ NO'}`)
-      console.log(`   Is Paused: ${this.isPaused ? '❌ PAUSED - FIX THIS!' : '✅ NOT PAUSED'}`)
-      console.log(`\n⚙️  Intervals Status:`)
-      console.log(`   Main Tracking Interval: ${this.trackingInterval ? '✅ Running' : '❌ NOT RUNNING'}`)
-      console.log(`   Clipboard Interval: ${this.clipboardInterval ? '✅ Running' : '⚠️ Not started (OK if no clipboardy)'}`)
-      console.log(`   App Tracking Interval: ${this.applicationTrackingInterval ? '✅ Running' : '⚠️ Not started (OK if no active-win)'}`)
-      console.log(`\n📈 Current Metrics After 10 Seconds:`)
-      console.log(`   🖱️  Mouse movements: ${this.metrics.mouseMovements} ${this.metrics.mouseMovements > 0 ? '✅' : '⚠️ ZERO - Try moving mouse'}`)
-      console.log(`   🖱️  Mouse clicks: ${this.metrics.mouseClicks} ${this.metrics.mouseClicks > 0 ? '✅' : '⚠️ ZERO - Try clicking'}`)
-      console.log(`   ⌨️  Keystrokes: ${this.metrics.keystrokes} ${this.metrics.keystrokes > 0 ? '✅ WORKING!' : '❌ ZERO - KEYBOARD NOT WORKING'}`)
-      console.log(`   ✅ Active time: ${this.metrics.activeTime.toFixed(2)}s ${this.metrics.activeTime > 5 ? '✅' : '❌ TOO LOW - updateMetrics() not running?'}`)
-      console.log(`   🖥️  Screen time: ${this.metrics.screenTime.toFixed(2)}s ${this.metrics.screenTime > 5 ? '✅' : '❌ TOO LOW - updateMetrics() not running?'}`)
-      console.log(`   🌐 URLs visited: ${this.metrics.urlsVisited} ${this.metrics.urlsVisited > 0 ? '✅' : '⚠️ ZERO - Open browser and visit sites'}`)
-      console.log(`   📱 Apps tracked: ${this.metrics.applicationsUsed.length} ${this.metrics.applicationsUsed.length > 0 ? '✅' : '⚠️ ZERO'}`)
-      console.log(`\n🚨 CRITICAL ISSUES:`)
-      const issues = []
-      if (this.isPaused) issues.push('   ❌ PAUSED = true (should be false)')
-      if (!this.trackingInterval) issues.push('   ❌ Main interval not running')
-      if (this.metrics.keystrokes === 0) issues.push('   ❌ Keystrokes = 0 (check accessibility permissions)')
-      if (this.metrics.activeTime < 5) issues.push('   ❌ Active time too low (updateMetrics() not running?)')
-      if (this.metrics.screenTime < 5) issues.push('   ❌ Screen time too low (updateMetrics() not running?)')
-      
-      if (issues.length === 0) {
-        console.log('   ✅ NO ISSUES FOUND - All tracking working!')
-      } else {
-        issues.forEach(issue => console.log(issue))
-      }
-      console.log('╚═══════════════════════════════════════════════════════╝\n')
-    }, 10000)
   }
 
   /**
@@ -483,17 +518,17 @@ class PerformanceTracker {
   }
 
   /**
-   * Get metrics for API (formatted - converts seconds to minutes)
+   * Get metrics for API (RAW VALUES - no conversion)
+   * All values sent as cumulative totals (like keystrokes)
    */
   getMetricsForAPI() {
     const metrics = this.metrics
     
-    const apiMetrics = {
+    return {
       mouseMovements: metrics.mouseMovements,
       mouseClicks: metrics.mouseClicks,
       keystrokes: metrics.keystrokes,
-      // 🔧 KEEP AS SECONDS - API will convert to minutes if needed
-      // This prevents double-conversion issues with delta calculation
+      // Send RAW SECONDS (no conversion) - API will use Math.max() like keystrokes
       activeTime: Math.round(metrics.activeTime),
       idleTime: Math.round(metrics.idleTime),
       screenTime: Math.round(metrics.screenTime),
@@ -511,32 +546,6 @@ class PerformanceTracker {
       // Include applications used array for database storage
       applicationsUsed: metrics.applicationsUsed || [],
     }
-    
-    // 🔍 DETAILED LOGGING FOR EACH METRIC
-    console.log('\n═══════════════════════════════════════════════════════')
-    console.log('📊 [PerformanceTracker] METRICS FOR API')
-    console.log('═══════════════════════════════════════════════════════')
-    console.log(`🖱️  Mouse Movements: ${apiMetrics.mouseMovements} ${apiMetrics.mouseMovements > 0 ? '✅' : '❌ ZERO'}`)
-    console.log(`🖱️  Mouse Clicks: ${apiMetrics.mouseClicks} ${apiMetrics.mouseClicks > 0 ? '✅' : '❌ ZERO'}`)
-    console.log(`⌨️  Keystrokes: ${apiMetrics.keystrokes} ${apiMetrics.keystrokes > 0 ? '✅' : '❌ ZERO - NOT TRACKING'}`)
-    console.log(`✅ Active Time: ${apiMetrics.activeTime} min (${Math.round(metrics.activeTime)} sec) ${apiMetrics.activeTime > 0 ? '✅' : '❌ ZERO'}`)
-    console.log(`😴 Idle Time: ${apiMetrics.idleTime} min (${Math.round(metrics.idleTime)} sec) ${apiMetrics.idleTime > 0 ? '✅' : '⚠️ ZERO (expected if active)'}`)
-    console.log(`🖥️  Screen Time: ${apiMetrics.screenTime} min (${Math.round(metrics.screenTime)} sec) ${apiMetrics.screenTime > 0 ? '✅' : '❌ ZERO'}`)
-    console.log(`🌐 URLs Visited Count: ${apiMetrics.urlsVisited} ${apiMetrics.urlsVisited > 0 ? '✅' : '❌ ZERO'}`)
-    console.log(`🌐 URLs Array: ${apiMetrics.visitedUrls.length} items ${apiMetrics.visitedUrls.length > 0 ? '✅' : '❌ EMPTY ARRAY'}`)
-    if (apiMetrics.visitedUrls.length > 0) {
-      console.log(`   URLs: ${apiMetrics.visitedUrls.slice(0, 3).join(', ')}${apiMetrics.visitedUrls.length > 3 ? '...' : ''}`)
-    }
-    console.log(`📱 Apps Used: ${apiMetrics.applicationsUsed.length} apps ${apiMetrics.applicationsUsed.length > 0 ? '✅' : '❌ EMPTY'}`)
-    if (apiMetrics.applicationsUsed.length > 0) {
-      console.log(`   Apps: ${apiMetrics.applicationsUsed.join(', ')}`)
-    }
-    console.log(`🔄 Tab Switches: ${apiMetrics.tabsSwitched} ${apiMetrics.tabsSwitched > 0 ? '✅' : '⚠️ ZERO'}`)
-    console.log(`📊 Productivity Score: ${apiMetrics.productivityScore}`)
-    console.log(`📋 Clipboard Actions: ${apiMetrics.clipboardActions}`)
-    console.log(`═══════════════════════════════════════════════════════\n`)
-    
-    return apiMetrics
   }
 
   /**

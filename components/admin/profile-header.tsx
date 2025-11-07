@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/card"
 import { Camera, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { formatDepartment } from "@/lib/format-department"
 
 type User = {
   id: string
@@ -158,7 +157,7 @@ export function ProfileHeader({ user }: { user: User }) {
   return (
     <Card className="overflow-hidden">
       {/* Cover Photo */}
-      <div className="relative h-80 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">
+      <div className="relative h-48 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">
         {user.coverPhoto && (
           <img
             src={user.coverPhoto}
@@ -256,7 +255,7 @@ export function ProfileHeader({ user }: { user: User }) {
               {user.role}
             </span>
             <span className="text-sm text-muted-foreground">•</span>
-            <span className="text-sm text-muted-foreground">{formatDepartment(user.department)}</span>
+            <span className="text-sm text-muted-foreground">{user.department}</span>
           </div>
         </div>
       </div>
