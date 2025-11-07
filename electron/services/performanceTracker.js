@@ -115,6 +115,42 @@ class PerformanceTracker {
     }
 
     this.log('Performance tracking started')
+    
+    // 🔧 ADD: 10-second verification check
+    setTimeout(() => {
+      console.log('\n╔═══════════════════════════════════════════════════════╗')
+      console.log('║  🔍 [PerformanceTracker] 10-SECOND VERIFICATION      ║')
+      console.log('╚═══════════════════════════════════════════════════════╝')
+      console.log(`📊 Tracking Status:`)
+      console.log(`   Is Tracking: ${this.isTracking ? '✅ YES' : '❌ NO'}`)
+      console.log(`   Is Paused: ${this.isPaused ? '❌ PAUSED - FIX THIS!' : '✅ NOT PAUSED'}`)
+      console.log(`\n⚙️  Intervals Status:`)
+      console.log(`   Main Tracking Interval: ${this.trackingInterval ? '✅ Running' : '❌ NOT RUNNING'}`)
+      console.log(`   Clipboard Interval: ${this.clipboardInterval ? '✅ Running' : '⚠️ Not started (OK if no clipboardy)'}`)
+      console.log(`   App Tracking Interval: ${this.applicationTrackingInterval ? '✅ Running' : '⚠️ Not started (OK if no active-win)'}`)
+      console.log(`\n📈 Current Metrics After 10 Seconds:`)
+      console.log(`   🖱️  Mouse movements: ${this.metrics.mouseMovements} ${this.metrics.mouseMovements > 0 ? '✅' : '⚠️ ZERO - Try moving mouse'}`)
+      console.log(`   🖱️  Mouse clicks: ${this.metrics.mouseClicks} ${this.metrics.mouseClicks > 0 ? '✅' : '⚠️ ZERO - Try clicking'}`)
+      console.log(`   ⌨️  Keystrokes: ${this.metrics.keystrokes} ${this.metrics.keystrokes > 0 ? '✅ WORKING!' : '❌ ZERO - KEYBOARD NOT WORKING'}`)
+      console.log(`   ✅ Active time: ${this.metrics.activeTime.toFixed(2)}s ${this.metrics.activeTime > 5 ? '✅' : '❌ TOO LOW - updateMetrics() not running?'}`)
+      console.log(`   🖥️  Screen time: ${this.metrics.screenTime.toFixed(2)}s ${this.metrics.screenTime > 5 ? '✅' : '❌ TOO LOW - updateMetrics() not running?'}`)
+      console.log(`   🌐 URLs visited: ${this.metrics.urlsVisited} ${this.metrics.urlsVisited > 0 ? '✅' : '⚠️ ZERO - Open browser and visit sites'}`)
+      console.log(`   📱 Apps tracked: ${this.metrics.applicationsUsed.length} ${this.metrics.applicationsUsed.length > 0 ? '✅' : '⚠️ ZERO'}`)
+      console.log(`\n🚨 CRITICAL ISSUES:`)
+      const issues = []
+      if (this.isPaused) issues.push('   ❌ PAUSED = true (should be false)')
+      if (!this.trackingInterval) issues.push('   ❌ Main interval not running')
+      if (this.metrics.keystrokes === 0) issues.push('   ❌ Keystrokes = 0 (check accessibility permissions)')
+      if (this.metrics.activeTime < 5) issues.push('   ❌ Active time too low (updateMetrics() not running?)')
+      if (this.metrics.screenTime < 5) issues.push('   ❌ Screen time too low (updateMetrics() not running?)')
+      
+      if (issues.length === 0) {
+        console.log('   ✅ NO ISSUES FOUND - All tracking working!')
+      } else {
+        issues.forEach(issue => console.log(issue))
+      }
+      console.log('╚═══════════════════════════════════════════════════════╝\n')
+    }, 10000)
   }
 
   /**
