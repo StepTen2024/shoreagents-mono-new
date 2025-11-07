@@ -154,7 +154,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">te-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">te-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
       <div className="max-w-6xl mx-auto w-full space-y-6">
         {/* Header */}
         <div className="text-center mb-8 mt-12">
