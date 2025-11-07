@@ -459,8 +459,8 @@ export default function TicketDetailModal({
 
         {/* 💬 UNIVERSAL COMMENT SYSTEM - COMMENTS & REACTIONS! */}
         <CommentThread
-          entityType="ticket"
-          entityId={ticket.id}
+          commentableType="TICKET"
+          commentableId={ticket.id}
           variant={isManagement ? "management" : "staff"}
           onUpdate={onUpdate}
         />
