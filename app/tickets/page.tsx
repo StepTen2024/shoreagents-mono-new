@@ -28,9 +28,15 @@ export default function TicketsPage() {
   const staffCategories = getCategoriesForUserType('staff')
 
   useEffect(() => {
+    // CRITICAL: Set mounted FIRST before fetching to prevent flash
     setMounted(true)
-    fetchTickets()
   }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      fetchTickets()
+    }
+  }, [mounted])
 
   useEffect(() => {
     filterTickets()
@@ -92,8 +98,12 @@ export default function TicketsPage() {
     setSelectedTicket(null)
   }
 
-  // Prevent flash by not rendering anything until mounted
-  if (!mounted || loading) {
+  // CRITICAL: Don't render ANYTHING until mounted to prevent flash
+  if (!mounted) {
+    return null
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="w-full space-y-6" data-portal="staff-loading">
@@ -131,7 +141,7 @@ export default function TicketsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8" data-portal="staff-tickets" style={{ opacity: mounted ? 1 : 0, transition: 'opacity 0.3s ease-in' }}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8" data-portal="staff-tickets">
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
