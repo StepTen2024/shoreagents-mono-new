@@ -112,11 +112,13 @@ export default function CommentThread({
   const [showReactionPicker, setShowReactionPicker] = useState(false)
 
   // Styling based on portal variant
-  const isDark = variant === "staff"
+  // DARK for STAFF and MANAGEMENT, LIGHT for CLIENT only
+  const isDark = variant !== "client"
+  
   const accentColor = 
     variant === "staff" ? "from-indigo-500 to-purple-600" :
     variant === "client" ? "from-blue-500 to-cyan-600" :
-    "from-indigo-600 to-purple-700"
+    "from-blue-600 to-emerald-600"  // Management = blue/emerald
   
   const bgColor = isDark 
     ? "bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10" 
