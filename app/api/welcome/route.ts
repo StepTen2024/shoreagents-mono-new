@@ -23,29 +23,29 @@ export async function GET() {
     }
 
     // Check if welcome form already exists
-    const existingWelcomeForm = await prisma.staff_welcome_forms.findUnique({
+    const existingInterests = await prisma.staff_interests.findUnique({
       where: { staffUserId: staffUser.id }
     })
 
-    if (existingWelcomeForm) {
+    if (existingInterests) {
       return NextResponse.json({ 
         error: "Welcome form already submitted",
         alreadySubmitted: true,
         interests: {
-          favoriteFastFood: existingWelcomeForm.favoriteFastFood,
-          favoriteColor: existingWelcomeForm.favoriteColor,
-          favoriteMusic: existingWelcomeForm.favoriteMusic,
-          favoriteMovie: existingWelcomeForm.favoriteMovie,
-          favoriteBook: existingWelcomeForm.favoriteBook,
-          hobby: existingWelcomeForm.hobby,
-          dreamDestination: existingWelcomeForm.dreamDestination,
-          favoriteSeason: existingWelcomeForm.favoriteSeason,
-          petName: existingWelcomeForm.petName,
-          favoriteSport: existingWelcomeForm.favoriteSport,
-          favoriteGame: existingWelcomeForm.favoriteGame,
-          favoriteQuote: existingWelcomeForm.favoriteQuote,
-          funFact: existingWelcomeForm.funFact,
-          additionalInfo: existingWelcomeForm.additionalInfo
+          favoriteFastFood: existingInterests.favoriteFastFood,
+          favoriteColor: existingInterests.favoriteColor,
+          favoriteMusic: existingInterests.favoriteMusic,
+          favoriteMovie: existingInterests.favoriteMovie,
+          favoriteBook: existingInterests.favoriteBook,
+          hobby: existingInterests.hobby,
+          dreamDestination: existingInterests.dreamDestination,
+          favoriteSeason: existingInterests.favoriteSeason,
+          petName: existingInterests.petName,
+          favoriteSport: existingInterests.favoriteSport,
+          favoriteGame: existingInterests.favoriteGame,
+          favoriteQuote: existingInterests.favoriteQuote,
+          funFact: existingInterests.funFact,
+          additionalInfo: existingInterests.additionalInfo
         }
       }, { status: 400 })
     }
@@ -117,11 +117,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if welcome form already exists
-    const existingWelcomeForm = await prisma.staff_welcome_forms.findUnique({
+    const existingInterests = await prisma.staff_interests.findUnique({
       where: { staffUserId: staffUser.id }
     })
 
-    if (existingWelcomeForm) {
+    if (existingInterests) {
       return NextResponse.json({ 
         error: "Welcome form already submitted",
         alreadySubmitted: true 
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create welcome form record
-    const welcomeForm = await prisma.staff_welcome_forms.create({
+    const welcomeForm = await prisma.staff_interests.create({
       data: {
         id: crypto.randomUUID(),
         staffUserId: staffUser.id,
