@@ -43,6 +43,7 @@ interface CommentThreadProps {
   showReactions?: boolean  // Show reaction buttons
   allowComments?: boolean  // Allow new comments
   placeholder?: string     // Custom placeholder text
+  onUpdate?: () => void    // Callback when comment is added/deleted
 }
 
 interface Comment {
@@ -100,7 +101,8 @@ export default function CommentThread({
   variant = "staff",
   showReactions = true,
   allowComments = true,
-  placeholder = "Write a comment..."
+  placeholder = "Write a comment...",
+  onUpdate
 }: CommentThreadProps) {
   const { toast } = useToast()
   
@@ -197,6 +199,7 @@ export default function CommentThread({
       if (data.success) {
         setNewComment("")
         await fetchComments()
+        onUpdate?.()  // Trigger parent refresh
         toast({
           title: "Comment added!",
           description: "Your comment has been posted.",
