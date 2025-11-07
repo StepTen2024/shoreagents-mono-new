@@ -19,6 +19,11 @@ const nextConfig = {
   },
   // Skip static optimization for error pages
   skipTrailingSlashRedirect: true,
+  // Disable static page generation for 404
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
 }
 
 export default nextConfig
