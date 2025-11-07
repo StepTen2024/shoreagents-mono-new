@@ -192,23 +192,41 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
         </div>
       )}
 
-      {/* Footer */}
+      {/* Footer - ENHANCED WITH REACTIONS! */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-3 text-xs">
+          {/* Comment Count - PROMINENT */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30">
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span className="font-bold">{ticket.responses?.length || 0}</span>
+          </div>
+          
+          {/* Attachments */}
           {ticket.attachments && ticket.attachments.length > 0 && (
-            <span className="flex items-center gap-1 text-indigo-400">
+            <span className="flex items-center gap-1 text-slate-400">
               <Paperclip className="h-3 w-3" />
               {ticket.attachments.length}
             </span>
           )}
-          {ticket.responses && ticket.responses.length > 0 && (
-            <span className="flex items-center gap-1 text-blue-400">
-              <MessageSquare className="h-3 w-3" />
-              {ticket.responses.length}
-            </span>
+          
+          {/* Reactions Preview - Show top 3 */}
+          {ticket.reactions && ticket.reactions.length > 0 && (
+            <div className="flex items-center gap-0.5">
+              {ticket.reactions.slice(0, 3).map((reaction: any, i: number) => (
+                <span key={i} className="text-sm">
+                  {reaction.emoji}
+                </span>
+              ))}
+              {ticket.reactions.length > 3 && (
+                <span className="text-xs text-slate-400 ml-1">
+                  +{ticket.reactions.length - 3}
+                </span>
+              )}
+            </div>
           )}
+          
           {/* Timestamp */}
-          <span className="flex items-center gap-1 text-slate-400">
+          <span className="flex items-center gap-1 text-slate-400 ml-auto">
             <Clock className="h-3 w-3" />
             {formatDate(ticket.createdAt)}
           </span>
