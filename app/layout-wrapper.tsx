@@ -14,11 +14,16 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const { data: session } = useSession()
   
+  // CRITICAL: Don't render anything until pathname is available
+  if (!pathname) {
+    return null
+  }
+  
   // Don't show sidebar on login pages, admin pages, or client pages
-  const isLoginPage = pathname?.startsWith("/login")
-  const isAdminPage = pathname?.startsWith("/admin")
-  const isClientPage = pathname === "/client" || pathname?.startsWith("/client/")  // Exact match or with trailing slash to avoid matching /client-company
-  const isCallPage = pathname?.startsWith("/call")
+  const isLoginPage = pathname.startsWith("/login")
+  const isAdminPage = pathname.startsWith("/admin")
+  const isClientPage = pathname === "/client" || pathname.startsWith("/client/")  // Exact match or with trailing slash to avoid matching /client-company
+  const isCallPage = pathname.startsWith("/call")
   
   // Staff pages = everything else (root level pages)
   const isStaffPage = !isLoginPage && !isAdminPage && !isClientPage && !isCallPage
