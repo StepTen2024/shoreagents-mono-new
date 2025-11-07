@@ -155,10 +155,20 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
         {ticket.title}
       </h4>
 
-      {/* Category Badge */}
-      <div className={`mb-3 inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ring-1 ${categoryColor}`}>
-        <CategoryIcon className="h-3 w-3" />
-        <span>{ticket.category}</span>
+      {/* Category Badge & Department Assignment */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ring-1 ${categoryColor}`}>
+          <CategoryIcon className="h-3 w-3" />
+          <span>{ticket.category}</span>
+        </div>
+        
+        {/* Department Badge - Shows which department will handle */}
+        {assignedTo?.department && (
+          <div className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 ring-1 ring-purple-500/30">
+            <span>→</span>
+            <span className="font-bold">{assignedTo.department.replace('_', ' ')}</span>
+          </div>
+        )}
       </div>
 
       {/* Image Thumbnail Preview */}
@@ -228,8 +238,10 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
                   {assignedInitials}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute -top-12 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
-                Assigned to: {assignedTo.name}
+              <div className="absolute -top-16 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
+                <div className="font-bold text-purple-400">Assigned to:</div>
+                <div>{assignedTo.name}</div>
+                <div className="text-[10px] text-slate-400">Dept: {assignedTo.department?.replace('_', ' ')}</div>
               </div>
             </div>
           )}
