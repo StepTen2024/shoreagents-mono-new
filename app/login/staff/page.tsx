@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
+import { DesktopAppDownload } from "@/components/staff/desktop-app-download"
 
 export default function StaffLoginPage() {
   const [email, setEmail] = useState("")
@@ -42,8 +43,13 @@ export default function StaffLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900">
-      <Card className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur border-slate-700">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900 p-4">
+      <div className="w-full max-w-4xl">
+        {/* Desktop App Download Banner */}
+        <DesktopAppDownload />
+
+        {/* Login Card */}
+        <Card className="w-full max-w-md mx-auto p-8 bg-slate-800/50 backdrop-blur border-slate-700">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 mb-4">
             <span className="text-2xl font-bold text-white">SP</span>
@@ -132,6 +138,7 @@ export default function StaffLoginPage() {
           <p className="text-xs text-blue-300 font-mono">staff123</p>
         </div>
       </Card>
+      </div>
     </div>
   )
 }
