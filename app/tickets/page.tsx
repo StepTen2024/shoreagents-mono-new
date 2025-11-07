@@ -138,7 +138,7 @@ export default function TicketsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8" style={{ opacity: mounted ? 1 : 0, transition: 'opacity 0.2s' }}>
       <div className="w-full space-y-6 animate-in fade-in duration-700">
         {/* Header */}
         <div className="flex items-center justify-between">
