@@ -8,7 +8,7 @@ import ViewToggle from "@/components/tickets/view-toggle"
 import TicketList from "@/components/tickets/ticket-list"
 import { useToast } from "@/components/ui/use-toast"
 import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/lib/ticket-categories"
-import ClientTicketCard from "@/components/tickets/client-ticket-card"
+import TicketCard from "@/components/tickets/ticket-card"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
 
@@ -17,17 +17,24 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const [initializing, setInitializing] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterCategory, setFilterCategory] = useState<string>("all")
-  const { toast } = useToast()
+  const { toast} = useToast()
   
   const staffCategories = getCategoriesForUserType('staff')
 
   useEffect(() => {
-    fetchTickets()
+    // Small delay to prevent flash of client styling
+    const timer = setTimeout(() => {
+      setInitializing(false)
+      fetchTickets()
+    }, 100)
+    
+    return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -90,7 +97,7 @@ export default function TicketsPage() {
     setSelectedTicket(null)
   }
 
-  if (loading) {
+  if (loading || initializing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="w-full space-y-6 animate-in fade-in duration-700">
@@ -258,13 +265,11 @@ export default function TicketsPage() {
                   {/* Scrollable content area */}
                   <div className="flex-1 overflow-y-auto overflow-x-visible admin-tickets-scrollbar p-4 space-y-3 w-full max-w-full">
                     {columnTickets.map((ticket) => (
-                      <div
+                      <TicketCard 
                         key={ticket.id}
+                        ticket={ticket}
                         onClick={() => handleTicketClick(ticket)}
-                        className="cursor-pointer transform transition-all duration-200 hover:scale-105"
-                      >
-                        <ClientTicketCard ticket={ticket} />
-                      </div>
+                      />
                     ))}
 
                     {columnTickets.length === 0 && (
