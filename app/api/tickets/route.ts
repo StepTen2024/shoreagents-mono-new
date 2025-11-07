@@ -50,40 +50,11 @@ export async function GET(request: NextRequest) {
             department: true, // Include department for display
           },
         },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
       orderBy: { createdAt: "desc" },
     })
+
+    console.log(`✅ [TICKETS API] Fetched ${tickets.length} tickets for staff ${staffUser.name}`)
 
     return NextResponse.json({ tickets })
   } catch (error) {
@@ -181,39 +152,10 @@ export async function POST(request: NextRequest) {
             department: true, // Include department for display
           },
         },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
     })
+
+    console.log(`✅ [TICKETS API] Created ticket ${ticketId} for staff ${staffUser.name}`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
   } catch (error) {

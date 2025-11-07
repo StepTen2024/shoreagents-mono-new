@@ -61,40 +61,11 @@ export async function GET(request: NextRequest) {
             avatar: true,
           },
         },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
       orderBy: { createdAt: "desc" },
     })
+
+    console.log(`✅ [ADMIN TICKETS API] Fetched ${tickets.length} tickets for admin`)
 
     return NextResponse.json({ tickets })
   } catch (error) {
@@ -190,38 +161,10 @@ export async function POST(request: NextRequest) {
             avatar: true,
           },
         },
-        ticket_responses: {
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
     })
+
+    console.log(`✅ [ADMIN TICKETS API] Created ticket ${ticket.ticketId} by admin`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
   } catch (error) {

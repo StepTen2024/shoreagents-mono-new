@@ -73,40 +73,11 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
       orderBy: { createdAt: "desc" },
     })
+
+    console.log(`✅ [CLIENT TICKETS API] Fetched ${tickets.length} tickets for client ${clientUser.name}`)
 
     // Add account manager info to response
     const ticketsWithAccountManager = tickets.map((ticket) => ({
@@ -202,38 +173,10 @@ export async function POST(request: NextRequest) {
             avatar: true,
           },
         },
-        ticket_responses: {
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
     })
+
+    console.log(`✅ [CLIENT TICKETS API] Created ticket ${ticketId} by client ${clientUser.name}`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
   } catch (error) {
