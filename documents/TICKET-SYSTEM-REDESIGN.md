@@ -45,15 +45,18 @@ The ticket system had drag-and-drop functionality enabled for all portals, causi
 
 **Component:** `TicketKanban` (with drag/drop)
 - **Theme:** Blue/Amber/Emerald (dark mode)
-- **Functionality:** FULL CONTROL with drag/drop
+- **Functionality:** FULL CONTROL with drag/drop - CATCH & MANAGE ONLY
 - **Columns:** Open 🆕 | In Progress ⚡ | Resolved ✅ | Closed 📦
 - **Card:** `AdminTicketCard` with blue rings
+- **Tabs:** All | Staff | Clients | Internal (filter by ticket source)
 
 **Admins can:**
-- ✅ View ALL tickets (staff + client)
+- ✅ View ALL tickets (staff + client + internal)
 - ✅ Drag and drop to change status
-- ✅ Assign tickets to departments
-- ✅ Comment and manage all tickets
+- ✅ Search and filter tickets
+- ✅ View ticket details and respond
+- ✅ Switch between Kanban and List view
+- ❌ **NO ticket creation** (simplified - will build internal team section later)
 
 **Drag and Drop Optimization:**
 - ✅ Very low activation distance (3px) for instant response
