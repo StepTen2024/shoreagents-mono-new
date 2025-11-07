@@ -452,7 +452,7 @@ class PerformanceTracker {
   getMetricsForAPI() {
     const metrics = this.metrics
     
-    return {
+    const apiMetrics = {
       mouseMovements: metrics.mouseMovements,
       mouseClicks: metrics.mouseClicks,
       keystrokes: metrics.keystrokes,
@@ -474,6 +474,32 @@ class PerformanceTracker {
       // Include applications used array for database storage
       applicationsUsed: metrics.applicationsUsed || [],
     }
+    
+    // 🔍 DETAILED LOGGING FOR EACH METRIC
+    console.log('\n═══════════════════════════════════════════════════════')
+    console.log('📊 [PerformanceTracker] METRICS FOR API')
+    console.log('═══════════════════════════════════════════════════════')
+    console.log(`🖱️  Mouse Movements: ${apiMetrics.mouseMovements} ${apiMetrics.mouseMovements > 0 ? '✅' : '❌ ZERO'}`)
+    console.log(`🖱️  Mouse Clicks: ${apiMetrics.mouseClicks} ${apiMetrics.mouseClicks > 0 ? '✅' : '❌ ZERO'}`)
+    console.log(`⌨️  Keystrokes: ${apiMetrics.keystrokes} ${apiMetrics.keystrokes > 0 ? '✅' : '❌ ZERO - NOT TRACKING'}`)
+    console.log(`✅ Active Time: ${apiMetrics.activeTime} min (${Math.round(metrics.activeTime)} sec) ${apiMetrics.activeTime > 0 ? '✅' : '❌ ZERO'}`)
+    console.log(`😴 Idle Time: ${apiMetrics.idleTime} min (${Math.round(metrics.idleTime)} sec) ${apiMetrics.idleTime > 0 ? '✅' : '⚠️ ZERO (expected if active)'}`)
+    console.log(`🖥️  Screen Time: ${apiMetrics.screenTime} min (${Math.round(metrics.screenTime)} sec) ${apiMetrics.screenTime > 0 ? '✅' : '❌ ZERO'}`)
+    console.log(`🌐 URLs Visited Count: ${apiMetrics.urlsVisited} ${apiMetrics.urlsVisited > 0 ? '✅' : '❌ ZERO'}`)
+    console.log(`🌐 URLs Array: ${apiMetrics.visitedUrls.length} items ${apiMetrics.visitedUrls.length > 0 ? '✅' : '❌ EMPTY ARRAY'}`)
+    if (apiMetrics.visitedUrls.length > 0) {
+      console.log(`   URLs: ${apiMetrics.visitedUrls.slice(0, 3).join(', ')}${apiMetrics.visitedUrls.length > 3 ? '...' : ''}`)
+    }
+    console.log(`📱 Apps Used: ${apiMetrics.applicationsUsed.length} apps ${apiMetrics.applicationsUsed.length > 0 ? '✅' : '❌ EMPTY'}`)
+    if (apiMetrics.applicationsUsed.length > 0) {
+      console.log(`   Apps: ${apiMetrics.applicationsUsed.join(', ')}`)
+    }
+    console.log(`🔄 Tab Switches: ${apiMetrics.tabsSwitched} ${apiMetrics.tabsSwitched > 0 ? '✅' : '⚠️ ZERO'}`)
+    console.log(`📊 Productivity Score: ${apiMetrics.productivityScore}`)
+    console.log(`📋 Clipboard Actions: ${apiMetrics.clipboardActions}`)
+    console.log(`═══════════════════════════════════════════════════════\n`)
+    
+    return apiMetrics
   }
 
   /**

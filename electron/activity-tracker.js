@@ -130,6 +130,8 @@ class ActivityTracker {
 
     // Start uIOhook to listen for keyboard and mouse events
     try {
+      console.log('🎯 [ActivityTracker] Setting up uIOhook event listeners...')
+      
       // Mouse movement (throttled to avoid overwhelming the system)
       uIOhook.on('mousemove', (event) => {
         const now = Date.now()
@@ -138,28 +140,53 @@ class ActivityTracker {
           this.lastMouseTrack = now
         }
       })
+      console.log('   ✅ Mouse movement listener registered')
       
       // Mouse clicks
       uIOhook.on('mousedown', (event) => this.onActivity('mousedown', event))
       uIOhook.on('mouseup', (event) => this.onActivity('mouseup', event))
       uIOhook.on('click', (event) => this.onActivity('click', event))
+      console.log('   ✅ Mouse click listeners registered')
       
       // Mouse wheel
       uIOhook.on('wheel', (event) => this.onActivity('wheel', event))
+      console.log('   ✅ Mouse wheel listener registered')
 
       // Keyboard events
-      uIOhook.on('keydown', (event) => this.onActivity('keydown', event))
+      uIOhook.on('keydown', (event) => {
+        console.log(`⌨️  [ActivityTracker] RAW keydown event received! Keycode: ${event.keycode}`)
+        this.onActivity('keydown', event)
+      })
       uIOhook.on('keyup', (event) => this.onActivity('keyup', event))
+      console.log('   ✅ Keyboard listeners registered (keydown + keyup)')
 
       // Start the hook
+      console.log('🚀 [ActivityTracker] Starting uIOhook...')
       uIOhook.start()
-      console.log('[ActivityTracker] uIOhook started successfully')
+      console.log('✅ [ActivityTracker] uIOhook started successfully - NOW TRACKING INPUT!')
 
       // Start interval to check for inactivity
       this.intervalId = setInterval(() => this.checkInactivity(), this.checkInterval)
-      console.log('[ActivityTracker] Inactivity checker started')
+      console.log('✅ [ActivityTracker] Inactivity checker started')
+      
+      // Test log after 5 seconds to confirm tracking is working
+      setTimeout(() => {
+        console.log('\n═══════════════════════════════════════════════════════')
+        console.log('🔍 [ActivityTracker] 5-SECOND STATUS CHECK')
+        console.log('═══════════════════════════════════════════════════════')
+        console.log(`Is Tracking: ${this.isTracking ? '✅ YES' : '❌ NO'}`)
+        console.log(`Performance Tracker Available: ${this.performanceTracker ? '✅ YES' : '❌ NO'}`)
+        if (this.performanceTracker && this.performanceTracker.metrics) {
+          console.log(`Current Metrics:`)
+          console.log(`  🖱️  Mouse movements: ${this.performanceTracker.metrics.mouseMovements}`)
+          console.log(`  🖱️  Mouse clicks: ${this.performanceTracker.metrics.mouseClicks}`)
+          console.log(`  ⌨️  Keystrokes: ${this.performanceTracker.metrics.keystrokes} ${this.performanceTracker.metrics.keystrokes > 0 ? '✅' : '❌ ZERO - TRY TYPING!'}`)
+        }
+        console.log('═══════════════════════════════════════════════════════\n')
+      }, 5000)
     } catch (error) {
-      console.error('[ActivityTracker] Error starting uIOhook:', error)
+      console.error('❌ [ActivityTracker] Error starting uIOhook:', error)
+      console.error('Stack trace:', error.stack)
     }
   }
 
@@ -290,15 +317,22 @@ class ActivityTracker {
       switch (eventType) {
         case 'mousemove':
           metrics.mouseMovements++
+          // Log every 100th mouse movement to reduce spam
+          if (metrics.mouseMovements % 100 === 0) {
+            console.log(`🖱️  [ActivityTracker] Mouse movements: ${metrics.mouseMovements} ✅`)
+          }
           break
         
         case 'click':
           // Only count 'click' events, not mousedown/mouseup to avoid double counting
           metrics.mouseClicks++
+          console.log(`🖱️  [ActivityTracker] Mouse click detected! Total: ${metrics.mouseClicks} ✅`)
           break
         
         case 'keydown':
           metrics.keystrokes++
+          // Log every keystroke to debug keystroke tracking
+          console.log(`⌨️  [ActivityTracker] KEYSTROKE DETECTED! Total: ${metrics.keystrokes} ✅`)
           break
         
         // mousedown, mouseup, wheel, keyup don't increment counters but still count as activity

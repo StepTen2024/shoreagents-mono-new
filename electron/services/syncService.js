@@ -141,14 +141,25 @@ class SyncService {
     return new Promise(async (resolve) => {
       const url = `${config.API_BASE_URL}${config.API_PERFORMANCE_ENDPOINT}`
       
-      this.log(`Sending metrics to ${url}`)
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log('🚀 [SyncService] SENDING METRICS TO API')
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log(`📍 URL: ${url}`)
+      console.log(`📊 Metrics Summary:`)
+      console.log(`   🖱️  Mouse: ${metrics.mouseMovements} movements, ${metrics.mouseClicks} clicks`)
+      console.log(`   ⌨️  Keystrokes: ${metrics.keystrokes}`)
+      console.log(`   ✅ Active Time: ${metrics.activeTime} min`)
+      console.log(`   🖥️  Screen Time: ${metrics.screenTime} min`)
+      console.log(`   🌐 URLs: ${metrics.urlsVisited} count, ${metrics.visitedUrls?.length || 0} array items`)
+      console.log(`   📱 Apps: ${metrics.applicationsUsed?.length || 0} apps`)
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
       
       // Check if session cookie exists (for logging purposes)
       const sessionToken = await this.getSessionCookie()
       if (!sessionToken) {
-        this.log('Warning: No session cookie found, request may fail with 401')
+        console.log('⚠️  [SyncService] Warning: No session cookie found, request may fail with 401')
       } else {
-        this.log(`Session cookie found, proceeding with sync`)
+        console.log('✅ [SyncService] Session cookie found, proceeding with sync')
       }
       
       // Create request
@@ -183,10 +194,22 @@ class SyncService {
 
         response.on('end', () => {
           if (response.statusCode >= 200 && response.statusCode < 300) {
-            this.log(`Metrics sent successfully: ${response.statusCode}`)
+            console.log(`✅ [SyncService] Metrics sent successfully! Status: ${response.statusCode}`)
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.metric) {
+                console.log(`📊 [SyncService] Server confirmed update:`)
+                console.log(`   🖱️  Mouse: ${parsed.metric.mouseMovements} movements, ${parsed.metric.mouseClicks} clicks`)
+                console.log(`   ⌨️  Keystrokes: ${parsed.metric.keystrokes}`)
+                console.log(`   🌐 URLs: ${parsed.metric.urlsVisited}`)
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
             resolve(true)
           } else {
-            this.log(`API returned error: ${response.statusCode} - ${data}`)
+            console.error(`❌ [SyncService] API returned error: ${response.statusCode}`)
+            console.error(`Response body: ${data}`)
             resolve(false)
           }
         })
