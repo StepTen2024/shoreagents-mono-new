@@ -128,13 +128,15 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`group cursor-grab active:cursor-grabbing rounded-lg bg-slate-800/50 ring-1 ring-blue-500/20 transition-all duration-200 hover:bg-slate-800 hover:ring-blue-400/60 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/30 w-full max-w-full min-w-0 overflow-visible ${
+      className={`group cursor-grab active:cursor-grabbing rounded-lg bg-gradient-to-br from-slate-800/80 via-blue-900/20 to-emerald-900/20 ring-2 ring-blue-500/40 transition-all duration-200 hover:from-slate-800 hover:via-blue-900/30 hover:to-emerald-900/30 hover:ring-emerald-400/60 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/30 w-full max-w-full min-w-0 overflow-visible ${
         isDragging || isSortableDragging ? "opacity-0 cursor-grabbing" : ""
       }`}
       style={{ overflow: 'visible' }}
     >
-      {/* Status indicator bar - PROMINENT TOP BORDER! */}
-      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg rounded-t-lg`} />
+      {/* Status indicator bar - ADMIN GRADIENT TOP BORDER! */}
+      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg shadow-blue-500/50 rounded-t-lg relative overflow-hidden`}>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+      </div>
       
       <div className="p-4">
       {/* Ticket ID & Creator Type Badge */}
@@ -151,7 +153,7 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
       </div>
 
       {/* Title */}
-      <h4 className="mb-2 line-clamp-2 text-sm font-semibold text-white group-hover:text-indigo-400 break-words">
+      <h4 className="mb-2 line-clamp-2 text-sm font-semibold text-white group-hover:text-blue-300 break-words">
         {ticket.title}
       </h4>
 
@@ -219,7 +221,7 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
             <div className="relative group/avatar">
               <Avatar className="h-6 w-6 ring-2 ring-white/20">
                 <AvatarImage src={displayUser.avatar} alt={displayUser.name} />
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs text-white font-semibold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-emerald-600 text-xs text-white font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
