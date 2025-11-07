@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
             email: true,
             avatar: true,
             role: true,
+            department: true,
           },
         },
         client_users: {
@@ -65,9 +66,51 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     })
 
-    console.log(`✅ [ADMIN TICKETS API] Fetched ${tickets.length} tickets for admin`)
+    // Fetch comments and reactions for each ticket
+    const ticketsWithEngagement = await Promise.all(
+      tickets.map(async (ticket) => {
+        // Get comment count
+        const commentCount = await prisma.comments.count({
+          where: {
+            commentableType: 'TICKET',
+            commentableId: ticket.id
+          }
+        })
 
-    return NextResponse.json({ tickets })
+        // Get reactions (top 3 for display)
+        const reactions = await prisma.reactions.findMany({
+          where: {
+            targetType: 'TICKET',
+            targetId: ticket.id
+          },
+          take: 10 // Get top 10 to show variety
+        })
+
+        // Map reaction types to emojis
+        const reactionEmojis: Record<string, string> = {
+          LIKE: "👍",
+          LOVE: "❤️",
+          FIRE: "🔥",
+          CELEBRATE: "🎉",
+          CLAP: "👏",
+          LAUGH: "😂",
+          POO: "💩",
+          ROCKET: "🚀",
+          SHOCKED: "😱",
+          MIND_BLOWN: "🤯"
+        }
+
+        return {
+          ...ticket,
+          responses: Array(commentCount).fill({}), // Fake array for count
+          reactions: reactions.map(r => ({ emoji: reactionEmojis[r.reactionType] || r.reactionType }))
+        }
+      })
+    )
+
+    console.log(`✅ [ADMIN TICKETS API] Fetched ${tickets.length} tickets with engagement data`)
+
+    return NextResponse.json({ tickets: ticketsWithEngagement })
   } catch (error) {
     console.error("Error fetching admin tickets:", error)
     return NextResponse.json(

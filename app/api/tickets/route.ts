@@ -47,16 +47,45 @@ export async function GET(request: NextRequest) {
             email: true,
             role: true,
             avatar: true,
-            department: true, // Include department for display
+            department: true,
           },
         },
       },
       orderBy: { createdAt: "desc" },
     })
 
+    // Fetch comment counts and reactions for each ticket
+    const ticketsWithEngagement = await Promise.all(
+      tickets.map(async (ticket) => {
+        // Get comment count
+        const commentCount = await prisma.comments.count({
+          where: {
+            commentableType: "TICKET",
+            commentableId: ticket.id,
+          },
+        })
+
+        // Get reactions (top 5 for display)
+        const reactions = await prisma.reactions.findMany({
+          where: {
+            targetType: "TICKET",
+            targetId: ticket.id,
+          },
+          take: 5,
+          orderBy: { createdAt: "desc" },
+        })
+
+        return {
+          ...ticket,
+          commentCount,
+          reactions: reactions.map(r => ({ emoji: r.reactionType })),
+        }
+      })
+    )
+
     console.log(`✅ [TICKETS API] Fetched ${tickets.length} tickets for staff ${staffUser.name}`)
 
-    return NextResponse.json({ tickets })
+    return NextResponse.json({ tickets: ticketsWithEngagement })
   } catch (error) {
     console.error("Error fetching tickets:", error)
     return NextResponse.json(
