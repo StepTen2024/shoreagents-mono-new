@@ -1,8 +1,7 @@
 "use client"
 
-import { Download, Monitor, CheckCircle } from "lucide-react"
+import { Download, Monitor, CheckCircle, Zap, Rocket, Star, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 
 export function DesktopAppDownload() {
   const appVersion = "1.0.0"
@@ -17,80 +16,108 @@ export function DesktopAppDownload() {
   }
 
   return (
-    <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/5 mb-6">
-      <div className="p-6">
-        <div className="flex items-start gap-4">
-          {/* Icon */}
-          <div className="flex-shrink-0">
-            <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Monitor className="h-8 w-8 text-primary" />
-            </div>
+    <div className="group rounded-3xl bg-gradient-to-br from-slate-900/90 via-indigo-900/30 to-slate-900/90 p-8 backdrop-blur-xl ring-2 ring-indigo-400/30 transition-all duration-500 hover:ring-indigo-400/50 hover:shadow-2xl hover:shadow-indigo-500/40 hover:scale-[1.01]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center ring-4 ring-indigo-400/30 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl group-hover:shadow-indigo-500/50">
+            <Monitor className="h-10 w-10 text-white animate-pulse" />
           </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-1">
-                  Shore Agents Desktop App
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Download our Windows desktop app for automatic time tracking and performance monitoring
-                </p>
-              </div>
-              
-              {/* Download Button */}
-              <Button
-                onClick={handleDownload}
-                size="lg"
-                className="flex-shrink-0 gap-2"
-              >
-                <Download className="h-5 w-5" />
-                Download for Windows
-              </Button>
-            </div>
-
-            {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <span className="text-muted-foreground">Automatic time tracking</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <span className="text-muted-foreground">Real-time monitoring</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <span className="text-muted-foreground">Desktop notifications</span>
-              </div>
-            </div>
-
-            {/* Meta Info */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>Version {appVersion}</span>
-              <span>•</span>
-              <span>{fileSize}</span>
-              <span>•</span>
-              <span>Windows 10/11</span>
-            </div>
+          <div>
+            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-1 flex items-center gap-2">
+              Desktop App 🖥️
+              <Sparkles className="h-5 w-5 text-yellow-400 animate-spin" />
+            </h3>
+            <p className="text-slate-300 font-semibold flex items-center gap-2">
+              <Rocket className="h-4 w-4 text-indigo-400" />
+              Supercharge your workflow!
+            </p>
           </div>
+        </div>
+        
+        {/* Download Button - BIG & FUN */}
+        <Button
+          onClick={handleDownload}
+          size="lg"
+          className="h-14 px-8 text-lg font-black bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:via-green-400 hover:to-emerald-500 rounded-2xl ring-4 ring-emerald-400/30 transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-emerald-500/50 hover:ring-emerald-400/50 group/btn"
+        >
+          <Download className="h-6 w-6 mr-2 group-hover/btn:animate-bounce" />
+          Download for Windows!
+          <Zap className="h-5 w-5 ml-2 text-yellow-300 group-hover/btn:rotate-12 transition-transform" />
+        </Button>
+      </div>
+
+      {/* Features - FUN STYLE */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="group/feature flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 p-4 ring-1 ring-emerald-400/30 transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-emerald-400 hover:shadow-lg hover:shadow-emerald-500/30">
+          <CheckCircle className="h-6 w-6 text-emerald-400 flex-shrink-0 group-hover/feature:scale-125 transition-transform" />
+          <span className="text-emerald-200 font-bold">Auto Time Tracking ⏰</span>
+        </div>
+        <div className="group/feature flex items-center gap-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 p-4 ring-1 ring-blue-400/30 transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-blue-400 hover:shadow-lg hover:shadow-blue-500/30">
+          <CheckCircle className="h-6 w-6 text-blue-400 flex-shrink-0 group-hover/feature:scale-125 transition-transform" />
+          <span className="text-blue-200 font-bold">Live Monitoring 📊</span>
+        </div>
+        <div className="group/feature flex items-center gap-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 p-4 ring-1 ring-purple-400/30 transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-purple-400 hover:shadow-lg hover:shadow-purple-500/30">
+          <CheckCircle className="h-6 w-6 text-purple-400 flex-shrink-0 group-hover/feature:scale-125 transition-transform" />
+          <span className="text-purple-200 font-bold">Smart Alerts 🔔</span>
         </div>
       </div>
 
-      {/* Installation Steps */}
-      <div className="border-t border-border/50 bg-muted/30 px-6 py-4">
-        <p className="text-xs text-muted-foreground mb-2 font-medium">Quick Installation:</p>
-        <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-          <li>Download the installer above</li>
-          <li>Double-click the downloaded file</li>
-          <li>If Windows SmartScreen appears, click "More info" → "Run anyway"</li>
-          <li>Follow installation wizard</li>
-          <li>Launch Shore Agents from desktop shortcut</li>
-          <li>Login with your credentials below</li>
-        </ol>
+      {/* Meta Info - FUN BADGES */}
+      <div className="flex items-center justify-center gap-3 mb-6 flex-wrap">
+        <div className="px-4 py-2 rounded-xl bg-indigo-500/20 ring-1 ring-indigo-400/50 flex items-center gap-2">
+          <Star className="h-4 w-4 text-indigo-400" />
+          <span className="text-sm font-bold text-indigo-200">v{appVersion}</span>
+        </div>
+        <div className="px-4 py-2 rounded-xl bg-purple-500/20 ring-1 ring-purple-400/50 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-purple-400 animate-pulse" />
+          <span className="text-sm font-bold text-purple-200">{fileSize}</span>
+        </div>
+        <div className="px-4 py-2 rounded-xl bg-pink-500/20 ring-1 ring-pink-400/50 flex items-center gap-2">
+          <Monitor className="h-4 w-4 text-pink-400" />
+          <span className="text-sm font-bold text-pink-200">Windows 10/11</span>
+        </div>
       </div>
-    </Card>
+
+      {/* Installation Steps - CLEAN & CLEAR */}
+      <div className="rounded-2xl bg-slate-900/50 p-6 ring-1 ring-white/10">
+        <p className="text-sm text-slate-300 mb-4 font-bold flex items-center gap-2">
+          <Rocket className="h-4 w-4 text-indigo-400" />
+          Quick Installation (2 minutes!) 🚀
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold ring-2 ring-indigo-400/50">1</div>
+            <div>
+              <p className="text-sm font-bold text-white">Download ⬇️</p>
+              <p className="text-xs text-slate-400">Click button above</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold ring-2 ring-purple-400/50">2</div>
+            <div>
+              <p className="text-sm font-bold text-white">Install 📦</p>
+              <p className="text-xs text-slate-400">Double-click .exe file</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white font-bold ring-2 ring-pink-400/50">3</div>
+            <div>
+              <p className="text-sm font-bold text-white">Launch 🎉</p>
+              <p className="text-xs text-slate-400">Login & start working!</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Pro Tip */}
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <p className="text-xs text-slate-400 flex items-center gap-2">
+            <Star className="h-3 w-3 text-yellow-400" />
+            <span><strong className="text-yellow-400">Pro Tip:</strong> If Windows shows a warning, click "More info" → "Run anyway"</span>
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 
