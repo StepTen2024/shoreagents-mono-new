@@ -73,48 +73,54 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
       orderBy: { createdAt: "desc" },
     })
 
-    // Add account manager info to response
-    const ticketsWithAccountManager = tickets.map((ticket) => ({
-      ...ticket,
-      accountManager: clientWithCompany?.company?.management_users || null,
+    console.log(`✅ [CLIENT TICKETS API] Fetched ${tickets.length} tickets for client ${clientUser.name}`)
+
+    // Add account manager info, comment counts, and reactions to response
+    const ticketsWithData = await Promise.all(tickets.map(async (ticket) => {
+      // Fetch real comment count
+      const commentCount = await prisma.comments.count({
+        where: {
+          commentableType: "TICKET",
+          commentableId: ticket.id,
+        },
+      })
+
+      // Fetch top reactions
+      const reactions = await prisma.reactions.findMany({
+        where: {
+          reactableType: "TICKET",
+          reactableId: ticket.id,
+        },
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      })
+
+      // Map reaction types to emojis
+      const reactionEmojis = reactions.map(r => {
+        const emojiMap: Record<string, string> = {
+          LIKE: "👍",
+          LOVE: "❤️",
+          CELEBRATE: "🎉",
+          LAUGH: "😂",
+          FIRE: "🔥",
+          ROCKET: "🚀"
+        }
+        return { emoji: emojiMap[r.type] || "👍", type: r.type }
+      })
+
+      return {
+        ...ticket,
+        accountManager: clientWithCompany?.company?.management_users || null,
+        responses: new Array(commentCount).fill(null), // Fake array for count
+        reactions: reactionEmojis,
+      }
     }))
 
-    return NextResponse.json({ tickets: ticketsWithAccountManager })
+    return NextResponse.json({ tickets: ticketsWithData })
   } catch (error) {
     console.error("Error fetching client tickets:", error)
     return NextResponse.json(
@@ -176,6 +182,7 @@ export async function POST(request: NextRequest) {
     const ticketId = `TKT-${ticketNumber.toString().padStart(4, "0")}`
 
     // Create ticket - auto-assign to account manager
+    const accountManagerId = clientUser.company?.accountManagerId || null
     const now = new Date()
     const ticket = await prisma.tickets.create({
       data: {
@@ -189,7 +196,8 @@ export async function POST(request: NextRequest) {
         status: "OPEN",
         attachments: attachments || [],
         createdByType: "CLIENT",
-        assignedTo: clientUser.company?.accountManagerId || null,
+        assignedTo: accountManagerId,
+        managementUserId: accountManagerId, // Also set the FK for relation
         createdAt: now,
         updatedAt: now,
       },
@@ -202,38 +210,10 @@ export async function POST(request: NextRequest) {
             avatar: true,
           },
         },
-        ticket_responses: {
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
     })
+
+    console.log(`✅ [CLIENT TICKETS API] Created ticket ${ticketId} by client ${clientUser.name}`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
   } catch (error) {

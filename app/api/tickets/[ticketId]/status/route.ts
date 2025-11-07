@@ -72,6 +72,7 @@ export async function PATCH(
             email: true,
             avatar: true,
             role: true,
+            department: true, // Include department for admin display
           },
         },
         client_users: {
@@ -80,37 +81,6 @@ export async function PATCH(
             name: true,
             email: true,
             avatar: true,
-          },
-        },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-                role: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
           },
         },
       },

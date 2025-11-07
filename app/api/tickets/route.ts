@@ -46,45 +46,59 @@ export async function GET(request: NextRequest) {
             email: true,
             role: true,
             avatar: true,
-            department: true, // Include department for display
-          },
-        },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
+            department: true,
           },
         },
       },
       orderBy: { createdAt: "desc" },
     })
 
-    return NextResponse.json({ tickets })
+    // Fetch comment counts and reactions for each ticket
+    const ticketsWithEngagement = await Promise.all(
+      tickets.map(async (ticket) => {
+        // Get comment count
+        const commentCount = await prisma.comments.count({
+          where: {
+            commentableType: "TICKET",
+            commentableId: ticket.id,
+          },
+        })
+
+        // Get reactions (top 5 for display)
+        const reactions = await prisma.reactions.findMany({
+          where: {
+            reactableType: "TICKET",
+            reactableId: ticket.id,
+          },
+          take: 5,
+          orderBy: { createdAt: "desc" },
+        })
+
+        // Map reaction types to emojis
+        const reactionEmojis: Record<string, string> = {
+          LIKE: "👍",
+          LOVE: "❤️",
+          FIRE: "🔥",
+          CELEBRATE: "🎉",
+          CLAP: "👏",
+          LAUGH: "😂",
+          POO: "💩",
+          ROCKET: "🚀",
+          SHOCKED: "😱",
+          MIND_BLOWN: "🤯"
+        }
+
+        return {
+          ...ticket,
+          responses: Array(commentCount).fill({}), // Fake array for count
+          reactions: reactions.map(r => ({ emoji: reactionEmojis[r.reactionType] || r.reactionType })),
+        }
+      })
+    )
+
+    console.log(`✅ [TICKETS API] Fetched ${tickets.length} tickets for staff ${staffUser.name}`)
+
+    return NextResponse.json({ tickets: ticketsWithEngagement })
   } catch (error) {
     console.error("Error fetching tickets:", error)
     return NextResponse.json(
@@ -177,39 +191,10 @@ export async function POST(request: NextRequest) {
             department: true, // Include department for display
           },
         },
-        ticket_responses: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                avatar: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true,
-              },
-            },
-          },
-        },
       },
     })
+
+    console.log(`✅ [TICKETS API] Created ticket ${ticketId} for staff ${staffUser.name}`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
   } catch (error) {

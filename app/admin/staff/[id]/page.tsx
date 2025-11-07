@@ -70,7 +70,7 @@ async function getStaffUser(id: string) {
             submittedAt: true,
           },
         },
-      } as any,
+      },
     })
 
     return staffUser

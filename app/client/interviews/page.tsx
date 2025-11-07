@@ -62,24 +62,10 @@ export default function ClientInterviewsPage() {
   const [rescheduleNotes, setRescheduleNotes] = useState('')
   const [additionalNotes, setAdditionalNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [clientTimezone, setClientTimezone] = useState<string>('Australia/Brisbane')
 
   useEffect(() => {
     fetchInterviews()
-    fetchClientTimezone()
   }, [])
-  
-  async function fetchClientTimezone() {
-    try {
-      const response = await fetch('/api/client/profile')
-      const data = await response.json()
-      if (data.profile?.timezone) {
-        setClientTimezone(data.profile.timezone)
-      }
-    } catch (error) {
-      console.error('Failed to fetch client timezone:', error)
-    }
-  }
 
   async function fetchInterviews() {
     try {
@@ -135,17 +121,13 @@ export default function ClientInterviewsPage() {
     )
   }
 
-  function formatDate(dateString: string, timezone?: string) {
-    const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
-      timeZone: timezone || undefined,
+  function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZoneName: 'short'
+      minute: '2-digit'
     })
   }
 
@@ -154,25 +136,7 @@ export default function ClientInterviewsPage() {
       // Handle new object format
       if (typeof time === 'object' && time.datetime) {
         const date = new Date(time.datetime)
-        
-        // Get the full date/time string with timezone abbreviation
-        const fullString = date.toLocaleString('en-US', {
-          timeZone: time.timezone,
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-          timeZoneName: 'short'
-        })
-        
-        // Extract timezone abbreviation (e.g., "CST", "AEDT")
-        const tzAbbr = fullString.split(' ').pop() || ''
-        
-        // Format without timezone first
-        const formatted = date.toLocaleString('en-US', {
-          timeZone: time.timezone,
+        const formatted = date.toLocaleDateString('en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -180,8 +144,7 @@ export default function ClientInterviewsPage() {
           minute: '2-digit',
           hour12: true
         })
-        
-        return `${formatted} (${tzAbbr})`
+        return `${formatted} (${time.timezoneDisplay})`
       }
       
       // Handle old string format
@@ -382,7 +345,7 @@ export default function ClientInterviewsPage() {
                               Interview Scheduled
                             </h3>
                             <p className="text-sm text-blue-800 mb-3">
-                              <span className="font-semibold">Time:</span> {formatDate(interview.scheduledTime, clientTimezone)}
+                              <span className="font-semibold">Time:</span> {formatDate(interview.scheduledTime)}
                             </p>
                             {interview.meetingLink && (
                               <a 

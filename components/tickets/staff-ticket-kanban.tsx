@@ -16,19 +16,20 @@ import {
   closestCenter,
 } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import AdminTicketCard from "./admin-ticket-card"
+import StaffTicketCard from "./staff-ticket-card"
 import { Ticket, TicketStatus } from "@/types/ticket"
 
-interface TicketKanbanProps {
+interface StaffTicketKanbanProps {
   tickets: Ticket[]
   onTicketClick: (ticket: Ticket) => void
   onStatusChange: (ticketId: string, newStatus: TicketStatus) => Promise<void>
 }
 
+// STAFF PORTAL - Indigo/Purple theme
 const columns: { id: TicketStatus; label: string; color: string; emoji: string; gradient: string; ring: string }[] = [
-  { id: "OPEN", label: "Open", color: "bg-blue-500", emoji: "🆕", gradient: "from-blue-500/20 to-cyan-500/20", ring: "ring-blue-500/50" },
-  { id: "IN_PROGRESS", label: "In Progress", color: "bg-amber-500", emoji: "⚡", gradient: "from-amber-500/20 to-orange-500/20", ring: "ring-amber-500/50" },
-  { id: "RESOLVED", label: "Resolved", color: "bg-emerald-500", emoji: "✅", gradient: "from-emerald-500/20 to-green-500/20", ring: "ring-emerald-500/50" },
+  { id: "OPEN", label: "Open", color: "bg-indigo-500", emoji: "🆕", gradient: "from-indigo-500/20 to-purple-500/20", ring: "ring-indigo-500/50" },
+  { id: "IN_PROGRESS", label: "In Progress", color: "bg-purple-500", emoji: "⚡", gradient: "from-purple-500/20 to-pink-500/20", ring: "ring-purple-500/50" },
+  { id: "RESOLVED", label: "Resolved", color: "bg-cyan-500", emoji: "✅", gradient: "from-cyan-500/20 to-teal-500/20", ring: "ring-cyan-500/50" },
   { id: "CLOSED", label: "Closed", color: "bg-slate-500", emoji: "📦", gradient: "from-slate-500/20 to-gray-500/20", ring: "ring-slate-500/50" },
 ]
 
@@ -62,31 +63,30 @@ function DroppableColumn({
   )
 }
 
-export default function TicketKanban({
+export default function StaffTicketKanban({
   tickets,
   onTicketClick,
   onStatusChange,
-}: TicketKanbanProps) {
+}: StaffTicketKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
   const [updatingTickets, setUpdatingTickets] = useState<Set<string>>(() => new Set())
 
-  // ADMIN DRAG AND DROP - Super smooth and easy
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 3, // Very small distance for instant response
-      },
-    }),
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 3,
+        distance: 5, // Reduced for quicker response
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 100,
-        tolerance: 3,
+        delay: 150, // Slight delay to distinguish from scrolling
+        tolerance: 5,
+      },
+    }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
       },
     })
   )
@@ -173,7 +173,7 @@ export default function TicketKanban({
               >
                 <DroppableColumn id={column.id} isActive={overId === column.id}>
                   {columnTickets.map((ticket) => (
-              <AdminTicketCard
+              <StaffTicketCard
                 key={ticket.id}
                 ticket={ticket}
                 isDragging={activeId === ticket.id}
@@ -206,8 +206,8 @@ export default function TicketKanban({
         easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
       }}>
         {activeTicket ? (
-          <div className="rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-blue-500/50 transition-transform">
-            <AdminTicketCard ticket={activeTicket} isDragging />
+          <div className="rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-indigo-500/50 transition-transform">
+            <StaffTicketCard ticket={activeTicket} isDragging />
           </div>
         ) : null}
       </DragOverlay>

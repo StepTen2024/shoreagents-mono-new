@@ -18,41 +18,41 @@ import {
 import { Ticket } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-interface StaffTicketCardProps {
+interface AdminTicketCardProps {
   ticket: Ticket
   isDragging?: boolean
   onClick?: () => void
 }
 
-// STAFF PORTAL STYLING - Indigo/Purple theme
+// ADMIN PORTAL STYLING - Blue/Emerald theme
 const categoryConfig: Record<string, { icon: any; color: string }> = {
-  IT: { icon: Monitor, color: "bg-indigo-500/20 text-indigo-400 ring-indigo-500/30" },
-  HR: { icon: Users, color: "bg-purple-500/20 text-purple-400 ring-purple-500/30" },
-  MANAGEMENT: { icon: MessageSquare, color: "bg-pink-500/20 text-pink-400 ring-pink-500/30" },
-  EQUIPMENT: { icon: Package, color: "bg-cyan-500/20 text-cyan-400 ring-cyan-500/30" },
-  STATION: { icon: MapPin, color: "bg-violet-500/20 text-violet-400 ring-violet-500/30" },
+  IT: { icon: Monitor, color: "bg-blue-500/20 text-blue-400 ring-blue-500/30" },
+  HR: { icon: Users, color: "bg-emerald-500/20 text-emerald-400 ring-emerald-500/30" },
+  MANAGEMENT: { icon: MessageSquare, color: "bg-amber-500/20 text-amber-400 ring-amber-500/30" },
+  EQUIPMENT: { icon: Package, color: "bg-teal-500/20 text-teal-400 ring-teal-500/30" },
+  STATION: { icon: MapPin, color: "bg-cyan-500/20 text-cyan-400 ring-cyan-500/30" },
   SURROUNDINGS: { icon: Cloud, color: "bg-sky-500/20 text-sky-400 ring-sky-500/30" },
-  COMPENSATION: { icon: Gift, color: "bg-fuchsia-500/20 text-fuchsia-400 ring-fuchsia-500/30" },
-  TRANSPORT: { icon: Bus, color: "bg-blue-500/20 text-blue-400 ring-blue-500/30" },
+  COMPENSATION: { icon: Gift, color: "bg-yellow-500/20 text-yellow-400 ring-yellow-500/30" },
+  TRANSPORT: { icon: Bus, color: "bg-indigo-500/20 text-indigo-400 ring-indigo-500/30" },
   OTHER: { icon: HelpCircle, color: "bg-slate-500/20 text-slate-400 ring-slate-500/30" },
 }
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
   LOW: { label: "Low", color: "bg-slate-500/20 text-slate-400" },
-  MEDIUM: { label: "Medium", color: "bg-indigo-500/20 text-indigo-400" },
-  HIGH: { label: "High", color: "bg-purple-500/20 text-purple-400" },
-  URGENT: { label: "Urgent", color: "bg-pink-500/20 text-pink-400 animate-pulse" },
+  MEDIUM: { label: "Medium", color: "bg-blue-500/20 text-blue-400" },
+  HIGH: { label: "High", color: "bg-orange-500/20 text-orange-400" },
+  URGENT: { label: "Urgent", color: "bg-red-500/20 text-red-400 animate-pulse" },
 }
 
-// Status colors - STAFF PORTAL
+// Status colors - ADMIN PORTAL
 const statusColors = {
-  OPEN: "bg-indigo-500",
-  IN_PROGRESS: "bg-purple-500", 
-  RESOLVED: "bg-cyan-500",
+  OPEN: "bg-blue-500",
+  IN_PROGRESS: "bg-amber-500", 
+  RESOLVED: "bg-emerald-500",
   CLOSED: "bg-slate-500",
 }
 
-export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTicketCardProps) {
+export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTicketCardProps) {
   const {
     attributes,
     listeners,
@@ -128,13 +128,15 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`group cursor-grab active:cursor-grabbing rounded-lg bg-slate-900/60 ring-1 ring-indigo-500/20 transition-all duration-200 hover:bg-slate-900 hover:ring-indigo-400/60 hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-500/30 w-full max-w-full min-w-0 overflow-visible ${
+      className={`group cursor-grab active:cursor-grabbing rounded-lg bg-gradient-to-br from-slate-800/80 via-blue-900/20 to-emerald-900/20 ring-2 ring-blue-500/40 transition-all duration-200 hover:from-slate-800 hover:via-blue-900/30 hover:to-emerald-900/30 hover:ring-emerald-400/60 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/30 w-full max-w-full min-w-0 overflow-visible ${
         isDragging || isSortableDragging ? "opacity-0 cursor-grabbing" : ""
       }`}
       style={{ overflow: 'visible' }}
     >
-      {/* Status indicator bar - PROMINENT TOP BORDER! */}
-      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg rounded-t-lg`} />
+      {/* Status indicator bar - ADMIN GRADIENT TOP BORDER! */}
+      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg shadow-blue-500/50 rounded-t-lg relative overflow-hidden`}>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+      </div>
       
       <div className="p-4">
       {/* Ticket ID & Creator Type Badge */}
@@ -151,7 +153,7 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
       </div>
 
       {/* Title */}
-      <h4 className="mb-2 line-clamp-2 text-sm font-semibold text-white group-hover:text-indigo-400 break-words">
+      <h4 className="mb-2 line-clamp-2 text-sm font-semibold text-white group-hover:text-blue-300 break-words">
         {ticket.title}
       </h4>
 
@@ -164,7 +166,7 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
         
         {/* Department Badge - Shows which department will handle */}
         {assignedTo?.department && (
-          <div className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 ring-1 ring-purple-500/30">
+          <div className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 ring-1 ring-emerald-500/30">
             <span>→</span>
             <span className="font-bold">{assignedTo.department.replace('_', ' ')}</span>
           </div>
@@ -194,7 +196,7 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 text-xs">
           {/* Comment Count - PROMINENT */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/30">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30">
             <MessageSquare className="h-3.5 w-3.5" />
             <span className="font-bold">{ticket.responses?.length || 0}</span>
           </div>
@@ -237,7 +239,7 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
             <div className="relative group/avatar">
               <Avatar className="h-6 w-6 ring-2 ring-white/20">
                 <AvatarImage src={displayUser.avatar} alt={displayUser.name} />
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs text-white font-semibold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-emerald-600 text-xs text-white font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -257,7 +259,7 @@ export default function StaffTicketCard({ ticket, isDragging, onClick }: StaffTi
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -top-16 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
-                <div className="font-bold text-purple-400">Assigned to:</div>
+                <div className="font-bold text-emerald-400">Assigned to:</div>
                 <div>{assignedTo.name}</div>
                 <div className="text-[10px] text-slate-400">Dept: {assignedTo.department?.replace('_', ' ')}</div>
               </div>
