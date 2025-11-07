@@ -171,22 +171,44 @@ class ActivityTracker {
       
       // Test log after 5 seconds to confirm tracking is working
       setTimeout(() => {
-        console.log('\n═══════════════════════════════════════════════════════')
-        console.log('🔍 [ActivityTracker] 5-SECOND STATUS CHECK')
-        console.log('═══════════════════════════════════════════════════════')
-        console.log(`Is Tracking: ${this.isTracking ? '✅ YES' : '❌ NO'}`)
-        console.log(`Performance Tracker Available: ${this.performanceTracker ? '✅ YES' : '❌ NO'}`)
+        console.log('\n╔═══════════════════════════════════════════════════════╗')
+        console.log('║  🔍 [ActivityTracker] 5-SECOND STATUS CHECK          ║')
+        console.log('╚═══════════════════════════════════════════════════════╝')
+        console.log(`📊 Tracking Status:`)
+        console.log(`   Is Tracking: ${this.isTracking ? '✅ YES' : '❌ NO'}`)
+        console.log(`   Performance Tracker Available: ${this.performanceTracker ? '✅ YES' : '❌ NO'}`)
+        
         if (this.performanceTracker && this.performanceTracker.metrics) {
-          console.log(`Current Metrics:`)
-          console.log(`  🖱️  Mouse movements: ${this.performanceTracker.metrics.mouseMovements}`)
-          console.log(`  🖱️  Mouse clicks: ${this.performanceTracker.metrics.mouseClicks}`)
-          console.log(`  ⌨️  Keystrokes: ${this.performanceTracker.metrics.keystrokes} ${this.performanceTracker.metrics.keystrokes > 0 ? '✅' : '❌ ZERO - TRY TYPING!'}`)
+          console.log(`\n📈 Current Metrics (After 5 Seconds):`)
+          console.log(`   🖱️  Mouse movements: ${this.performanceTracker.metrics.mouseMovements} ${this.performanceTracker.metrics.mouseMovements > 0 ? '✅' : '⚠️ ZERO - Move mouse!'}`)
+          console.log(`   🖱️  Mouse clicks: ${this.performanceTracker.metrics.mouseClicks} ${this.performanceTracker.metrics.mouseClicks > 0 ? '✅' : '⚠️ ZERO - Try clicking!'}`)
+          console.log(`   ⌨️  Keystrokes: ${this.performanceTracker.metrics.keystrokes} ${this.performanceTracker.metrics.keystrokes > 0 ? '✅ WORKING!' : '❌ ZERO - KEYBOARD NOT TRACKING!'}`)
+          
+          if (this.performanceTracker.metrics.keystrokes === 0) {
+            console.log(`\n🚨 KEYBOARD NOT WORKING - Possible Causes:`)
+            console.log(`   1. macOS Accessibility Permissions NOT granted`)
+            console.log(`   2. Go to: System Preferences → Security & Privacy → Privacy → Accessibility`)
+            console.log(`   3. Add Electron app to allowed list`)
+            console.log(`   4. Restart Electron app`)
+          }
         }
-        console.log('═══════════════════════════════════════════════════════\n')
+        console.log('╚═══════════════════════════════════════════════════════╝\n')
       }, 5000)
     } catch (error) {
-      console.error('❌ [ActivityTracker] Error starting uIOhook:', error)
-      console.error('Stack trace:', error.stack)
+      console.error('\n╔═══════════════════════════════════════════════════════╗')
+      console.error('║  ❌ [ActivityTracker] UIOHOOK FAILED TO START!        ║')
+      console.error('╚═══════════════════════════════════════════════════════╝')
+      console.error('Error:', error.message)
+      console.error('Stack:', error.stack)
+      console.error('\n🚨 COMMON CAUSES:')
+      console.error('   1. ACCESSIBILITY PERMISSIONS not granted (most common)')
+      console.error('   2. uiohook-napi module not installed correctly')
+      console.error('   3. Incompatible Node.js version')
+      console.error('\n🔧 SOLUTION:')
+      console.error('   macOS: System Preferences → Security & Privacy → Privacy → Accessibility')
+      console.error('   Add this Electron app to allowed list')
+      console.error('   Restart Electron app')
+      console.error('╚═══════════════════════════════════════════════════════╝\n')
     }
   }
 
