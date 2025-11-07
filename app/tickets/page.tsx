@@ -8,7 +8,7 @@ import ViewToggle from "@/components/tickets/view-toggle"
 import TicketList from "@/components/tickets/ticket-list"
 import { useToast } from "@/components/ui/use-toast"
 import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/lib/ticket-categories"
-import StaffTicketCard from "@/components/tickets/staff-ticket-card"
+import StaffTicketKanban from "@/components/tickets/staff-ticket-kanban"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
 
@@ -231,61 +231,11 @@ export default function TicketsPage() {
         {/* Tickets View */}
         <div className={view === "kanban" ? "flex-1 min-h-0 overflow-hidden w-full" : "flex-1"}>
           {view === "kanban" ? (
-            /* Fun Kanban Board with Emojis */
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-          {columns.map((column, idx) => {
-            const columnTickets = filteredTickets.filter((ticket) => ticket.status === column.status)
-            const emojis = ['🆕', '⚡', '✅', '📦']
-            const gradients = [
-              'from-blue-500/20 to-cyan-500/20',
-              'from-amber-500/20 to-orange-500/20',
-              'from-emerald-500/20 to-green-500/20',
-              'from-slate-500/20 to-gray-500/20'
-            ]
-
-            return (
-              <div key={column.status} className="flex flex-col">
-                {/* Column Header with Gradient */}
-                <div className={`mb-4 rounded-2xl bg-gradient-to-r ${gradients[idx]} backdrop-blur-xl p-4 ring-1 ${column.ring.replace('/30', '/50')} shadow-lg`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{emojis[idx]}</span>
-                    <h3 className="text-lg font-bold text-white">{column.label}</h3>
-                    <span className="ml-auto rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white backdrop-blur-sm">
-                      {columnTickets.length}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Tickets Column with Individual Scrollbar */}
-                <div className="flex flex-col h-[800px] rounded-2xl bg-slate-900/30 backdrop-blur-xl ring-1 ring-white/5 transition-all duration-300 min-w-0 w-full max-w-full overflow-visible">
-                  {/* Scrollable content area */}
-                  <div className="flex-1 overflow-y-auto overflow-x-visible admin-tickets-scrollbar p-4 space-y-3 w-full max-w-full">
-                    {columnTickets.map((ticket) => (
-                      <StaffTicketCard 
-                        key={ticket.id}
-                        ticket={ticket}
-                        onClick={() => handleTicketClick(ticket)}
-                      />
-                    ))}
-
-                    {columnTickets.length === 0 && (
-                      <div className="flex h-48 items-center justify-center rounded-xl bg-slate-800/30 backdrop-blur-sm">
-                        <div className="text-center">
-                          <div className="mb-2">
-                            <svg className="h-12 w-12 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <p className="text-slate-400">No tickets</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-            </div>
+            <StaffTicketKanban
+              tickets={filteredTickets}
+              onTicketClick={handleTicketClick}
+              onStatusChange={async () => {}} // Staff can't change status, so empty function
+            />
           ) : (
             <TicketList
               tickets={filteredTickets}
