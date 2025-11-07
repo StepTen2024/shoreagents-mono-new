@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
     const ticketId = `TKT-${ticketNumber.toString().padStart(4, "0")}`
 
     // Create ticket - auto-assign to account manager
+    const accountManagerId = clientUser.company?.accountManagerId || null
     const now = new Date()
     const ticket = await prisma.tickets.create({
       data: {
@@ -160,7 +161,8 @@ export async function POST(request: NextRequest) {
         status: "OPEN",
         attachments: attachments || [],
         createdByType: "CLIENT",
-        assignedTo: clientUser.company?.accountManagerId || null,
+        assignedTo: accountManagerId,
+        managementUserId: accountManagerId, // Also set the FK for relation
         createdAt: now,
         updatedAt: now,
       },
