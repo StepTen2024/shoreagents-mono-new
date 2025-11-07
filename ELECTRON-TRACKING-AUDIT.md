@@ -140,12 +140,24 @@ case 'keydown':
 **Status:** ❌ **BROKEN** - Listener registered but NO EVENTS RECEIVED
 
 **Possible Causes:**
-1. **macOS Accessibility Permissions** - Electron needs accessibility permissions to capture keyboard
-2. **uIOhook not starting** - Hook may fail to start silently
-3. **Security software** - Antivirus blocking keyboard capture
-4. **Electron app not focused** - Some systems only capture when app is focused
 
-**Fix Required:** Check permissions and uIOhook startup
+**🪟 WINDOWS (Most Common):**
+1. **Antivirus Software** - Norton/McAfee/AVG/Avast blocking keyboard hooks (sees as "keylogger")
+2. **Windows Defender** - SmartScreen or real-time protection blocking
+3. **Administrator Privileges** - Some Windows configs need admin rights for hooks
+4. **Enterprise Security** - Corporate IT security blocking all hooks
+
+**🍎 MACOS:**
+1. **Accessibility Permissions NOT Granted** - Electron MUST have accessibility permissions
+2. System Preferences → Security & Privacy → Privacy → Accessibility → Add Electron
+
+**Both Platforms:**
+1. **uIOhook not starting** - Hook may fail to start silently
+2. **Electron app not focused** - Some systems only capture when app is focused (rare)
+
+**Fix Required:** 
+- Windows: Check antivirus, try "Run as Administrator"
+- macOS: Grant accessibility permissions (always required)
 
 ---
 
