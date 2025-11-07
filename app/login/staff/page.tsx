@@ -43,7 +43,7 @@ export default function StaffLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900 p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900 p-8 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
@@ -51,14 +51,18 @@ export default function StaffLoginPage() {
         <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="w-full max-w-6xl relative z-10">
-        {/* Desktop App Download Banner */}
-        <div className="mb-8">
-          <DesktopAppDownload />
-        </div>
+      {/* CLEAN SIDE-BY-SIDE LAYOUT */}
+      <div className="w-full max-w-7xl relative z-10">
+        <div className="grid lg:grid-cols-[1fr_500px] gap-8 items-center">
+          
+          {/* LEFT SIDE - Download Info & Branding */}
+          <div className="space-y-6">
+            {/* Desktop App Download Banner - Compact Version */}
+            <DesktopAppDownload />
+          </div>
 
-        {/* Login Card - FUN STYLE! */}
-        <div className="group w-full max-w-2xl mx-auto rounded-3xl bg-gradient-to-br from-slate-900/80 via-purple-900/20 to-slate-900/80 p-8 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-500 hover:ring-white/30 hover:shadow-2xl hover:shadow-purple-500/30 hover:scale-[1.02]">
+          {/* RIGHT SIDE - Login Form */}
+          <div className="group rounded-3xl bg-gradient-to-br from-slate-900/80 via-purple-900/20 to-slate-900/80 p-8 backdrop-blur-xl ring-1 ring-white/10 transition-all duration-500 hover:ring-white/30 hover:shadow-2xl hover:shadow-purple-500/30 hover:scale-[1.02]">
           {/* Header with Icon */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-500 to-indigo-500 mb-6 ring-4 ring-purple-400/30 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl group-hover:shadow-purple-500/50">
@@ -205,6 +209,7 @@ export default function StaffLoginPage() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

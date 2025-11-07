@@ -17,29 +17,25 @@ export function DesktopAppDownload() {
 
   return (
     <div className="group rounded-3xl bg-gradient-to-br from-slate-900/90 via-indigo-900/30 to-slate-900/90 p-8 backdrop-blur-xl ring-2 ring-indigo-400/30 transition-all duration-500 hover:ring-indigo-400/50 hover:shadow-2xl hover:shadow-indigo-500/40 hover:scale-[1.01]">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center ring-4 ring-indigo-400/30 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl group-hover:shadow-indigo-500/50">
-            <Monitor className="h-10 w-10 text-white animate-pulse" />
-          </div>
-          <div>
-            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-1 flex items-center gap-2">
-              Desktop App 🖥️
-              <Sparkles className="h-5 w-5 text-yellow-400 animate-spin" />
-            </h3>
-            <p className="text-slate-300 font-semibold flex items-center gap-2">
-              <Rocket className="h-4 w-4 text-indigo-400" />
-              Supercharge your workflow!
-            </p>
-          </div>
+      {/* Header - Vertical Layout */}
+      <div className="text-center mb-8">
+        <div className="inline-flex h-24 w-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-500 items-center justify-center ring-4 ring-indigo-400/30 transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 group-hover:shadow-xl group-hover:shadow-indigo-500/50 mb-6">
+          <Monitor className="h-12 w-12 text-white animate-pulse" />
         </div>
+        <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 mb-2 flex items-center justify-center gap-2">
+          Desktop App 🖥️
+          <Sparkles className="h-6 w-6 text-yellow-400 animate-spin" />
+        </h3>
+        <p className="text-slate-300 font-semibold flex items-center justify-center gap-2 mb-6">
+          <Rocket className="h-4 w-4 text-indigo-400" />
+          Supercharge your workflow!
+        </p>
         
         {/* Download Button - BIG & FUN */}
         <Button
           onClick={handleDownload}
           size="lg"
-          className="h-14 px-8 text-lg font-black bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:via-green-400 hover:to-emerald-500 rounded-2xl ring-4 ring-emerald-400/30 transition-all duration-300 hover:scale-110 hover:shadow-2xl hover:shadow-emerald-500/50 hover:ring-emerald-400/50 group/btn"
+          className="w-full h-16 text-xl font-black bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:via-green-400 hover:to-emerald-500 rounded-2xl ring-4 ring-emerald-400/30 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-emerald-500/50 hover:ring-emerald-400/50 group/btn"
         >
           <Download className="h-6 w-6 mr-2 group-hover/btn:animate-bounce" />
           Download for Windows!
@@ -47,8 +43,8 @@ export function DesktopAppDownload() {
         </Button>
       </div>
 
-      {/* Features - FUN STYLE */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Features - Vertical Stack */}
+      <div className="grid grid-cols-1 gap-3 mb-6">
         <div className="group/feature flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 p-4 ring-1 ring-emerald-400/30 transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-emerald-400 hover:shadow-lg hover:shadow-emerald-500/30">
           <CheckCircle className="h-6 w-6 text-emerald-400 flex-shrink-0 group-hover/feature:scale-125 transition-transform" />
           <span className="text-emerald-200 font-bold">Auto Time Tracking ⏰</span>
@@ -79,13 +75,13 @@ export function DesktopAppDownload() {
         </div>
       </div>
 
-      {/* Installation Steps - CLEAN & CLEAR */}
+      {/* Installation Steps - Compact Vertical */}
       <div className="rounded-2xl bg-slate-900/50 p-6 ring-1 ring-white/10">
         <p className="text-sm text-slate-300 mb-4 font-bold flex items-center gap-2">
           <Rocket className="h-4 w-4 text-indigo-400" />
           Quick Installation (2 minutes!) 🚀
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="flex gap-3">
             <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold ring-2 ring-indigo-400/50">1</div>
             <div>
