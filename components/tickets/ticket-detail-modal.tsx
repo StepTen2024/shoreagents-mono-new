@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/use-toast"
 import ImageLightbox from "@/components/ui/image-lightbox"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import CommentThread from "@/components/universal/comment-thread"
+import StaffUploadPreloader from "@/components/uploads/staff-upload-preloader"
 
 interface TicketDetailModalProps {
   ticket: Ticket
@@ -484,65 +485,89 @@ export default function TicketDetailModal({
             </div>
 
             {(ticketAttachments.length > 0 || uploadingAttachments) && (
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 space-y-4">
                 <div className="text-sm font-bold text-indigo-300 flex items-center gap-2">
                   📎 Attachments ({ticketAttachments.length})
                 </div>
-                
-                {/* Upload Progress Bar */}
-                {uploadingAttachments && (
-                  <div className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-lg p-4 ring-1 ring-indigo-500/30 backdrop-blur-sm">
-                    <div className="flex items-center gap-3 mb-2">
-                      <svg className="animate-spin h-5 w-5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span className="text-sm font-semibold text-indigo-300">📤 Uploading images...</span>
-                    </div>
-                    <div className="w-full bg-slate-800/50 rounded-full h-2 overflow-hidden ring-1 ring-white/10">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></div>
-                    </div>
+
+                {/* Existing Attachments Grid */}
+                {ticketAttachments.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {ticketAttachments.map((url, index) => (
+                      <button
+                        key={index}
+                        onClick={() => openLightbox(ticketAttachments, index)}
+                        className="group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-1 ring-white/10 hover:ring-indigo-400/50 hover:scale-105 transform shadow-lg hover:shadow-indigo-500/20"
+                      >
+                        <img
+                          src={url}
+                          alt={`Attachment ${index + 1}`}
+                          className="h-32 w-full object-cover transition-transform group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-black/0 group-hover:from-indigo-900/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <div className="bg-indigo-500/90 rounded-full p-3 ring-2 ring-white/50 backdrop-blur-sm transform scale-90 group-hover:scale-100 transition-transform">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  {ticketAttachments.map((url, index) => (
-                    <button
-                      key={index}
-                      onClick={() => openLightbox(ticketAttachments, index)}
-                      className="group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-1 ring-white/10 hover:ring-indigo-400/50 hover:scale-105 transform shadow-lg hover:shadow-indigo-500/20"
-                    >
-                      <img
-                        src={url}
-                        alt={`Attachment ${index + 1}`}
-                        className="h-32 w-full object-cover transition-transform group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-black/0 group-hover:from-indigo-900/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="bg-indigo-500/90 rounded-full p-3 ring-2 ring-white/50 backdrop-blur-sm transform scale-90 group-hover:scale-100 transition-transform">
-                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                          </svg>
+                
+                {/* ADD MORE SECTION - Staff Upload Preloader Style */}
+                <div className="relative rounded-xl border-2 border-dashed border-indigo-400/50 bg-slate-800/30 p-6 text-center transition-all hover:border-indigo-400/70 hover:bg-slate-800/40">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleAddAttachments}
+                    className="hidden"
+                    id="add-more-attachments"
+                    disabled={uploadingAttachments}
+                  />
+                  
+                  {uploadingAttachments ? (
+                    // ⬆️ UPLOADING STATE
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      {/* Spinner */}
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center">
+                        <div className="relative">
+                          <div className="h-16 w-16 rounded-full border-4 border-indigo-200/20 border-t-indigo-500 animate-spin"></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <svg className="h-6 w-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                    </button>
-                  ))}
-
-                  {/* Add More Images Button */}
-                  {!uploadingAttachments && (
-                    <label className="group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-2 ring-dashed ring-white/20 hover:ring-indigo-400 hover:bg-indigo-500/5 flex items-center justify-center h-32 transform hover:scale-105 shadow-lg">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleAddAttachments}
-                        className="hidden"
-                      />
-                      <div className="flex flex-col items-center gap-2 text-slate-300 group-hover:text-indigo-300 transition-colors">
-                        <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      
+                      {/* Upload Text */}
+                      <div className="space-y-2">
+                        <p className="text-lg font-bold text-indigo-400 animate-pulse">⬆️ Uploading images...</p>
+                        <p className="text-sm text-slate-400">Please wait while we upload your files</p>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-full max-w-xs mx-auto h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                      </div>
+                    </div>
+                  ) : (
+                    // 📤 READY TO ADD MORE STATE
+                    <label htmlFor="add-more-attachments" className="cursor-pointer block group">
+                      {/* Upload Icon */}
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 transition-all group-hover:bg-indigo-500/30 group-hover:scale-110">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        <span className="text-xs font-semibold">Add More</span>
-                        <span className="text-[10px] opacity-60">Click or drag</span>
+                      </div>
+                      
+                      {/* Upload Text */}
+                      <div className="space-y-1">
+                        <p className="text-base font-bold text-white">Add More Images</p>
+                        <p className="text-xs text-slate-400">Click to upload • PNG, JPG up to 5MB</p>
                       </div>
                     </label>
                   )}
