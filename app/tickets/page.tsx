@@ -8,7 +8,7 @@ import ViewToggle from "@/components/tickets/view-toggle"
 import TicketList from "@/components/tickets/ticket-list"
 import { useToast } from "@/components/ui/use-toast"
 import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/lib/ticket-categories"
-import StaffTicketKanban from "@/components/tickets/staff-ticket-kanban"
+import StaffTicketBoard from "@/components/tickets/staff-ticket-board"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
 
@@ -221,13 +221,12 @@ export default function TicketsPage() {
           </select>
         </div>
 
-        {/* Tickets View */}
+        {/* Tickets View - STAFF VIEW ONLY (NO DRAG AND DROP) */}
         <div className={view === "kanban" ? "flex-1 min-h-0 overflow-hidden w-full" : "flex-1"}>
           {view === "kanban" ? (
-            <StaffTicketKanban
+            <StaffTicketBoard
               tickets={filteredTickets}
               onTicketClick={handleTicketClick}
-              onStatusChange={async () => {}} // Staff can't change status, so empty function
             />
           ) : (
             <TicketList

@@ -71,21 +71,22 @@ export default function TicketKanban({
   const [overId, setOverId] = useState<string | null>(null)
   const [updatingTickets, setUpdatingTickets] = useState<Set<string>>(() => new Set())
 
+  // ADMIN DRAG AND DROP - Super smooth and easy
   const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3, // Very small distance for instant response
+      },
+    }),
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 5, // Reduced for quicker response
+        distance: 3,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150, // Slight delay to distinguish from scrolling
-        tolerance: 5,
-      },
-    }),
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
+        delay: 100,
+        tolerance: 3,
       },
     })
   )
