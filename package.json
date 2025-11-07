@@ -5,6 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "build": "next build",
+    "postinstall": "prisma generate",
     "dev": "cross-env NODE_ENV=development node server.js",
     "dev:turbo": "cross-env NODE_ENV=development node server.js --turbo",
     "dev:next": "next dev",
