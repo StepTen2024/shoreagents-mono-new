@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
 // Catch-all route to handle 404s dynamically
@@ -27,4 +26,3 @@ export default function CatchAll() {
     </div>
   )
 }
-
