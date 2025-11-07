@@ -132,21 +132,20 @@ model company {
 // REMOVED: Consolidated into universal 'comments' table
 
 model documents {
-  id                String              @id
-  title             String
-  category          DocumentCategory
-  uploadedBy        String
-  size              String
-  fileUrl           String?
-  content           String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime
-  staffUserId       String
-  source            DocumentSource      @default(STAFF)
-  sharedWithAll     Boolean             @default(false)
-  sharedWith        String[]            @default([])
-  document_comments document_comments[]
-  staff_users       staff_users         @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  id            String           @id
+  title         String
+  category      DocumentCategory
+  uploadedBy    String
+  size          String
+  fileUrl       String?
+  content       String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime
+  staffUserId   String
+  source        DocumentSource   @default(STAFF)
+  sharedWithAll Boolean          @default(false)
+  sharedWith    String[]         @default([])
+  staff_users   staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model employment_contracts {
