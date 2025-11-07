@@ -130,13 +130,6 @@ export default function TicketsPage() {
     resolved: filteredTickets.filter((t) => t.status === "RESOLVED").length,
   }
 
-  const columns: { status: TicketStatus; label: string; color: string; ring: string }[] = [
-    { status: "OPEN", label: "Open", color: "bg-blue-500/10", ring: "ring-blue-500/30" },
-    { status: "IN_PROGRESS", label: "In Progress", color: "bg-amber-500/10", ring: "ring-amber-500/30" },
-    { status: "RESOLVED", label: "Resolved", color: "bg-emerald-500/10", ring: "ring-emerald-500/30" },
-    { status: "CLOSED", label: "Closed", color: "bg-slate-500/10", ring: "ring-slate-500/30" },
-  ]
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8" style={{ opacity: mounted ? 1 : 0, transition: 'opacity 0.2s' }}>
       <div className="w-full space-y-6 animate-in fade-in duration-700">
