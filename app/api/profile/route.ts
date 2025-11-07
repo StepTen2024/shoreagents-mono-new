@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
         },
         company: {
           include: {
-            management_users: true // Fetch account manager (e.g., Jinemva)
+            management_users: true, // Fetch account manager (e.g., Jinemva)
+            client_users: {
+              include: {
+                client_profiles: true
+              },
+              take: 1 // Get first client user for timezone
+            }
           }
         },
         staff_personal_records: true,
@@ -50,6 +56,7 @@ export async function GET(req: NextRequest) {
       company: staffUser.company ? {
         name: staffUser.company.companyName,
         accountManager: staffUser.company.management_users?.name || null, // Jinemva or other management user
+        timezone: (staffUser.company as any).client_users?.[0]?.client_profiles?.timezone || "UTC", // Client timezone from client profile
       } : null,
       profile: staffUser.staff_profiles ? {
         phone: staffUser.staff_profiles.phone,

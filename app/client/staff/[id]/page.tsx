@@ -216,7 +216,7 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                     </Badge>
                   )}
                 </div>
-                <p className="text-lg text-gray-600 mb-3">{staff.assignment?.role || staff.profile?.currentRole}</p>
+                <p className="text-lg text-gray-600 mb-3">{staff.assignment?.role || staff.profile?.currentRole || "Staff Member"}</p>
                 <div className="flex items-center gap-4 flex-wrap">
                   {staff.profile && (
                     <Badge className={getStatusColor(staff.profile.employmentStatus)}>
@@ -228,7 +228,7 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                     Level {staff.stats.level}
                   </Badge>
                   <Badge variant="outline" className="text-sm">
-                    {staff.profile?.daysEmployed} days employed
+                    {staff.profile?.daysEmployed || 0} days employed
                   </Badge>
                 </div>
               </div>
@@ -285,16 +285,16 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                 <>
                   <div>
                     <p className="text-sm text-gray-500">Client</p>
-                    <p className="font-semibold text-gray-900">{staff.assignment.client}</p>
+                    <p className="font-semibold text-gray-900">{staff.assignment.client || "Not Assigned"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Account Manager</p>
-                    <p className="font-semibold text-gray-900">{staff.assignment.manager.name}</p>
+                    <p className="font-semibold text-gray-900">{staff.assignment.manager?.name || "Not Assigned"}</p>
                   </div>
                   {staff.assignment.rate && (
                     <div>
-                      <p className="text-sm text-gray-500">Monthly Rate</p>
-                      <p className="font-semibold text-gray-900 text-2xl">${staff.assignment.rate}/month</p>
+                      <p className="text-sm text-gray-500">Monthly Rate (PHP)</p>
+                      <p className="font-semibold text-gray-900 text-2xl">₱{staff.assignment.rate.toLocaleString()}/month</p>
                     </div>
                   )}
                 </>
@@ -310,7 +310,7 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Work Schedule */}
-        {staff.profile?.work_schedules && (
+        {staff.profile?.work_schedules && staff.profile.work_schedules.length > 0 ? (
           <Card className="p-6 bg-white mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Clock className="h-5 w-5 text-blue-600" />
@@ -329,14 +329,30 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                   <p className="text-xs font-semibold text-gray-900 mb-1">{schedule.dayOfWeek.slice(0, 3)}</p>
                   {schedule.isWorkday ? (
                     <>
-                      <p className="text-xs text-gray-600">{schedule.startTime}</p>
-                      <p className="text-xs text-gray-600">{schedule.endTime}</p>
+                      <p className="text-xs text-gray-600">{schedule.startTime || "TBD"}</p>
+                      <p className="text-xs text-gray-600">{schedule.endTime || "TBD"}</p>
                     </>
                   ) : (
                     <p className="text-xs text-gray-400">Off</p>
                   )}
                 </div>
               ))}
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-6 bg-white mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-600" />
+              Work Schedule
+            </h3>
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">Work schedule not set</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Schedule will be available after onboarding is complete
+                </p>
+              </div>
             </div>
           </Card>
         )}

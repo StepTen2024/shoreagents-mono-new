@@ -168,6 +168,30 @@ export default function OnboardingPage() {
           </p>
         </div>
 
+        {/* Header */}
+        <div className="text-center mb-8 mt-12">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome to ShoreAgents! <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
+          </h1>
+          <p className="text-slate-300 mb-4">
+            {contractSigned 
+              ? "Complete your onboarding to get started" 
+              : "Review and sign your employment contract to begin"}
+          </p>
+        </div>
+
+        {/* Header */}
+        <div className="text-center mb-8 mt-12">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome to ShoreAgents! <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
+          </h1>
+          <p className="text-slate-300 mb-4">
+            {contractSigned 
+              ? "Complete your onboarding to get started" 
+              : "Review and sign your employment contract to begin"}
+          </p>
+        </div>
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-slate-800 border border-slate-700">

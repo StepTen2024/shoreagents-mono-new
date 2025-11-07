@@ -13,13 +13,13 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/management
+    // Check if user is admin/management (allow both ADMIN and MANAGER)
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id }
     })
 
-    if (!managementUser || managementUser.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
+      return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
     }
 
     const { staffUserId } = await context.params

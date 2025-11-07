@@ -16,9 +16,7 @@ module.exports = {
   MOUSE_MOVEMENT_THROTTLE: 100, // Throttle mouse movement tracking to every 100ms
   
   // API configuration
-  // 🚀 PRODUCTION: Use Railway URL (set via environment variable)
-  // 🧪 DEVELOPMENT: Use localhost
-  API_BASE_URL: process.env.API_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  API_BASE_URL: 'http://localhost:3000',
   API_PERFORMANCE_ENDPOINT: '/api/analytics',
   
   // Privacy settings

@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       where: { id: onboardingId }
     })
 
+    let completionPercent = 0
     if (updatedOnboarding) {
       const totalSteps = 8
       let completedSteps = 0
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
       if (updatedOnboarding.emergencyContactStatus === 'SUBMITTED' || updatedOnboarding.emergencyContactStatus === 'APPROVED') completedSteps++
 
       const totalProgress = Math.floor((completedSteps / totalSteps) * 100)
-      const completionPercent = Math.min(totalProgress, 100)
+      completionPercent = Math.min(totalProgress, 100)
 
       await prisma.staff_onboarding.update({
         where: { id: onboardingId },
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Data privacy consent and bank details saved successfully'
+      message: 'Data privacy consent and bank details saved successfully',
+      completionPercent
     })
   } catch (error) {
     console.error('❌ Error saving data privacy consent:', error)

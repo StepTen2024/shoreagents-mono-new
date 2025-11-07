@@ -50,6 +50,7 @@ export async function PATCH(
       where: { id: ticketId },
       data: {
         status,
+        updatedAt: new Date(),
         ...(status === "RESOLVED" || status === "CLOSED"
           ? { resolvedDate: new Date() }
           : {}),

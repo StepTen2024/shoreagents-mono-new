@@ -88,7 +88,7 @@ async function updateCompletionPercent(onboardingId: string) {
     onboarding.emergencyContactStatus
   ]
 
-  // Each section = 12.5% when SUBMITTED or APPROVED (8 sections total)
+  // Each section = 12.5% when SUBMITTED (8 sections total)
   let totalProgress = 0
   sections.forEach(status => {
     if (status === "SUBMITTED" || status === "APPROVED") {

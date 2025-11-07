@@ -34,20 +34,29 @@ export async function GET(request: NextRequest) {
       whereClause.read = false
     }
 
-    // Fetch notifications
-    const notifications = await prisma.notifications.findMany({
+    // Fetch notifications - with null check
+    const notifications = await prisma?.notification?.findMany({
       where: whereClause,
+      include: {
+        post: {
+          select: {
+            id: true,
+            content: true,
+            type: true
+          }
+        }
+      },
       orderBy: { createdAt: "desc" },
       take: limit
-    })
+    }) || []
 
-    // Get unread count
-    const unreadCount = await prisma.notifications.count({
+    // Get unread count - with null check
+    const unreadCount = await prisma?.notification?.count({
       where: {
         userId: staffUser.id,
         read: false
       }
-    })
+    }) || 0
 
     return NextResponse.json({
       notifications,
