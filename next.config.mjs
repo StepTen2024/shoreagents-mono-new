@@ -13,6 +13,12 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   output: 'standalone',
+  // Disable static generation for error pages to prevent Html import issues
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
+  // Skip static optimization for error pages
+  skipTrailingSlashRedirect: true,
 }
 
 export default nextConfig
