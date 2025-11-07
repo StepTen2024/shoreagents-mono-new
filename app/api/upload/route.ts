@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { createClient } from "@supabase/supabase-js"
+import { prisma } from "@/lib/prisma"
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,10 +35,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 400 })
     }
 
+    // Determine user type and bucket
+    const staffUser = await prisma.staff_users.findUnique({
+      where: { authUserId: session.user.id },
+      select: { id: true }
+    })
+    
+    const managementUser = !staffUser ? await prisma.management_users.findUnique({
+      where: { authUserId: session.user.id },
+      select: { id: true }
+    }) : null
+
+    const clientUser = !staffUser && !managementUser ? await prisma.client_users.findUnique({
+      where: { authUserId: session.user.id },
+      select: { id: true }
+    }) : null
+
+    // Determine bucket based on user type
+    let bucket: string
+    let folder: string
+    
+    if (staffUser) {
+      bucket = "staff"
+      folder = "staff_uploads"
+    } else if (managementUser) {
+      bucket = "management"
+      folder = "management_uploads"
+    } else if (clientUser) {
+      bucket = "client"
+      folder = "client_uploads"
+    } else {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
     // Generate unique filename
     const fileExt = file.name.split(".").pop()
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-    const filePath = `uploads/${session.user.id}/${fileName}`
+    const filePath = `${folder}/${session.user.id}/${fileName}`
 
     // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
@@ -45,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from("shoreagents")
+      .from(bucket)
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: false,
@@ -59,9 +93,9 @@ export async function POST(request: NextRequest) {
     // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from("shoreagents").getPublicUrl(filePath)
+    } = supabase.storage.from(bucket).getPublicUrl(filePath)
 
-    console.log(`✅ [UPLOAD] File uploaded: ${filePath}`)
+    console.log(`✅ [UPLOAD] File uploaded: ${bucket}/${filePath}`)
 
     return NextResponse.json({ url: publicUrl })
   } catch (error) {
