@@ -38,7 +38,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
     }
 
-    // Check if user has permission (staff who created it, assigned manager, or admin)
+    // Check if user has permission (staff who created it, client who owns it, assigned manager, or admin)
     const staffUser = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id }
     })
@@ -47,8 +47,13 @@ export async function PATCH(
       where: { authUserId: session.user.id }
     })
 
+    const clientUser = await prisma.client_users.findUnique({
+      where: { authUserId: session.user.id }
+    })
+
     const isAuthorized = 
       (staffUser && ticket.staffUserId === staffUser.id) ||
+      (clientUser && ticket.clientUserId === clientUser.id) ||  // CLIENT CAN ADD TO THEIR OWN TICKET!
       (managementUser && (
         ticket.managementUserId === managementUser.id ||
         managementUser.role === 'CEO_EXECUTIVE'
