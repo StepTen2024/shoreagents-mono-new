@@ -112,14 +112,28 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer - WITH REACTIONS! */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            {/* Responses count */}
-            {ticket.responses && ticket.responses.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-blue-100 px-2 py-1 rounded-lg border border-blue-200">
-                <MessageSquare className="w-4 h-4 text-blue-600" />
-                <span className="font-bold text-blue-700">{ticket.responses.length}</span>
+          <div className="flex items-center gap-3 text-sm">
+            {/* Comment Count - ALWAYS SHOW */}
+            <div className="flex items-center gap-1.5 bg-blue-100 px-2 py-1 rounded-full border border-blue-200">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-bold text-blue-700">{ticket.responses?.length || 0}</span>
+            </div>
+            
+            {/* Reactions Preview */}
+            {ticket.reactions && ticket.reactions.length > 0 && (
+              <div className="flex items-center gap-0.5">
+                {ticket.reactions.slice(0, 3).map((reaction: any, i: number) => (
+                  <span key={i} className="text-sm">
+                    {reaction.emoji}
+                  </span>
+                ))}
+                {ticket.reactions.length > 3 && (
+                  <span className="text-xs text-gray-500 ml-1">
+                    +{ticket.reactions.length - 3}
+                  </span>
+                )}
               </div>
             )}
 
