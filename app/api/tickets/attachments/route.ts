@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabaseAdmin } from "@/lib/supabase"
 
 // POST /api/tickets/attachments - Upload ticket attachments
 export async function POST(request: NextRequest) {
@@ -71,7 +66,7 @@ export async function POST(request: NextRequest) {
       const fileName = `${folder}/${authUserId}/${timestamp}_${file.name}`
 
       // Upload to Supabase
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabaseAdmin.storage
         .from(bucket)
         .upload(fileName, buffer, {
           contentType: file.type,
@@ -87,7 +82,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Get public URL
-      const { data: publicUrlData } = supabase.storage
+      const { data: publicUrlData } = supabaseAdmin.storage
         .from(bucket)
         .getPublicUrl(fileName)
 
