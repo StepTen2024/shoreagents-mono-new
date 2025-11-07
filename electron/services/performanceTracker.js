@@ -456,10 +456,11 @@ class PerformanceTracker {
       mouseMovements: metrics.mouseMovements,
       mouseClicks: metrics.mouseClicks,
       keystrokes: metrics.keystrokes,
-      // Convert seconds to minutes for API/database storage
-      activeTime: Math.round(metrics.activeTime / 60),
-      idleTime: Math.round(metrics.idleTime / 60),
-      screenTime: Math.round(metrics.screenTime / 60),
+      // 🔧 KEEP AS SECONDS - API will convert to minutes if needed
+      // This prevents double-conversion issues with delta calculation
+      activeTime: Math.round(metrics.activeTime),
+      idleTime: Math.round(metrics.idleTime),
+      screenTime: Math.round(metrics.screenTime),
       downloads: metrics.downloads,
       uploads: metrics.uploads,
       bandwidth: metrics.bandwidth,
