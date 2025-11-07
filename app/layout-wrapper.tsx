@@ -16,8 +16,11 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   
   // CRITICAL: Don't render anything until pathname is available
   if (!pathname) {
+    console.log('⚠️ [LAYOUT-WRAPPER] Pathname not ready - returning NULL')
     return null
   }
+  
+  console.log('✅ [LAYOUT-WRAPPER] Pathname loaded:', pathname)
   
   // Don't show sidebar on login pages, admin pages, or client pages
   const isLoginPage = pathname.startsWith("/login")
@@ -27,6 +30,13 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   
   // Staff pages = everything else (root level pages)
   const isStaffPage = !isLoginPage && !isAdminPage && !isClientPage && !isCallPage
+  
+  console.log('🎯 [LAYOUT-WRAPPER] Page type:', {
+    isLoginPage,
+    isAdminPage,
+    isClientPage,
+    isStaffPage
+  })
   
   // Extract user info from session for WebSocket
   const userId = session?.user?.id

@@ -29,7 +29,9 @@ export default function TicketsPage() {
 
   useEffect(() => {
     // CRITICAL: Set mounted FIRST before fetching to prevent flash
+    console.log('🟣 [STAFF TICKETS] Component mounting...')
     setMounted(true)
+    console.log('🟣 [STAFF TICKETS] Mounted state set to TRUE')
   }, [])
 
   useEffect(() => {
@@ -100,10 +102,14 @@ export default function TicketsPage() {
 
   // CRITICAL: Don't render ANYTHING until mounted to prevent flash
   if (!mounted) {
+    console.log('🟣 [STAFF TICKETS] Not mounted yet - returning NULL')
     return null
   }
+  
+  console.log('🟣 [STAFF TICKETS] MOUNTED - Rendering staff board')
 
   if (loading) {
+    console.log('🟣 [STAFF TICKETS] Loading tickets data...')
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="w-full space-y-6" data-portal="staff-loading">

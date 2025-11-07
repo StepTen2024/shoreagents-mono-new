@@ -26,6 +26,7 @@ export default function AdminTicketsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
+    console.log('🔵 [ADMIN TICKETS] Component mounted, fetching tickets...')
     fetchTickets()
   }, [activeTab])
 
@@ -34,6 +35,7 @@ export default function AdminTicketsPage() {
   }, [tickets, searchTerm, filterStatus, filterCategory])
 
   const fetchTickets = async () => {
+    console.log('🔵 [ADMIN TICKETS] Fetching tickets for tab:', activeTab)
     try {
       let url = "/api/admin/tickets"
       if (activeTab !== "all") {
@@ -42,8 +44,10 @@ export default function AdminTicketsPage() {
       const response = await fetch(url)
       if (!response.ok) throw new Error("Failed to fetch tickets")
       const data = await response.json()
+      console.log('🔵 [ADMIN TICKETS] Fetched tickets:', data.tickets?.length || 0)
       setTickets(data.tickets || [])
     } catch (error) {
+      console.error('🔵 [ADMIN TICKETS] Error fetching tickets:', error)
       toast({
         title: "Error",
         description: "Failed to load tickets. Please try again.",
@@ -51,6 +55,7 @@ export default function AdminTicketsPage() {
       })
     } finally {
       setLoading(false)
+      console.log('🔵 [ADMIN TICKETS] Loading complete')
     }
   }
 
@@ -130,6 +135,7 @@ export default function AdminTicketsPage() {
   }
 
   if (loading) {
+    console.log('🔵 [ADMIN TICKETS] Showing loading skeleton...')
     return (
       <div className="flex h-full flex-col gap-6 p-6">
         {/* Stats skeleton */}
