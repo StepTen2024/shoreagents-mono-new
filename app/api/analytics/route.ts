@@ -236,22 +236,34 @@ export async function POST(request: NextRequest) {
     const mergedApps = Array.from(new Set([...existingApps, ...newApps]))
     const mergedUrls = Array.from(new Set([...existingUrls, ...newUrls]))
 
-    console.log(`📈 [Performance API] INCREMENTING metrics:`, {
-      mouseMovements: `${existingMetric.mouseMovements} + ${mouseMovements || 0} = ${existingMetric.mouseMovements + (mouseMovements || 0)}`,
-      keystrokes: `${existingMetric.keystrokes} + ${keystrokes || 0} = ${existingMetric.keystrokes + (keystrokes || 0)}`
-    })
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📈 [Performance API] INCREMENTING METRICS (Adding Deltas)')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`🖱️  Mouse Movements: ${existingMetric.mouseMovements} + ${mouseMovements || 0} = ${existingMetric.mouseMovements + (mouseMovements || 0)}`)
+    console.log(`🖱️  Mouse Clicks: ${existingMetric.mouseClicks} + ${mouseClicks || 0} = ${existingMetric.mouseClicks + (mouseClicks || 0)}`)
+    console.log(`⌨️  Keystrokes: ${existingMetric.keystrokes} + ${keystrokes || 0} = ${existingMetric.keystrokes + (keystrokes || 0)}`)
+    console.log(`✅ Active Time: ${existingMetric.activeTime} min + ${activeTime || 0} sec (${Math.round((activeTime || 0) / 60)} min) = ${existingMetric.activeTime + Math.round((activeTime || 0) / 60)} min`)
+    console.log(`🌐 URLs Visited: ${existingMetric.urlsVisited} + ${urlsVisited || 0} = ${existingMetric.urlsVisited + (urlsVisited || 0)}`)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
     
+    // 🔧 Convert time values from SECONDS (received) to MINUTES (stored)
+    // Electron sends deltas in seconds, we store in minutes
+    const activeTimeMinutes = activeTime ? Math.round(activeTime / 60) : 0
+    const idleTimeMinutes = idleTime ? Math.round(idleTime / 60) : 0
+    const screenTimeMinutes = screenTime ? Math.round(screenTime / 60) : 0
+
     // ✅ UPDATE the existing row (created at clock-in)
     const metric = await prisma.performance_metrics.update({
       where: { id: existingMetric.id },
       data: {
-        // ✅ INCREMENT all numeric values
+        // ✅ INCREMENT all numeric values (these are DELTAS from Electron)
         mouseMovements: existingMetric.mouseMovements + (mouseMovements || 0),
         mouseClicks: existingMetric.mouseClicks + (mouseClicks || 0),
         keystrokes: existingMetric.keystrokes + (keystrokes || 0),
-        activeTime: existingMetric.activeTime + (activeTime || 0),
-        idleTime: existingMetric.idleTime + (idleTime || 0),
-        screenTime: existingMetric.screenTime + (screenTime || 0),
+        // Time values: convert seconds to minutes before adding
+        activeTime: existingMetric.activeTime + activeTimeMinutes,
+        idleTime: existingMetric.idleTime + idleTimeMinutes,
+        screenTime: existingMetric.screenTime + screenTimeMinutes,
         downloads: existingMetric.downloads + (downloads || 0),
         uploads: existingMetric.uploads + (uploads || 0),
         bandwidth: existingMetric.bandwidth + (bandwidth || 0),
