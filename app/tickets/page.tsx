@@ -17,7 +17,7 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
-  const [initializing, setInitializing] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -28,13 +28,8 @@ export default function TicketsPage() {
   const staffCategories = getCategoriesForUserType('staff')
 
   useEffect(() => {
-    // Small delay to prevent flash of client styling
-    const timer = setTimeout(() => {
-      setInitializing(false)
-      fetchTickets()
-    }, 100)
-    
-    return () => clearTimeout(timer)
+    setMounted(true)
+    fetchTickets()
   }, [])
 
   useEffect(() => {
@@ -97,7 +92,8 @@ export default function TicketsPage() {
     setSelectedTicket(null)
   }
 
-  if (loading || initializing) {
+  // Prevent flash by not rendering anything until mounted
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="w-full space-y-6 animate-in fade-in duration-700">
