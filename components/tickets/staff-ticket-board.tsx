@@ -21,7 +21,7 @@ export default function StaffTicketBoard({
   onTicketClick,
 }: StaffTicketBoardProps) {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4" data-board="staff-only">
       {columns.map((column, idx) => {
         const columnTickets = tickets.filter((ticket) => ticket.status === column.id)
 
