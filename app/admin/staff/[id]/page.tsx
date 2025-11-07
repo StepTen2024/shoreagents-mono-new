@@ -47,30 +47,7 @@ async function getStaffUser(id: string) {
             currentRole: true,
           },
         },
-        staff_welcome_forms: {
-          select: {
-            id: true,
-            name: true,
-            client: true,
-            startDate: true,
-            favoriteFastFood: true,
-            favoriteColor: true,
-            favoriteMovie: true,
-            favoriteBook: true,
-            hobby: true,
-            dreamDestination: true,
-            favoriteSeason: true,
-            petName: true,
-            favoriteSport: true,
-            favoriteGame: true,
-            favoriteQuote: true,
-            funFact: true,
-            additionalInfo: true,
-            completed: true,
-            submittedAt: true,
-          },
-        },
-      } as any,
+      },
     })
 
     return staffUser
