@@ -16,7 +16,7 @@ import {
   closestCenter,
 } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import TicketCard from "./ticket-card"
+import AdminTicketCard from "./admin-ticket-card"
 import { Ticket, TicketStatus } from "@/types/ticket"
 
 interface TicketKanbanProps {
@@ -172,12 +172,12 @@ export default function TicketKanban({
               >
                 <DroppableColumn id={column.id} isActive={overId === column.id}>
                   {columnTickets.map((ticket) => (
-                    <TicketCard 
-                      key={ticket.id}
-                      ticket={ticket} 
-                      isDragging={activeId === ticket.id}
-                      onClick={() => onTicketClick(ticket)}
-                    />
+              <AdminTicketCard
+                key={ticket.id}
+                ticket={ticket}
+                isDragging={activeId === ticket.id}
+                onClick={() => onTicketClick(ticket)}
+              />
                   ))}
 
                   {columnTickets.length === 0 && (

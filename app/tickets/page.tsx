@@ -8,7 +8,7 @@ import ViewToggle from "@/components/tickets/view-toggle"
 import TicketList from "@/components/tickets/ticket-list"
 import { useToast } from "@/components/ui/use-toast"
 import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/lib/ticket-categories"
-import TicketCard from "@/components/tickets/ticket-card"
+import StaffTicketCard from "@/components/tickets/staff-ticket-card"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
 
@@ -261,7 +261,7 @@ export default function TicketsPage() {
                   {/* Scrollable content area */}
                   <div className="flex-1 overflow-y-auto overflow-x-visible admin-tickets-scrollbar p-4 space-y-3 w-full max-w-full">
                     {columnTickets.map((ticket) => (
-                      <TicketCard 
+                      <StaffTicketCard 
                         key={ticket.id}
                         ticket={ticket}
                         onClick={() => handleTicketClick(ticket)}
