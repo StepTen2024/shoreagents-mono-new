@@ -41,12 +41,12 @@ export async function GET(req: NextRequest) {
         company: true,
         performance_metrics: {
           where: {
-            date: {
+            shiftDate: {
               gte: startDate,
               lte: endDate
             }
           },
-          orderBy: { date: 'desc' }
+          orderBy: { shiftDate: 'desc' }
         }
       }
     })
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
           include: {
             performance_metrics: {
               where: {
-                date: {
+                shiftDate: {
                   gte: startDate,
                   lte: endDate
                 }
