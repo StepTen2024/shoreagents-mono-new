@@ -152,7 +152,7 @@ export default function TicketDetailModal({
         title: "Images added!",
         description: `${uploadedUrls.length} image(s) added to ticket.`,
       })
-      onUpdate()
+      // Don't call onUpdate() - keep modal open for more edits
     } catch (error: any) {
       toast({
         title: "Upload failed",
