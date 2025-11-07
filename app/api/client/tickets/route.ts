@@ -79,13 +79,48 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [CLIENT TICKETS API] Fetched ${tickets.length} tickets for client ${clientUser.name}`)
 
-    // Add account manager info to response
-    const ticketsWithAccountManager = tickets.map((ticket) => ({
-      ...ticket,
-      accountManager: clientWithCompany?.company?.management_users || null,
+    // Add account manager info, comment counts, and reactions to response
+    const ticketsWithData = await Promise.all(tickets.map(async (ticket) => {
+      // Fetch real comment count
+      const commentCount = await prisma.comments.count({
+        where: {
+          commentableType: "TICKET",
+          commentableId: ticket.id,
+        },
+      })
+
+      // Fetch top reactions
+      const reactions = await prisma.reactions.findMany({
+        where: {
+          reactableType: "TICKET",
+          reactableId: ticket.id,
+        },
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      })
+
+      // Map reaction types to emojis
+      const reactionEmojis = reactions.map(r => {
+        const emojiMap: Record<string, string> = {
+          LIKE: "👍",
+          LOVE: "❤️",
+          CELEBRATE: "🎉",
+          LAUGH: "😂",
+          FIRE: "🔥",
+          ROCKET: "🚀"
+        }
+        return { emoji: emojiMap[r.type] || "👍", type: r.type }
+      })
+
+      return {
+        ...ticket,
+        accountManager: clientWithCompany?.company?.management_users || null,
+        responses: new Array(commentCount).fill(null), // Fake array for count
+        reactions: reactionEmojis,
+      }
     }))
 
-    return NextResponse.json({ tickets: ticketsWithAccountManager })
+    return NextResponse.json({ tickets: ticketsWithData })
   } catch (error) {
     console.error("Error fetching client tickets:", error)
     return NextResponse.json(
