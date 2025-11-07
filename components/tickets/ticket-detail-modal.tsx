@@ -97,6 +97,8 @@ export default function TicketDetailModal({
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [showLightbox, setShowLightbox] = useState(false)
+  const [uploadingAttachments, setUploadingAttachments] = useState(false)
+  const [ticketAttachments, setTicketAttachments] = useState<string[]>(ticket.attachments || [])
 
   const CategoryIcon = categoryConfig[ticket.category]?.icon || HelpCircle
 
@@ -104,6 +106,62 @@ export default function TicketDetailModal({
     setLightboxImages(images)
     setLightboxIndex(index)
     setShowLightbox(true)
+  }
+
+  // Handle adding more attachments to ticket
+  const handleAddAttachments = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploadingAttachments(true)
+    try {
+      const uploadedUrls: string[] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        })
+
+        const data = await response.json()
+
+        if (data.url) {
+          uploadedUrls.push(data.url)
+        } else {
+          throw new Error(data.error || "Failed to upload image")
+        }
+      }
+
+      // Update ticket with new attachments
+      const newAttachments = [...ticketAttachments, ...uploadedUrls]
+      
+      const response = await fetch(`/api/tickets/${ticket.id}/attachments`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attachments: newAttachments })
+      })
+
+      if (!response.ok) throw new Error("Failed to add attachments")
+
+      setTicketAttachments(newAttachments)
+      toast({
+        title: "Images added!",
+        description: `${uploadedUrls.length} image(s) added to ticket.`,
+      })
+      onUpdate()
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload images",
+        variant: "destructive"
+      })
+    } finally {
+      setUploadingAttachments(false)
+    }
   }
 
   // Handle status change (admin only)
@@ -425,16 +483,16 @@ export default function TicketDetailModal({
               <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{ticket.description}</p>
             </div>
 
-            {ticket.attachments && ticket.attachments.length > 0 && (
+            {(ticketAttachments.length > 0 || !uploadingAttachments) && (
               <div className="mt-6 space-y-3">
                 <div className="text-sm font-bold text-indigo-300 flex items-center gap-2">
-                  📎 Attachments ({ticket.attachments.length})
+                  📎 Attachments ({ticketAttachments.length})
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {ticket.attachments.map((url, index) => (
+                  {ticketAttachments.map((url, index) => (
                     <button
                       key={index}
-                      onClick={() => openLightbox(ticket.attachments, index)}
+                      onClick={() => openLightbox(ticketAttachments, index)}
                       className="group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-1 ring-white/10 hover:ring-indigo-400/50 hover:scale-105 transform shadow-lg hover:shadow-indigo-500/20"
                     >
                       <img
@@ -451,6 +509,39 @@ export default function TicketDetailModal({
                       </div>
                     </button>
                   ))}
+
+                  {/* Add More Images Button */}
+                  <label className={`group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-2 ring-dashed ${
+                    uploadingAttachments 
+                      ? "ring-indigo-500/50 bg-indigo-500/10" 
+                      : "ring-white/20 hover:ring-indigo-400 hover:bg-indigo-500/5"
+                  } flex items-center justify-center h-32 transform hover:scale-105 shadow-lg`}>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleAddAttachments}
+                      disabled={uploadingAttachments}
+                      className="hidden"
+                    />
+                    {uploadingAttachments ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <svg className="animate-spin h-8 w-8 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-xs text-indigo-300 font-semibold">Uploading...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-slate-300 group-hover:text-indigo-300 transition-colors">
+                        <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-xs font-semibold">Add More</span>
+                        <span className="text-[10px] opacity-60">Click or drag</span>
+                      </div>
+                    )}
+                  </label>
                 </div>
               </div>
             )}
