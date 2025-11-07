@@ -48,23 +48,16 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 [REACTIONS] Fetching reactions for ${reactableType}:${reactableId}`)
 
-    // Fetch all reactions (direct SQL query)
-    const reactions = await prisma.$queryRaw<any[]>`
-      SELECT 
-        id,
-        "reactableType",
-        "reactableId",
-        "authorType",
-        "authorId",
-        "authorName",
-        "authorAvatar",
-        type,
-        "createdAt"
-      FROM reactions
-      WHERE "reactableType" = ${reactableType}
-        AND "reactableId" = ${reactableId}
-      ORDER BY "createdAt" DESC
-    `
+    // Fetch all reactions using Prisma
+    const reactions = await prisma.reactions.findMany({
+      where: {
+        reactableType,
+        reactableId
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
 
     // Get current user's reaction (if any)
     const [staffUser, clientUser, managementUser] = await Promise.all([
@@ -194,25 +187,22 @@ export async function POST(request: NextRequest) {
     console.log(`❤️ [REACTIONS] Processing ${type} reaction on ${reactableType}:${reactableId} by ${authorType}:${authorName}`)
 
     // Check if user already reacted
-    const existingReactions = await prisma.$queryRaw<any[]>`
-      SELECT id, type
-      FROM reactions
-      WHERE "reactableType" = ${reactableType}
-        AND "reactableId" = ${reactableId}
-        AND "authorId" = ${authorId}
-    `
-
-    const existingReaction = existingReactions[0]
+    const existingReaction = await prisma.reactions.findFirst({
+      where: {
+        reactableType,
+        reactableId,
+        authorId
+      }
+    })
 
     if (existingReaction) {
       // If same reaction type, remove it (toggle off)
       if (existingReaction.type === type) {
         console.log(`🔄 [REACTIONS] Removing reaction: ${existingReaction.id}`)
         
-        await prisma.$executeRaw`
-          DELETE FROM reactions
-          WHERE id = ${existingReaction.id}
-        `
+        await prisma.reactions.delete({
+          where: { id: existingReaction.id }
+        })
 
         return NextResponse.json({
           success: true,
@@ -223,86 +213,44 @@ export async function POST(request: NextRequest) {
         // Update to new reaction type
         console.log(`🔄 [REACTIONS] Updating reaction from ${existingReaction.type} to ${type}`)
         
-        await prisma.$executeRaw`
-          UPDATE reactions
-          SET type = ${type}::text,
-              "createdAt" = ${new Date()}
-          WHERE id = ${existingReaction.id}
-        `
-
-        const updated = await prisma.$queryRaw<any[]>`
-          SELECT 
-            id,
-            "reactableType",
-            "reactableId",
-            "authorType",
-            "authorId",
-            "authorName",
-            "authorAvatar",
-            type,
-            "createdAt"
-          FROM reactions
-          WHERE id = ${existingReaction.id}
-        `
+        const updated = await prisma.reactions.update({
+          where: { id: existingReaction.id },
+          data: {
+            type: type as any,
+            createdAt: new Date()
+          }
+        })
 
         return NextResponse.json({
           success: true,
           action: "updated",
-          reaction: updated[0]
+          reaction: updated
         }, { status: 200 })
       }
     } else {
       // Create new reaction
       console.log(`✨ [REACTIONS] Creating new ${type} reaction`)
       
-      const reactionId = randomUUID()
-      const now = new Date()
+      const created = await prisma.reactions.create({
+        data: {
+          id: randomUUID(),
+          reactableType,
+          reactableId,
+          authorType,
+          authorId,
+          authorName,
+          authorAvatar,
+          type: type as any,
+          createdAt: new Date()
+        }
+      })
 
-      await prisma.$executeRaw`
-        INSERT INTO reactions (
-          id,
-          "reactableType",
-          "reactableId",
-          "authorType",
-          "authorId",
-          "authorName",
-          "authorAvatar",
-          type,
-          "createdAt"
-        ) VALUES (
-          ${reactionId},
-          ${reactableType},
-          ${reactableId},
-          ${authorType},
-          ${authorId},
-          ${authorName},
-          ${authorAvatar},
-          ${type}::text,
-          ${now}
-        )
-      `
-
-      const created = await prisma.$queryRaw<any[]>`
-        SELECT 
-          id,
-          "reactableType",
-          "reactableId",
-          "authorType",
-          "authorId",
-          "authorName",
-          "authorAvatar",
-          type,
-          "createdAt"
-        FROM reactions
-        WHERE id = ${reactionId}
-      `
-
-      console.log(`✅ [REACTIONS] Reaction created: ${reactionId}`)
+      console.log(`✅ [REACTIONS] Reaction created: ${created.id}`)
 
       return NextResponse.json({
         success: true,
         action: "added",
-        reaction: created[0]
+        reaction: created
       }, { status: 201 })
     }
 
@@ -361,12 +309,13 @@ export async function DELETE(request: NextRequest) {
     console.log(`🗑️ [REACTIONS] Removing reaction from ${reactableType}:${reactableId}`)
 
     // Delete user's reaction
-    await prisma.$executeRaw`
-      DELETE FROM reactions
-      WHERE "reactableType" = ${reactableType}
-        AND "reactableId" = ${reactableId}
-        AND "authorId" = ${authorId}
-    `
+    await prisma.reactions.deleteMany({
+      where: {
+        reactableType,
+        reactableId,
+        authorId
+      }
+    })
 
     console.log(`✅ [REACTIONS] Reaction removed`)
 

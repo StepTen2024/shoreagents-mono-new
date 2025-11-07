@@ -36,26 +36,16 @@ export async function GET(request: NextRequest) {
 
     console.log(`📖 [COMMENTS] Fetching comments for ${commentableType}:${commentableId}`)
 
-    // Fetch comments (direct SQL query since table exists but not in Prisma schema yet)
-    const comments = await prisma.$queryRaw<any[]>`
-      SELECT 
-        id,
-        "commentableType",
-        "commentableId",
-        "authorType",
-        "authorId",
-        "authorName",
-        "authorAvatar",
-        content,
-        attachments,
-        "parentId",
-        "createdAt",
-        "updatedAt"
-      FROM comments
-      WHERE "commentableType" = ${commentableType}
-        AND "commentableId" = ${commentableId}
-      ORDER BY "createdAt" ASC
-    `
+    // Fetch comments using Prisma
+    const comments = await prisma.comments.findMany({
+      where: {
+        commentableType,
+        commentableId
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    })
 
     console.log(`✅ [COMMENTS] Found ${comments.length} comments`)
 
@@ -143,64 +133,29 @@ export async function POST(request: NextRequest) {
 
     console.log(`💬 [COMMENTS] Creating comment on ${commentableType}:${commentableId} by ${authorType}:${authorName}`)
 
-    const commentId = randomUUID()
-    const now = new Date()
+    // Create comment using Prisma
+    const comment = await prisma.comments.create({
+      data: {
+        id: randomUUID(),
+        commentableType,
+        commentableId,
+        authorType,
+        authorId,
+        authorName,
+        authorAvatar,
+        content: content.trim(),
+        attachments: attachments || [],
+        parentId: parentId || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    })
 
-    // Insert comment (direct SQL since table exists but not in Prisma schema yet)
-    await prisma.$executeRaw`
-      INSERT INTO comments (
-        id,
-        "commentableType",
-        "commentableId",
-        "authorType",
-        "authorId",
-        "authorName",
-        "authorAvatar",
-        content,
-        attachments,
-        "parentId",
-        "createdAt",
-        "updatedAt"
-      ) VALUES (
-        ${commentId},
-        ${commentableType},
-        ${commentableId},
-        ${authorType},
-        ${authorId},
-        ${authorName},
-        ${authorAvatar},
-        ${content.trim()},
-        ${attachments ? JSON.stringify(attachments) : '[]'}::jsonb,
-        ${parentId || null},
-        ${now},
-        ${now}
-      )
-    `
-
-    // Fetch the created comment
-    const comment = await prisma.$queryRaw<any[]>`
-      SELECT 
-        id,
-        "commentableType",
-        "commentableId",
-        "authorType",
-        "authorId",
-        "authorName",
-        "authorAvatar",
-        content,
-        attachments,
-        "parentId",
-        "createdAt",
-        "updatedAt"
-      FROM comments
-      WHERE id = ${commentId}
-    `
-
-    console.log(`✅ [COMMENTS] Comment created: ${commentId}`)
+    console.log(`✅ [COMMENTS] Comment created: ${comment.id}`)
 
     return NextResponse.json({
       success: true,
-      comment: comment[0]
+      comment
     }, { status: 201 })
 
   } catch (error: any) {
@@ -233,17 +188,17 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Fetch the comment
-    const comments = await prisma.$queryRaw<any[]>`
-      SELECT "authorId", "authorType"
-      FROM comments
-      WHERE id = ${commentId}
-    `
+    const comment = await prisma.comments.findUnique({
+      where: { id: commentId },
+      select: {
+        authorId: true,
+        authorType: true
+      }
+    })
 
-    if (!comments || comments.length === 0) {
+    if (!comment) {
       return NextResponse.json({ error: "Comment not found" }, { status: 404 })
     }
-
-    const comment = comments[0]
 
     // Check if user is the author or an admin
     const managementUser = await prisma.management_users.findUnique({
@@ -270,10 +225,9 @@ export async function DELETE(request: NextRequest) {
     console.log(`🗑️ [COMMENTS] Deleting comment: ${commentId}`)
 
     // Delete the comment
-    await prisma.$executeRaw`
-      DELETE FROM comments
-      WHERE id = ${commentId}
-    `
+    await prisma.comments.delete({
+      where: { id: commentId }
+    })
 
     console.log(`✅ [COMMENTS] Comment deleted: ${commentId}`)
 
