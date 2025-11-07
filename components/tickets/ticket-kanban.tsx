@@ -205,8 +205,8 @@ export default function TicketKanban({
         easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
       }}>
         {activeTicket ? (
-          <div className="rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-indigo-500/50 transition-transform">
-            <TicketCard ticket={activeTicket} isDragging />
+          <div className="rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-blue-500/50 transition-transform">
+            <AdminTicketCard ticket={activeTicket} isDragging />
           </div>
         ) : null}
       </DragOverlay>
