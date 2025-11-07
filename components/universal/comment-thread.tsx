@@ -455,34 +455,40 @@ export default function CommentThread({
           />
 
           <div className="flex items-center justify-between">
-            {/* Reaction Picker */}
+            {/* Emoji Reactions - MODERN STYLE! */}
             {showReactions && (
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowReactionPicker(!showReactionPicker)}
-                  className={isDark ? "bg-slate-700/50 border-white/10 text-white hover:bg-slate-700" : ""}
-                >
-                  Add Reaction
-                </Button>
-
-                {showReactionPicker && (
-                  <div className={`absolute bottom-full left-0 mb-2 p-2 rounded-xl shadow-xl ${bgColor} flex gap-1`}>
-                    {Object.entries(REACTION_LABELS).map(([type, emoji]) => (
+              <div className="flex items-center gap-2">
+                {/* Reaction Bar - Always Visible */}
+                <div className="flex items-center gap-1">
+                  {Object.entries(REACTION_LABELS).map(([type, emoji]) => {
+                    const count = reactions?.reactionCounts[type] || 0
+                    const hasReacted = reactions?.currentUserReaction?.reactionType === type
+                    
+                    return (
                       <button
                         key={type}
                         onClick={() => handleReaction(type)}
-                        className={`p-2 rounded-lg text-2xl hover:scale-125 transition-transform ${
-                          isDark ? "hover:bg-slate-700" : "hover:bg-gray-100"
-                        }`}
+                        className={`group relative px-2 py-1 rounded-full text-lg transition-all duration-200 ${
+                          hasReacted
+                            ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 ring-2 ring-indigo-500/50 scale-110"
+                            : count > 0
+                            ? "bg-slate-700/30 hover:bg-slate-700/50"
+                            : "opacity-60 hover:opacity-100 hover:scale-125"
+                        } ${isDark ? "hover:bg-slate-700/50" : "hover:bg-gray-100"}`}
                         title={type}
                       >
                         {emoji}
+                        {count > 0 && (
+                          <span className={`ml-1 text-xs font-bold ${
+                            hasReacted ? "text-indigo-300" : isDark ? "text-slate-300" : "text-gray-600"
+                          }`}>
+                            {count}
+                          </span>
+                        )}
                       </button>
-                    ))}
-                  </div>
-                )}
+                    )
+                  })}
+                </div>
               </div>
             )}
 
