@@ -75,10 +75,24 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: "desc" },
         })
 
+        // Map reaction types to emojis
+        const reactionEmojis: Record<string, string> = {
+          LIKE: "👍",
+          LOVE: "❤️",
+          FIRE: "🔥",
+          CELEBRATE: "🎉",
+          CLAP: "👏",
+          LAUGH: "😂",
+          POO: "💩",
+          ROCKET: "🚀",
+          SHOCKED: "😱",
+          MIND_BLOWN: "🤯"
+        }
+
         return {
           ...ticket,
-          commentCount,
-          reactions: reactions.map(r => ({ emoji: r.reactionType })),
+          responses: Array(commentCount).fill({}), // Fake array for count
+          reactions: reactions.map(r => ({ emoji: reactionEmojis[r.reactionType] || r.reactionType })),
         }
       })
     )

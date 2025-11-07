@@ -18,7 +18,10 @@ import {
   Poo,
   Rocket,
   Zap,
-  Loader2
+  Loader2,
+  Paperclip,
+  X,
+  Image as ImageIcon
 } from "lucide-react"
 
 /**
@@ -112,6 +115,8 @@ export default function CommentThread({
   const [submitting, setSubmitting] = useState(false)
   const [newComment, setNewComment] = useState("")
   const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const [attachments, setAttachments] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
 
   // Styling based on portal variant
   // DARK for STAFF and MANAGEMENT, LIGHT for CLIENT only
@@ -178,6 +183,55 @@ export default function CommentThread({
     loadData()
   }, [commentableType, commentableId])
 
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+    try {
+      const uploadedUrls: string[] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        })
+
+        const data = await response.json()
+
+        if (data.url) {
+          uploadedUrls.push(data.url)
+        } else {
+          throw new Error(data.error || "Failed to upload image")
+        }
+      }
+
+      setAttachments(prev => [...prev, ...uploadedUrls])
+      toast({
+        title: "Images uploaded!",
+        description: `${uploadedUrls.length} image(s) attached to your comment.`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload images",
+        variant: "destructive"
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Remove attachment
+  const removeAttachment = (url: string) => {
+    setAttachments(prev => prev.filter(a => a !== url))
+  }
+
   // Submit comment
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return
@@ -190,7 +244,8 @@ export default function CommentThread({
         body: JSON.stringify({
           commentableType,
           commentableId,
-          content: newComment.trim()
+          content: newComment.trim(),
+          attachments: attachments.length > 0 ? attachments : undefined
         })
       })
 
@@ -198,6 +253,7 @@ export default function CommentThread({
 
       if (data.success) {
         setNewComment("")
+        setAttachments([])
         await fetchComments()
         onUpdate?.()  // Trigger parent refresh
         toast({
@@ -425,6 +481,29 @@ export default function CommentThread({
                     }`}>
                       {comment.content}
                     </p>
+
+                    {/* Comment Attachments */}
+                    {comment.attachments && comment.attachments.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {comment.attachments.map((attachment, idx) => (
+                          <a
+                            key={idx}
+                            href={attachment}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`relative group block rounded-lg overflow-hidden ring-2 ${
+                              isDark ? "ring-white/10 hover:ring-indigo-500/50" : "ring-gray-200 hover:ring-blue-500/50"
+                            } transition-all`}
+                          >
+                            <img
+                              src={attachment}
+                              alt={`Attachment ${idx + 1}`}
+                              className="w-32 h-32 object-cover group-hover:scale-110 transition-transform duration-200"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -454,11 +533,58 @@ export default function CommentThread({
             }}
           />
 
+          {/* Attachment Previews */}
+          {attachments.length > 0 && (
+            <div className={`flex flex-wrap gap-2 p-3 rounded-lg ${
+              isDark ? "bg-slate-900/50" : "bg-gray-100"
+            }`}>
+              {attachments.map((url, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={url}
+                    alt={`Attachment ${idx + 1}`}
+                    className={`w-20 h-20 rounded-lg object-cover ring-2 ${
+                      isDark ? "ring-white/10" : "ring-gray-200"
+                    }`}
+                  />
+                  <button
+                    onClick={() => removeAttachment(url)}
+                    className={`absolute -top-2 -right-2 p-1 rounded-full ${
+                      isDark 
+                        ? "bg-red-500 hover:bg-red-600" 
+                        : "bg-red-500 hover:bg-red-600"
+                    } text-white opacity-0 group-hover:opacity-100 transition-opacity`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {uploading && (
+            <div className={`flex items-center gap-3 p-3 rounded-lg ${
+              isDark 
+                ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 ring-1 ring-indigo-500/30" 
+                : "bg-blue-50 border border-blue-200"
+            }`}>
+              <Loader2 className={`h-5 w-5 animate-spin ${
+                isDark ? "text-indigo-400" : "text-blue-600"
+              }`} />
+              <span className={`text-sm font-semibold ${
+                isDark ? "text-indigo-300" : "text-blue-700"
+              }`}>
+                📤 Uploading images...
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
-            {/* Emoji Reactions - MODERN STYLE! */}
-            {showReactions && (
-              <div className="flex items-center gap-2">
-                {/* Reaction Bar - Always Visible */}
+            {/* Left: Reactions + Upload */}
+            <div className="flex items-center gap-3">
+              {/* Emoji Reactions - MODERN STYLE! */}
+              {showReactions && (
                 <div className="flex items-center gap-1">
                   {Object.entries(REACTION_LABELS).map(([type, emoji]) => {
                     const count = reactions?.reactionCounts[type] || 0
@@ -489,13 +615,30 @@ export default function CommentThread({
                     )
                   })}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Image Upload Button */}
+              <label className={`cursor-pointer p-2 rounded-lg transition-all ${
+                isDark 
+                  ? "bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-indigo-400" 
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-blue-600"
+              }`}>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+                <Paperclip className="h-5 w-5" />
+              </label>
+            </div>
 
             {/* Submit Button */}
             <Button
               onClick={handleSubmitComment}
-              disabled={!newComment.trim() || submitting}
+              disabled={(!newComment.trim() && attachments.length === 0) || submitting}
               className={`bg-gradient-to-r ${accentColor} hover:opacity-90`}
             >
               {submitting ? (
