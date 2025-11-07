@@ -446,27 +446,10 @@ function CreateTicketModal({
         <div className="p-6">
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
+          {/* Department - MOVED TO TOP */}
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-300">
-              Title <span className="text-red-400">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full rounded-xl bg-slate-800/50 backdrop-blur-xl px-5 py-4 text-white ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80 transition-all duration-300"
-                placeholder="Brief description of your issue"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-300">
-              Category <span className="text-red-400">*</span>
+              Department <span className="text-red-400">*</span>
             </label>
             <select
               value={formData.category}
@@ -474,7 +457,7 @@ function CreateTicketModal({
               className="w-full rounded-xl bg-slate-800/50 backdrop-blur-xl px-5 py-4 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80 transition-all duration-300"
               required
             >
-              <option value="">Select a category</option>
+              <option value="">Select a department</option>
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
                   {getCategoryIcon(cat)} {getCategoryLabel(cat)}
@@ -496,6 +479,23 @@ function CreateTicketModal({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="mb-2 block text-sm font-bold text-slate-300">
+              Title <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full rounded-xl bg-slate-800/50 backdrop-blur-xl px-5 py-4 text-white ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80 transition-all duration-300"
+                placeholder="Brief description of your issue"
+                required
+              />
+            </div>
           </div>
 
           {/* Priority */}
