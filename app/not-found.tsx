@@ -1,13 +1,6 @@
 import Link from 'next/link'
 
-// Catch-all route to handle 404s dynamically
-// This prevents Next.js from trying to statically generate a 404 page
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-export default function CatchAll() {
-  // This will only be called for routes that don't match any other route
-  // Return a 404 page
+export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-white">
       <div className="text-center">
@@ -26,3 +19,4 @@ export default function CatchAll() {
     </div>
   )
 }
+
