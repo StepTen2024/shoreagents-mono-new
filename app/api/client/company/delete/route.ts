@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { supabaseAdmin } from "@/lib/supabase"
 
 // DELETE /api/client/company/delete - Delete company file with proper authentication
 export async function DELETE(req: NextRequest) {
@@ -44,7 +39,7 @@ export async function DELETE(req: NextRequest) {
         const filePath = pathParts.slice(companyIndex + 1).join('/')
         
         console.log('Deleting file from path:', filePath)
-        const { error: deleteError } = await supabase.storage
+        const { error: deleteError } = await supabaseAdmin.storage
           .from('company')
           .remove([filePath])
         
