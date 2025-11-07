@@ -13,9 +13,7 @@ import {
   Heart,
   Flame,
   PartyPopper,
-  Clap,
   Laugh,
-  Poo,
   Rocket,
   Zap,
   Loader2,
@@ -71,15 +69,15 @@ interface ReactionData {
   totalReactions: number
 }
 
-// Reaction icon mapping
+// Reaction icon mapping (not used, kept for reference)
 const REACTION_ICONS: Record<string, any> = {
   LIKE: ThumbsUp,
   LOVE: Heart,
   FIRE: Flame,
   CELEBRATE: PartyPopper,
-  CLAP: Clap,
+  CLAP: ThumbsUp, // Fallback: lucide doesn't have Clap
   LAUGH: Laugh,
-  POO: Poo,
+  POO: Zap, // Fallback: lucide doesn't have Poo
   ROCKET: Rocket,
   SHOCKED: Zap,
   MIND_BLOWN: Zap

@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
         // Get reactions (top 5 for display)
         const reactions = await prisma.reactions.findMany({
           where: {
-            targetType: "TICKET",
-            targetId: ticket.id,
+            reactableType: "TICKET",
+            reactableId: ticket.id,
           },
           take: 5,
           orderBy: { createdAt: "desc" },
