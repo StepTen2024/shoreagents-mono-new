@@ -25,6 +25,8 @@ model activity_posts {
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_managementuserid_fkey")
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   notifications    notifications[]
+  post_comments    post_comments[]
+  post_reactions   post_reactions[]
 
   @@index([audience])
   @@index([taggedUserIds], map: "activity_posts_tagged_users_idx", type: Gin)
@@ -49,17 +51,12 @@ model breaks {
   isLate         Boolean       @default(false)
   lateBy         Int?
   timeEntryId    String?
-  shiftDate      DateTime?     // The date of the SHIFT this break belongs to (handles night shift crossover)
-  shiftDayOfWeek String?       // "Monday", "Tuesday", etc. - inherited from time_entry
   isPaused       Boolean?      @default(false)
   pauseUsed      Boolean?      @default(false)
   pausedAt       DateTime?     @db.Timestamp(6)
   pausedDuration Int?          @default(0)
   staff_users    staff_users   @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   time_entries   time_entries? @relation(fields: [timeEntryId], references: [id])
-  
-  @@index([shiftDate])
-  @@index([shiftDayOfWeek])
 }
 
 model client_profiles {
@@ -98,7 +95,10 @@ model client_users {
   client_profiles    client_profiles?
   company            company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   interview_requests interview_requests[]
+  post_comments      post_comments[]
+  post_reactions     post_reactions[]
   tasks              tasks[]
+  ticket_responses   ticket_responses[]
   tickets            tickets[]
 }
 
@@ -132,20 +132,21 @@ model company {
 // REMOVED: Consolidated into universal 'comments' table
 
 model documents {
-  id            String           @id
-  title         String
-  category      DocumentCategory
-  uploadedBy    String
-  size          String
-  fileUrl       String?
-  content       String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime
-  staffUserId   String
-  source        DocumentSource   @default(STAFF)
-  sharedWithAll Boolean          @default(false)
-  sharedWith    String[]         @default([])
-  staff_users   staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  id                String              @id
+  title             String
+  category          DocumentCategory
+  uploadedBy        String
+  size              String
+  fileUrl           String?
+  content           String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  staffUserId       String
+  source            DocumentSource      @default(STAFF)
+  sharedWithAll     Boolean             @default(false)
+  sharedWith        String[]            @default([])
+  document_comments document_comments[]
+  staff_users       staff_users         @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model employment_contracts {
@@ -220,7 +221,6 @@ model interview_requests {
   scheduledTime        DateTime?
   status               InterviewRequestStatus @default(PENDING)
   workSchedule         Json?
-  clientTimezone       String?                // Client's timezone at time of hire request
   client_users         client_users           @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   job_acceptances      job_acceptances?
 }
@@ -278,6 +278,9 @@ model management_users {
   activity_posts      activity_posts[]
   company             company[]
   management_profiles management_profiles?
+  post_comments       post_comments[]
+  post_reactions      post_reactions[]
+  ticket_responses    ticket_responses[]
   tickets             tickets[]
 }
 
@@ -289,7 +292,6 @@ model management_profiles {
   startDate          DateTime
   daysEmployed       Int              @default(0)
   currentRole        String
-  roleDescription    String?
   salary             Decimal?         @db.Decimal(10, 2)
   lastPayIncrease    DateTime?
   lastIncreaseAmount Decimal?         @db.Decimal(10, 2)
@@ -351,8 +353,6 @@ model performance_metrics {
   id                String      @id
   staffUserId       String
   date              DateTime    @default(now())
-  shiftDate         DateTime?   // The date of the SHIFT (not calendar date) - handles night shift crossover
-  shiftDayOfWeek    String?     // "Monday", "Tuesday", etc. - for grouping by shift
   mouseMovements    Int         @default(0)
   mouseClicks       Int         @default(0)
   keystrokes        Int         @default(0)
@@ -373,14 +373,41 @@ model performance_metrics {
   visitedurls       Json?       @default("[]")
   screenshoturls    Json?       @default("[]")
   staff_users       staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-  
-  @@index([shiftDate])
-  @@index([shiftDayOfWeek])
 }
 
-// REMOVED: Consolidated into universal 'comments' table
+model post_comments {
+  id               String            @id
+  postId           String
+  staffUserId      String?
+  content          String
+  createdAt        DateTime          @default(now())
+  clientUserId     String?
+  managementUserId String?
+  client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_comments_clientuserid_fkey")
+  management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_comments_managementuserid_fkey")
+  activity_posts   activity_posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 
-// REMOVED: Consolidated into universal 'reactions' table
+  @@index([postId, createdAt], map: "idx_comments_post_created")
+}
+
+model post_reactions {
+  id               String            @id
+  postId           String
+  staffUserId      String?
+  type             ReactionType
+  createdAt        DateTime          @default(now())
+  clientUserId     String?
+  managementUserId String?
+  client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_reactions_clientuserid_fkey")
+  management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_reactions_managementuserid_fkey")
+  activity_posts   activity_posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, staffUserId, type])
+  @@index([postId], map: "idx_reactions_post")
+  @@index([postId, type], map: "idx_reactions_post_type")
+}
 
 model reviews {
   id                 String       @id
@@ -583,6 +610,8 @@ model staff_users {
   kudos_kudos_toIdTostaff_users   kudos[]                 @relation("kudos_toIdTostaff_users")
   notifications                   notifications[]
   performance_metrics             performance_metrics[]
+  post_comments                   post_comments[]
+  post_reactions                  post_reactions[]
   reviews                         reviews[]
   staff_welcome_forms             staff_welcome_forms?
   staff_offboarding               staff_offboarding?
@@ -592,6 +621,7 @@ model staff_users {
   company                         company?                @relation(fields: [companyId], references: [id])
   task_assignments                task_assignments[]
   tasks                           tasks[]
+  ticket_responses                ticket_responses[]
   tickets                         tickets[]
   time_entries                    time_entries[]
 }
@@ -648,7 +678,16 @@ model task_assignments {
   @@unique([taskId, staffUserId])
 }
 
-// REMOVED: Consolidated into universal 'comments' table
+model task_responses {
+  id            String      @id
+  taskId        String
+  content       String
+  createdByType CreatorType
+  createdById   String
+  attachments   String[]    @default([])
+  createdAt     DateTime    @default(now())
+  tasks         tasks       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
 
 model tasks {
   id               String             @id
@@ -671,33 +710,49 @@ model tasks {
   clientUserId     String?
   subtasks         subtasks[]
   task_assignments task_assignments[]
+  task_responses   task_responses[]
   client_users     client_users?      @relation(fields: [clientUserId], references: [id])
   company          company?           @relation(fields: [companyId], references: [id])
   staff_users      staff_users?       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
-// REMOVED: Consolidated into universal 'comments' table
-
-model tickets {
+model ticket_responses {
   id               String            @id
-  ticketId         String            @unique
+  ticketId         String
   staffUserId      String?
-  title            String
-  description      String
-  category         TicketCategory
-  priority         TicketPriority    @default(MEDIUM)
-  status           TicketStatus      @default(OPEN)
-  assignedTo       String?
-  resolvedDate     DateTime?
+  message          String
   createdAt        DateTime          @default(now())
-  updatedAt        DateTime
-  attachments      String[]          @default([])
-  createdByType    String            @default("STAFF")
   managementUserId String?
+  createdByType    String
+  attachments      String[]          @default([])
   clientUserId     String?
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  tickets          tickets           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model tickets {
+  id               String             @id
+  ticketId         String             @unique
+  staffUserId      String?
+  title            String
+  description      String
+  category         TicketCategory
+  priority         TicketPriority     @default(MEDIUM)
+  status           TicketStatus       @default(OPEN)
+  assignedTo       String?
+  resolvedDate     DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  attachments      String[]           @default([])
+  createdByType    String             @default("STAFF")
+  managementUserId String?
+  clientUserId     String?
+  ticket_responses ticket_responses[]
+  client_users     client_users?      @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+  management_users management_users?  @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model time_entries {
@@ -705,8 +760,6 @@ model time_entries {
   staffUserId      String
   clockIn          DateTime
   clockOut         DateTime?
-  shiftDate        DateTime?       // The date of the SHIFT (not clock-in date) - handles night shift crossover
-  shiftDayOfWeek   String?         // "Monday", "Tuesday", etc. - for performance queries
   totalHours       Decimal?        @db.Decimal(5, 2)
   notes            String?
   createdAt        DateTime        @default(now())
@@ -726,9 +779,6 @@ model time_entries {
   breaks           breaks[]
   staff_users      staff_users     @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   work_schedule    work_schedules? @relation(fields: [workScheduleId], references: [id])
-  
-  @@index([shiftDate])
-  @@index([shiftDayOfWeek])
 }
 
 model user_badges {
@@ -756,7 +806,6 @@ model work_schedules {
   notes          String?
   shiftType      ShiftType?        @default(DAY_SHIFT)
   timezone       String?           @default("Asia/Manila")
-  clientTimezone String?           // Original timezone from client (e.g., "Australia/Brisbane")
   workLocation   WorkLocationType? @default(WORK_FROM_HOME)
   time_entries   time_entries[]
   company        company?          @relation(fields: [companyId], references: [id])
@@ -1037,61 +1086,4 @@ enum WorkLocationType {
   WORK_FROM_HOME
   OFFICE
   HYBRID
-}
-
-// ============================================
-// UNIVERSAL TABLES (Polymorphic)
-// ============================================
-
-model comments {
-  id              String   @id @default(uuid())
-  commentableType String   // 'post', 'task', 'document', 'ticket'
-  commentableId   String   // UUID of the thing being commented on
-  authorType      String   // 'staff', 'client', 'management'
-  authorId        String   // UUID of the user
-  authorName      String
-  authorAvatar    String?
-  content         String   @db.Text
-  attachments     String[] @default([])
-  parentId        String?  // For threaded replies
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([commentableType, commentableId])
-  @@index([authorType, authorId])
-  @@index([parentId])
-}
-
-model reactions {
-  id            String       @id @default(uuid())
-  reactableType String       // 'post', 'task', 'document', 'comment', 'ticket'
-  reactableId   String       // UUID of the thing
-  authorType    String       // 'staff', 'client', 'management'
-  authorId      String       // UUID of the user
-  authorName    String
-  authorAvatar  String?
-  type          ReactionType // LIKE, LOVE, FIRE, etc.
-  createdAt     DateTime     @default(now())
-
-  @@unique([reactableType, reactableId, authorId])
-  @@index([reactableType, reactableId])
-  @@index([authorType, authorId])
-}
-
-model shares {
-  id             String   @id @default(uuid())
-  shareableType  String   // 'post', 'document', 'task', 'achievement'
-  shareableId    String   // UUID of the thing
-  sharedByType   String   // 'staff', 'client', 'management'
-  sharedById     String   // UUID of who shared it
-  sharedByName   String
-  sharedByAvatar String?
-  sharedWithType String   // 'staff', 'client', 'team', 'company', 'all'
-  sharedWithId   String?  // UUID if specific person/team, null for 'all'
-  message        String?  @db.Text
-  createdAt      DateTime @default(now())
-
-  @@index([shareableType, shareableId])
-  @@index([sharedByType, sharedById])
-  @@index([sharedWithType, sharedWithId])
 }

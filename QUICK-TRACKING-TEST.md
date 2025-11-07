@@ -176,11 +176,52 @@ applicationsused: ["App1", "App2"]  ✅
 
 ---
 
-## 🔧 **MOST COMMON ISSUE: ACCESSIBILITY PERMISSIONS**
+## 🔧 **MOST COMMON ISSUES BY PLATFORM**
 
-**90% of failures are due to missing permissions!**
+### **🪟 WINDOWS (Your Team)**
 
-**macOS Steps:**
+**Good News:** Usually works automatically! No permissions needed.
+
+**If Keystrokes = 0 (Rare - 10% of users):**
+
+**Cause:** Antivirus blocking keyboard hooks
+
+**Fix Options (Try in order):**
+
+1. **Disable antivirus temporarily** (5 min test):
+   - Disable antivirus software
+   - Restart Electron app
+   - Clock in and test
+   - If keystrokes now work → Antivirus was the culprit
+
+2. **Add to antivirus whitelist:**
+   - Open your antivirus (Norton/McAfee/AVG/Avast/Windows Defender)
+   - Find "Exceptions" or "Whitelist" settings
+   - Add Electron app folder
+   - Restart Electron
+   - Test again
+
+3. **Run as Administrator:**
+   - Right-click Electron app
+   - Select "Run as Administrator"
+   - Clock in and test
+   - If works → Right-click app → Properties → Compatibility → "Run as Administrator" (always)
+
+4. **Check Windows Defender:**
+   - Open Windows Security
+   - Virus & threat protection → Protection history
+   - Look for blocked actions related to Electron
+   - Click "Allow on device" if found
+
+**Expected:** 90% of Windows users have NO issues - works immediately!
+
+---
+
+### **🍎 MACOS (For Reference)**
+
+**Permissions ALWAYS required!**
+
+**Steps:**
 1. Open System Preferences
 2. Click "Security & Privacy"
 3. Click "Privacy" tab
