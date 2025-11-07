@@ -548,7 +548,33 @@ function CreateTicketModal({
                   disabled={attachments.length >= 5}
                 />
                 
-                {attachments.length === 0 ? (
+                {uploading ? (
+                  // UPLOADING STATE - Show progress
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    {/* Spinner */}
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center">
+                      <div className="relative">
+                        <div className="h-16 w-16 rounded-full border-4 border-indigo-200/20 border-t-indigo-500 animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg className="h-6 w-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Upload Text */}
+                    <div className="space-y-2">
+                      <p className="text-lg font-bold text-indigo-400 animate-pulse">⬆️ Uploading images...</p>
+                      <p className="text-sm text-slate-400">{attachments.length} file{attachments.length > 1 ? 's' : ''} • Please wait</p>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full max-w-xs mx-auto h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                    </div>
+                  </div>
+                ) : attachments.length === 0 ? (
                   <>
                     {/* Upload Icon */}
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 transition-all group-hover:bg-indigo-500/30 group-hover:scale-110">
@@ -614,10 +640,20 @@ function CreateTicketModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 font-bold text-white transition-all hover:from-indigo-700 hover:to-purple-700 hover:scale-105 disabled:opacity-50 shadow-2xl shadow-indigo-500/50"
+              disabled={loading || uploading}
+              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 font-bold text-white transition-all hover:from-indigo-700 hover:to-purple-700 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-indigo-500/50 relative overflow-hidden"
             >
-              {uploading ? "⬆️ Uploading..." : loading ? "⏳ Creating..." : "✨ Create Ticket"}
+              {/* Loading Spinner Overlay */}
+              {(uploading || loading) && (
+                <div className="absolute inset-0 bg-indigo-600/50 backdrop-blur-sm flex items-center justify-center">
+                  <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                </div>
+              )}
+              
+              {/* Button Text */}
+              <span className={uploading || loading ? "opacity-50" : ""}>
+                {uploading ? "⬆️ Uploading Images..." : loading ? "⏳ Creating Ticket..." : "✨ Create Ticket"}
+              </span>
             </button>
           </div>
         </form>
