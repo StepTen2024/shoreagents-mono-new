@@ -573,6 +573,7 @@ export default function ClientTicketsPage() {
             onClose={handleCloseModal}
             onUpdate={handleModalUpdate}
             isManagement={false}
+            isClient={true}
           />
         )}
       </div>

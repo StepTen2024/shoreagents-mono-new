@@ -29,6 +29,7 @@ interface TicketDetailModalProps {
   onClose: () => void
   onUpdate: () => void
   isManagement?: boolean
+  isClient?: boolean  // NEW: Detect if client is viewing
 }
 
 const categoryConfig: Record<string, { label: string; icon: any; color: string }> = {
@@ -91,6 +92,7 @@ export default function TicketDetailModal({
   onClose,
   onUpdate,
   isManagement = false,
+  isClient = false,  // NEW: Default to false
 }: TicketDetailModalProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -199,18 +201,30 @@ export default function TicketDetailModal({
     router.push(`/call/ticket-${ticket.ticketId}?ticketId=${ticket.id}`)
   }
 
-  // Use FUN dark theme for Staff, management theme for others
-  const isDark = true // Always fun theme!
+  // Client gets LIGHT theme, Staff/Management get DARK theme
+  const isDark = !isClient  // Light theme for clients, dark for staff/management
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-indigo-500/30 backdrop-blur-2xl animate-in slide-in-from-bottom duration-500 flex flex-col">
-        {/* Header - FUN STYLE! - STICKY */}
-        <div className="sticky top-0 z-10 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 backdrop-blur-xl p-8 pb-6 rounded-t-3xl ">
+      <div className={`w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom duration-500 flex flex-col ${
+        isDark
+          ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-indigo-500/30 backdrop-blur-2xl"
+          : "bg-white border-2 border-gray-200"
+      }`}>
+        {/* Header - STICKY */}
+        <div className={`sticky top-0 z-10 p-8 pb-6 rounded-t-3xl ${
+          isDark
+            ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 backdrop-blur-xl"
+            : "bg-white border-b-2 border-gray-200"
+        }`}>
           <div className="flex items-start justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-indigo-300 bg-indigo-500/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-indigo-500/30 shadow-lg shadow-indigo-500/20">
+                <span className={`font-mono text-sm font-bold px-3 py-1.5 rounded-lg shadow ${
+                  isDark 
+                    ? "text-indigo-300 bg-indigo-500/20 backdrop-blur-sm border border-indigo-500/30 shadow-indigo-500/20"
+                    : "text-blue-700 bg-blue-50 border border-blue-200"
+                }`}>
                   {ticket.ticketId}
                 </span>
                 <span
@@ -229,21 +243,33 @@ export default function TicketDetailModal({
                   {statusConfig[ticket.status]?.label}
                 </span>
               </div>
-              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
+              <h2 className={`text-3xl font-bold ${
+                isDark 
+                  ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"
+                  : "text-gray-900"
+              }`}>
                 {ticket.title}
               </h2>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleStartVideoCall}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/50 hover:scale-105 transition-all rounded-xl px-4 py-2"
+                className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                  isDark
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/50"
+                    : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
+                }`}
               >
                 <Video className="h-4 w-4" />
                 Video Call 📹
               </Button>
               <button
                 onClick={onClose}
-                className="rounded-xl p-2.5 transition-all hover:scale-110 text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-1 ring-slate-700 hover:ring-red-500 backdrop-blur-sm"
+                className={`rounded-xl p-2.5 transition-all hover:scale-110 ring-1 backdrop-blur-sm ${
+                  isDark
+                    ? "text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-slate-700 hover:ring-red-500"
+                    : "text-gray-600 hover:bg-red-500/10 hover:text-red-600 ring-gray-300 hover:ring-red-400"
+                }`}
                 title="Close"
               >
                 <X className="h-6 w-6" />
@@ -480,13 +506,17 @@ export default function TicketDetailModal({
                 )}
               </div>
             </div>
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
-              <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{ticket.description}</p>
+            <div className={`rounded-lg p-4 border ${
+              isDark
+                ? "bg-slate-900/50 border-slate-700/50"
+                : "bg-gray-50 border-gray-200"
+            }`}>
+              <p className={`whitespace-pre-wrap leading-relaxed ${isDark ? "text-slate-200" : "text-gray-900"}`}>{ticket.description}</p>
             </div>
 
             {(ticketAttachments.length > 0 || uploadingAttachments) && (
               <div className="mt-6 space-y-4">
-                <div className="text-sm font-bold text-indigo-300 flex items-center gap-2">
+                <div className={`text-sm font-bold flex items-center gap-2 ${isDark ? "text-indigo-300" : "text-gray-900"}`}>
                   📎 Attachments ({ticketAttachments.length})
                 </div>
 
@@ -581,7 +611,7 @@ export default function TicketDetailModal({
         <CommentThread
           commentableType="TICKET"
           commentableId={ticket.id}
-          variant={isManagement ? "management" : "staff"}
+          variant={isClient ? "client" : isManagement ? "management" : "staff"}
           onUpdate={onUpdate}
         />
         </div>
