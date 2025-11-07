@@ -102,6 +102,28 @@ model client_users {
   tickets            tickets[]
 }
 
+<<<<<<< Updated upstream
+=======
+model comments {
+  id              String   @id
+  commentableType String
+  commentableId   String
+  content         String
+  attachments     String[] @default([])
+  authorType      String
+  authorId        String
+  parentId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+  authorAvatar    String?
+  authorName      String
+
+  @@index([authorType, authorId])
+  @@index([commentableType, commentableId])
+  @@index([parentId])
+}
+
+>>>>>>> Stashed changes
 model company {
   id                   String                 @id
   companyName          String
@@ -244,8 +266,17 @@ model job_acceptances {
   clientTimezone       String                @default("UTC")
   isDefaultSchedule    Boolean               @default(true)
   workDays             String[]              @default(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
-  workEndTime          String                @default("18:00")
-  workStartTime        String                @default("09:00")
+  workEndTime          String?               @default("18:00")
+  workStartTime        String?               @default("09:00")
+  customHours          Json?
+  hasCustomHours       Boolean               @default(false)
+  hmoIncluded          Boolean               @default(false)
+  leaveCredits         Int                   @default(12)
+  preferredStartDate   DateTime?
+  salary               Decimal?
+  shiftType            String?
+  workHours            String?
+  workLocation         String?
   employment_contracts employment_contracts?
   company              company               @relation(fields: [companyId], references: [id])
   interview_requests   interview_requests    @relation(fields: [interviewRequestId], references: [id], onDelete: Cascade)
@@ -374,6 +405,7 @@ model performance_metrics {
   staff_users       staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
+<<<<<<< Updated upstream
 model post_comments {
   id               String            @id
   postId           String
@@ -386,6 +418,18 @@ model post_comments {
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_comments_managementuserid_fkey")
   activity_posts   activity_posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+=======
+model reactions {
+  id            String       @id
+  reactableType String
+  reactableId   String
+  authorType    String
+  authorId      String
+  createdAt     DateTime     @default(now())
+  authorAvatar  String?
+  authorName    String
+  type          ReactionType
+>>>>>>> Stashed changes
 
   @@index([postId, createdAt], map: "idx_comments_post_created")
 }
@@ -434,6 +478,73 @@ model reviews {
   staff_users        staff_users  @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
+<<<<<<< Updated upstream
+=======
+model salary_history {
+  id              String   @id
+  userId          String
+  userType        String
+  previousSalary  Decimal  @db.Decimal(10, 2)
+  newSalary       Decimal  @db.Decimal(10, 2)
+  increaseAmount  Decimal  @db.Decimal(10, 2)
+  increasePercent Decimal? @db.Decimal(5, 2)
+  reason          String?
+  notes           String?
+  approvedBy      String?
+  effectiveDate   DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([effectiveDate])
+  @@index([userId, effectiveDate])
+  @@index([userId])
+}
+
+model shares {
+  id             String   @id
+  shareableType  String
+  shareableId    String
+  message        String?
+  createdAt      DateTime @default(now())
+  sharedByAvatar String?
+  sharedById     String
+  sharedByName   String
+  sharedByType   String
+  sharedWithId   String?
+  sharedWithType String
+
+  @@index([shareableType, shareableId])
+  @@index([sharedByType, sharedById])
+  @@index([sharedWithType, sharedWithId])
+}
+
+model staff_interests {
+  id               String      @id
+  staffUserId      String      @unique
+  name             String
+  favoriteFastFood String
+  favoriteMovie    String?
+  completed        Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime
+  startDate        String
+  additionalInfo   String?
+  client           String
+  dreamDestination String?
+  favoriteBook     String?
+  favoriteColor    String?
+  favoriteGame     String?
+  favoriteMusic    String?
+  favoriteQuote    String?
+  favoriteSeason   String?
+  favoriteSport    String?
+  funFact          String?
+  hobby            String?
+  petName          String?
+  submittedAt      DateTime    @default(now())
+  staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+>>>>>>> Stashed changes
 model staff_offboarding {
   id                     String            @id
   staffUserId            String            @unique
