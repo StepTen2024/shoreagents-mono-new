@@ -478,27 +478,37 @@ export default function TicketDetailModal({
 
         {/* Ticket Description */}
         <div className="mb-6 space-y-4">
-          <div className="rounded-2xl p-6 bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10">
+          <div className={`rounded-2xl p-6 ${
+            isDark
+              ? "bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10"
+              : "bg-white border-2 border-gray-200"
+          }`}>
             <div className="mb-4">
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                 📝 Description
               </h3>
-              <div className="mb-3 flex items-center justify-between text-xs text-slate-400">
+              <div className={`mb-3 flex items-center justify-between text-xs ${isDark ? "text-slate-400" : "text-gray-600"}`}>
                 <span className="flex items-center gap-2">
                   🕐 Created {new Date(ticket.createdAt).toLocaleString()}
                 </span>
                 {(ticket.staff_users || ticket.client_users) && (
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Created by:</span>
-                    <span className="font-bold text-white">
+                    <span className={isDark ? "text-slate-400" : "text-gray-600"}>Created by:</span>
+                    <span className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
                       {ticket.staff_users?.name || ticket.client_users?.name}
                     </span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm ${
-                      ticket.createdByType === "CLIENT"
-                        ? "bg-green-500/30 text-green-300 border border-green-500/30"
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      isDark
+                        ? ticket.createdByType === "CLIENT"
+                          ? "bg-green-500/30 text-green-300 border border-green-500/30"
+                          : ticket.createdByType === "MANAGEMENT"
+                          ? "bg-purple-500/30 text-purple-300 border border-purple-500/30"
+                          : "bg-emerald-500/30 text-emerald-300 border border-emerald-500/30"
+                        : ticket.createdByType === "CLIENT"
+                        ? "bg-blue-100 text-blue-700 border border-blue-200"
                         : ticket.createdByType === "MANAGEMENT"
-                        ? "bg-purple-500/30 text-purple-300 border border-purple-500/30"
-                        : "bg-emerald-500/30 text-emerald-300 border border-emerald-500/30"
+                        ? "bg-purple-100 text-purple-700 border border-purple-200"
+                        : "bg-green-100 text-green-700 border border-green-200"
                     }`}>
                       {ticket.createdByType === "STAFF" ? "👤 STAFF" : ticket.createdByType === "CLIENT" ? "👔 CLIENT" : "📋 MANAGEMENT"}
                     </span>
@@ -547,7 +557,11 @@ export default function TicketDetailModal({
                 )}
                 
                 {/* ADD MORE SECTION - Staff Upload Preloader Style */}
-                <div className="relative rounded-xl border-2 border-dashed border-indigo-400/50 bg-slate-800/30 p-6 text-center transition-all hover:border-indigo-400/70 hover:bg-slate-800/40">
+                <div className={`relative rounded-xl border-2 border-dashed p-6 text-center transition-all ${
+                  isDark
+                    ? "border-indigo-400/50 bg-slate-800/30 hover:border-indigo-400/70 hover:bg-slate-800/40"
+                    : "border-blue-300 bg-blue-50/50 hover:border-blue-400 hover:bg-blue-50"
+                }`}>
                   <input
                     type="file"
                     multiple
@@ -564,9 +578,13 @@ export default function TicketDetailModal({
                       {/* Spinner */}
                       <div className="mx-auto flex h-16 w-16 items-center justify-center">
                         <div className="relative">
-                          <div className="h-16 w-16 rounded-full border-4 border-indigo-200/20 border-t-indigo-500 animate-spin"></div>
+                          <div className={`h-16 w-16 rounded-full border-4 animate-spin ${
+                            isDark 
+                              ? "border-indigo-200/20 border-t-indigo-500"
+                              : "border-blue-200 border-t-blue-500"
+                          }`}></div>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <svg className="h-6 w-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`h-6 w-6 ${isDark ? "text-indigo-400" : "text-blue-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
                           </div>
@@ -575,20 +593,30 @@ export default function TicketDetailModal({
                       
                       {/* Upload Text */}
                       <div className="space-y-2">
-                        <p className="text-lg font-bold text-indigo-400 animate-pulse">⬆️ Uploading images...</p>
-                        <p className="text-sm text-slate-400">Please wait while we upload your files</p>
+                        <p className={`text-lg font-bold animate-pulse ${isDark ? "text-indigo-400" : "text-blue-600"}`}>⬆️ Uploading images...</p>
+                        <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-600"}`}>Please wait while we upload your files</p>
                       </div>
                       
                       {/* Progress Bar */}
-                      <div className="w-full max-w-xs mx-auto h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                      <div className={`w-full max-w-xs mx-auto h-2 rounded-full overflow-hidden ${
+                        isDark ? "bg-slate-700/50" : "bg-gray-200"
+                      }`}>
+                        <div className={`h-full rounded-full animate-pulse ${
+                          isDark 
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-500"
+                            : "bg-gradient-to-r from-blue-500 to-cyan-500"
+                        }`} style={{ width: '70%' }}></div>
                       </div>
                     </div>
                   ) : (
                     // 📤 READY TO ADD MORE STATE
                     <label htmlFor="add-more-attachments" className="cursor-pointer block group">
                       {/* Upload Icon */}
-                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 transition-all group-hover:bg-indigo-500/30 group-hover:scale-110">
+                      <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-all group-hover:scale-110 ${
+                        isDark
+                          ? "bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/30"
+                          : "bg-blue-100 text-blue-600 group-hover:bg-blue-200"
+                      }`}>
                         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -596,8 +624,8 @@ export default function TicketDetailModal({
                       
                       {/* Upload Text */}
                       <div className="space-y-1">
-                        <p className="text-base font-bold text-white">Add More Images</p>
-                        <p className="text-xs text-slate-400">Click to upload • PNG, JPG up to 5MB</p>
+                        <p className={`text-base font-bold ${isDark ? "text-white" : "text-gray-900"}`}>Add More Images</p>
+                        <p className={`text-xs ${isDark ? "text-slate-400" : "text-gray-600"}`}>Click to upload • PNG, JPG up to 5MB</p>
                       </div>
                     </label>
                   )}
