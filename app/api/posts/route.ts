@@ -253,8 +253,6 @@ export async function POST(request: NextRequest) {
             role: true,
           },
         },
-        reactions: true,
-        comments: true,
       },
     })
 
