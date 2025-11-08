@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { randomUUID } from "crypto"
 
 /**
  * 🔁 RESHARE POST API
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     // Create reshare post
     const resharePost = await prisma.activity_posts.create({
       data: {
+        id: randomUUID(),
         staffUserId: staffUser?.id || null,
         clientUserId: clientUser?.id || null,
         managementUserId: managementUser?.id || null,

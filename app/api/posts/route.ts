@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { randomUUID } from "crypto"
 
 // GET /api/posts - Get all activity posts
 export async function GET(request: NextRequest) {
@@ -216,6 +217,7 @@ export async function POST(request: NextRequest) {
 
     const post = await prisma.activity_posts.create({
       data: {
+        id: randomUUID(),
         staffUserId: staffUser?.id || null,
         clientUserId: clientUser?.id || null,
         managementUserId: managementUser?.id || null,
