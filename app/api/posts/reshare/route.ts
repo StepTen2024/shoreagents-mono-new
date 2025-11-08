@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         resharedBy: currentUser!.id,
         resharedByType: userType,
         reshareComment: reshareComment || null,
+        updatedAt: new Date(),
       },
       include: {
         staff_users: {

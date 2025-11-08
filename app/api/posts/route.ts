@@ -225,6 +225,7 @@ export async function POST(request: NextRequest) {
         images: images || [],
         taggedUserIds: taggedUserIds || [],
         audience: audience || 'ALL',
+        updatedAt: new Date(),
       },
       include: {
         staff_users: {
