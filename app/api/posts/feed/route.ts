@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     const clientUser = await prisma.client_users.findUnique({
       where: { authUserId: session.user.id },
       include: {
-        companies: {
+        company: {
           select: { id: true }
         }
       }
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
 
     // 🏢 CLIENT USER FILTERING
     else if (clientUser) {
-      const companyId = clientUser.companies?.[0]?.id
+      const companyId = clientUser.company?.id
 
       if (filterType === 'my_team' && companyId) {
         // Posts from my team (staff assigned to my company) OR posts from management
