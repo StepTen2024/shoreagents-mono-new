@@ -9,6 +9,7 @@ export default function ClientPostsPage() {
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPosts()
@@ -16,14 +17,31 @@ export default function ClientPostsPage() {
 
   async function fetchPosts() {
     setLoading(true)
+    setError(null)
     try {
-      const response = await fetch(`/api/posts/feed?filter=my_team&page=1&limit=20`)
-      if (response.ok) {
-        const data = await response.json()
-        setPosts(data.posts || [])
+      // SIMPLIFIED: Just fetch all posts for now
+      const response = await fetch(`/api/posts?page=1&limit=20`)
+      
+      console.log("📡 Response status:", response.status)
+      
+      if (response.status === 401) {
+        setError("Please log in to view posts")
+        return
       }
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("❌ Error response:", errorData)
+        setError(errorData.details || errorData.error || "Failed to load posts")
+        return
+      }
+      
+      const data = await response.json()
+      console.log("✅ Posts data:", data)
+      setPosts(data.posts || [])
     } catch (error) {
-      console.error("Error fetching posts:", error)
+      console.error("❌ Error fetching posts:", error)
+      setError("Network error - please try again")
     } finally {
       setLoading(false)
     }
@@ -42,7 +60,9 @@ export default function ClientPostsPage() {
     })
 
     if (!response.ok) {
-      throw new Error("Failed to create post")
+      const errorData = await response.json()
+      console.error("❌ Create post error:", errorData)
+      throw new Error(errorData.details || "Failed to create post")
     }
 
     // Refresh feed
@@ -97,6 +117,19 @@ export default function ClientPostsPage() {
           </div>
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <p className="text-red-800 font-medium">⚠️ {error}</p>
+            <button
+              onClick={fetchPosts}
+              className="mt-2 text-sm text-red-600 underline hover:text-red-800"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         {/* Loading state */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -140,4 +173,3 @@ export default function ClientPostsPage() {
     </div>
   )
 }
-
