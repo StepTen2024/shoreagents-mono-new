@@ -67,60 +67,39 @@ export async function GET(request: NextRequest) {
             role: true,
           },
         },
-        post_reactions: {
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-        post_comments: {
-          include: {
-            staff_users: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-            client_users: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-            management_users: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        },
       },
       orderBy: { createdAt: "desc" },
     })
 
+    // Fetch real comment counts and reactions using UNIVERSAL system
+    const postsWithData = await Promise.all(posts.map(async (post) => {
+      // Fetch comment count
+      const commentCount = await prisma.comments.count({
+        where: {
+          commentableType: "POST",
+          commentableId: post.id,
+        },
+      })
+
+      // Fetch top reactions
+      const reactions = await prisma.reactions.findMany({
+        where: {
+          reactableType: "POST",
+          reactableId: post.id,
+        },
+        take: 20,
+        orderBy: { createdAt: "desc" },
+      })
+
+      return {
+        ...post,
+        commentCount,
+        reactions,
+      }
+    }))
+
     // Fetch tagged users if any posts have them
-    const allTaggedUserIds = [...new Set(posts.flatMap(p => p.taggedUserIds || []).filter(Boolean))]
+    const allTaggedUserIds = [...new Set(postsWithData.flatMap(p => p.taggedUserIds || []).filter(Boolean))]
     const taggedUsers = allTaggedUserIds.length > 0 
       ? await prisma.staff_users.findMany({
           where: { id: { in: allTaggedUserIds } },
@@ -131,12 +110,31 @@ export async function GET(request: NextRequest) {
     const taggedUsersMap = new Map(taggedUsers.map(u => [u.id, u]))
 
     // Transform data to match frontend expectations
-    const transformedPosts = posts.map(post => {
+    const transformedPosts = postsWithData.map(post => {
       const postUser = post.staff_users || post.client_users || post.management_users
       
       if (!postUser) {
         return null
       }
+
+      // Map reactions to emoji format
+      const reactionEmojis = post.reactions.map(r => {
+        const emojiMap: Record<string, string> = {
+          LIKE: "👍",
+          LOVE: "❤️",
+          CELEBRATE: "🎉",
+          LAUGH: "😂",
+          FIRE: "🔥",
+          ROCKET: "🚀"
+        }
+        return { 
+          id: r.id,
+          emoji: emojiMap[r.type] || "👍", 
+          type: r.type,
+          authorType: r.authorType,
+          authorId: r.authorId,
+        }
+      })
       
       return {
         id: post.id,
@@ -152,30 +150,8 @@ export async function GET(request: NextRequest) {
           avatar: postUser.avatar,
           role: post.staff_users?.role || post.management_users?.role || 'Client'
         },
-        reactions: (post.post_reactions || []).map(r => {
-          const reactUser = r.staff_users || r.client_users || r.management_users
-          return {
-            id: r.id,
-            type: r.type,
-            user: {
-              id: reactUser?.id || '',
-              name: reactUser?.name || 'Unknown'
-            }
-          }
-        }),
-        comments: (post.post_comments || []).map(c => {
-          const commentUser = c.staff_users || c.client_users || c.management_users
-          return {
-            id: c.id,
-            content: c.content,
-            createdAt: c.createdAt.toISOString(),
-            user: {
-              id: commentUser?.id || '',
-              name: commentUser?.name || 'Unknown',
-              avatar: commentUser?.avatar || null
-            }
-          }
-        })
+        commentCount: post.commentCount,
+        reactions: reactionEmojis,
       }
     }).filter(Boolean)
 
