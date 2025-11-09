@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       await prisma.notifications.create({
         data: {
           userId: originalPostUser.id,
-          type: 'SHARE',
+          type: 'SYSTEM',
           title: `${currentUser!.name} reshared your post`,
           message: reshareComment || originalPost.content.substring(0, 100),
           postId: resharePost.id,
@@ -160,8 +160,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, post: resharePost }, { status: 201 })
   } catch (error) {
     console.error("❌ [RESHARE] Error creating reshare:", error)
+    console.error("❌ [RESHARE] Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error: JSON.stringify(error, null, 2)
+    })
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
