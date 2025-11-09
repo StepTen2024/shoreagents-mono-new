@@ -107,9 +107,10 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 🔔 Notify the original poster
+    // 🔔 Notify the original poster (only if they're staff - notifications table only supports staff_users)
     const originalPostUser = originalPost.staff_users || originalPost.client_users || originalPost.management_users
-    if (originalPostUser) {
+    if (originalPostUser && originalPost.staff_users) {
+      // Only create notification if original poster is a staff user
       await prisma.notifications.create({
         data: {
           userId: originalPostUser.id,
@@ -122,6 +123,8 @@ export async function POST(request: NextRequest) {
         }
       })
       console.log(`🔔 [RESHARE] Notified ${originalPostUser.name} about reshare`)
+    } else if (originalPostUser) {
+      console.log(`⚠️  [RESHARE] Skipping notification for ${originalPostUser.name} (not a staff user - notifications only support staff)`)
     }
 
     // 🔥 Emit real-time event
