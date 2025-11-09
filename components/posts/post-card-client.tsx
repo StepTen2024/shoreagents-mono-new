@@ -49,6 +49,8 @@ interface PostCardClientProps {
 
 export function PostCardClient({ post, onReshare, onUpdate }: PostCardClientProps) {
   const [showComments, setShowComments] = useState(false)
+  const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const [isReacting, setIsReacting] = useState(false)
 
   // Group reactions by type with counts
   const reactionCounts = post.reactions.reduce((acc, r) => {
@@ -59,6 +61,40 @@ export function PostCardClient({ post, onReshare, onUpdate }: PostCardClientProp
   const topReactions = Object.entries(reactionCounts)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
+
+  const reactionOptions = [
+    { emoji: "👍", type: "LIKE", label: "Like" },
+    { emoji: "❤️", type: "LOVE", label: "Love" },
+    { emoji: "🎉", type: "CELEBRATE", label: "Celebrate" },
+    { emoji: "😂", type: "LAUGH", label: "Laugh" },
+    { emoji: "🔥", type: "FIRE", label: "Fire" },
+    { emoji: "🚀", type: "ROCKET", label: "Rocket" },
+  ]
+
+  async function handleReaction(type: string) {
+    setIsReacting(true)
+    setShowReactionPicker(false)
+    
+    try {
+      const response = await fetch("/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reactableType: "POST",
+          reactableId: post.id,
+          type,
+        }),
+      })
+
+      if (response.ok) {
+        onUpdate?.()
+      }
+    } catch (error) {
+      console.error("Error reacting:", error)
+    } finally {
+      setIsReacting(false)
+    }
+  }
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-lg transition-all duration-300">
@@ -200,11 +236,33 @@ export function PostCardClient({ post, onReshare, onUpdate }: PostCardClientProp
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-200">
-        <button className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-          <Heart className="w-5 h-5" />
-          <span className="text-sm font-medium">React</span>
-        </button>
+      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-200 relative">
+        <div className="relative flex-1">
+          <button 
+            onClick={() => setShowReactionPicker(!showReactionPicker)}
+            disabled={isReacting}
+            className="flex-1 w-full flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+          >
+            <Heart className="w-5 h-5" />
+            <span className="text-sm font-medium">React</span>
+          </button>
+          
+          {/* Reaction Picker */}
+          {showReactionPicker && (
+            <div className="absolute bottom-full left-0 mb-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-2 flex gap-2 z-10">
+              {reactionOptions.map((reaction) => (
+                <button
+                  key={reaction.type}
+                  onClick={() => handleReaction(reaction.type)}
+                  className="text-2xl hover:scale-125 transition-transform p-2 rounded-lg hover:bg-gray-50"
+                  title={reaction.label}
+                >
+                  {reaction.emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setShowComments(!showComments)}
           className="flex-1 flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
