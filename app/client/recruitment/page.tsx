@@ -91,6 +91,7 @@ interface InterviewRequest {
   bpocCandidateId: string
   preferredTimes: (string | PreferredTime)[]
   clientNotes: string | null
+  clientTimezone?: string | null
   status: 'PENDING' | 'SCHEDULED' | 'RESCHEDULE_REQUESTED' | 'COMPLETED' | 'CANCELLED' | 'HIRED' | 'HIRE-REQUESTED' | 'HIRE_REQUESTED' | 'OFFER-SENT' | 'OFFER_SENT' | 'OFFER-ACCEPTED' | 'OFFER_ACCEPTED' | 'OFFER-DECLINED' | 'OFFER_DECLINED' | 'REJECTED'
   createdAt: string
   updatedAt: string

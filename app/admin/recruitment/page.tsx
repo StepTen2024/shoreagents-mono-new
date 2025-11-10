@@ -97,6 +97,7 @@ interface InterviewRequest {
   createdAt: string
   created_at?: string // snake_case variant
   clientPreferredStart?: string | null
+  clientTimezone?: string | null
   scheduledTime?: string | null
   meetingLink?: string | null
   adminNotes?: string | null
@@ -767,9 +768,9 @@ export default function AdminRecruitmentPage() {
         preferredStart = date.toISOString().split('T')[0] // Format as YYYY-MM-DD
       }
       
-      // Get client timezone from their profile or workSchedule
+      // Get client timezone from interview request, their profile, or workSchedule
       console.log('🌍 Looking for client timezone in:', interview.client_users)
-      const clientTimezone = interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
+      const clientTimezone = interview.clientTimezone || interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
       console.log('🌍 Client timezone found:', clientTimezone)
       
       // Calculate work hours from client's schedule if provided
@@ -1943,7 +1944,7 @@ export default function AdminRecruitmentPage() {
                                         <div className="grid grid-cols-7 gap-2">
                                           {(() => {
                                             const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                                            const clientTimezone = interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
+                                            const clientTimezone = interview.clientTimezone || interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
                                             
                                             return dayOrder.map((fullDay) => {
                                               const time = interview.workSchedule?.customHours?.[fullDay];
@@ -1985,7 +1986,7 @@ export default function AdminRecruitmentPage() {
                                             const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                                             const workDays = interview.workSchedule?.workDays || [];
                                             const workStartTime = interview.workSchedule?.workStartTime || '09:00';
-                                            const clientTimezone = interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
+                                            const clientTimezone = interview.clientTimezone || interview.workSchedule?.clientTimezone || interview.client_users?.client_profiles?.timezone || 'UTC'
                                             
                                             return dayOrder.map((fullDay) => {
                                               if (!workDays.includes(fullDay)) {
