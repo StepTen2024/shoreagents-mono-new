@@ -8,7 +8,7 @@ import ViewToggle from "@/components/tickets/view-toggle"
 import TicketList from "@/components/tickets/ticket-list"
 import { useToast } from "@/components/ui/use-toast"
 import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/lib/ticket-categories"
-import ClientTicketCard from "@/components/tickets/client-ticket-card"
+import StaffTicketBoard from "@/components/tickets/staff-ticket-board"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
 
@@ -17,18 +17,28 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [filterCategory, setFilterCategory] = useState<string>("all")
-  const { toast } = useToast()
+  const { toast} = useToast()
   
   const staffCategories = getCategoriesForUserType('staff')
 
   useEffect(() => {
-    fetchTickets()
+    // CRITICAL: Set mounted FIRST before fetching to prevent flash
+    console.log('🟣 [STAFF TICKETS] Component mounting...')
+    setMounted(true)
+    console.log('🟣 [STAFF TICKETS] Mounted state set to TRUE')
   }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      fetchTickets()
+    }
+  }, [mounted])
 
   useEffect(() => {
     filterTickets()
@@ -90,10 +100,19 @@ export default function TicketsPage() {
     setSelectedTicket(null)
   }
 
+  // CRITICAL: Don't render ANYTHING until mounted to prevent flash
+  if (!mounted) {
+    console.log('🟣 [STAFF TICKETS] Not mounted yet - returning NULL')
+    return null
+  }
+  
+  console.log('🟣 [STAFF TICKETS] MOUNTED - Rendering staff board')
+
   if (loading) {
+    console.log('🟣 [STAFF TICKETS] Loading tickets data...')
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
-        <div className="w-full space-y-6 animate-in fade-in duration-700">
+        <div className="w-full space-y-6" data-portal="staff-loading">
           {/* Header skeleton */}
           <div className="flex items-center justify-between">
             <div>
@@ -127,16 +146,9 @@ export default function TicketsPage() {
     resolved: filteredTickets.filter((t) => t.status === "RESOLVED").length,
   }
 
-  const columns: { status: TicketStatus; label: string; color: string; ring: string }[] = [
-    { status: "OPEN", label: "Open", color: "bg-blue-500/10", ring: "ring-blue-500/30" },
-    { status: "IN_PROGRESS", label: "In Progress", color: "bg-amber-500/10", ring: "ring-amber-500/30" },
-    { status: "RESOLVED", label: "Resolved", color: "bg-emerald-500/10", ring: "ring-emerald-500/30" },
-    { status: "CLOSED", label: "Closed", color: "bg-slate-500/10", ring: "ring-slate-500/30" },
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
-      <div className="w-full space-y-6 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8" data-portal="staff-tickets">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -225,66 +237,13 @@ export default function TicketsPage() {
           </select>
         </div>
 
-        {/* Tickets View */}
+        {/* Tickets View - STAFF VIEW ONLY (NO DRAG AND DROP) */}
         <div className={view === "kanban" ? "flex-1 min-h-0 overflow-hidden w-full" : "flex-1"}>
           {view === "kanban" ? (
-            /* Fun Kanban Board with Emojis */
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-          {columns.map((column, idx) => {
-            const columnTickets = filteredTickets.filter((ticket) => ticket.status === column.status)
-            const emojis = ['🆕', '⚡', '✅', '📦']
-            const gradients = [
-              'from-blue-500/20 to-cyan-500/20',
-              'from-amber-500/20 to-orange-500/20',
-              'from-emerald-500/20 to-green-500/20',
-              'from-slate-500/20 to-gray-500/20'
-            ]
-
-            return (
-              <div key={column.status} className="flex flex-col">
-                {/* Column Header with Gradient */}
-                <div className={`mb-4 rounded-2xl bg-gradient-to-r ${gradients[idx]} backdrop-blur-xl p-4 ring-1 ${column.ring.replace('/30', '/50')} shadow-lg`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{emojis[idx]}</span>
-                    <h3 className="text-lg font-bold text-white">{column.label}</h3>
-                    <span className="ml-auto rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white backdrop-blur-sm">
-                      {columnTickets.length}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Tickets Column with Individual Scrollbar */}
-                <div className="flex flex-col h-[800px] rounded-2xl bg-slate-900/30 backdrop-blur-xl ring-1 ring-white/5 transition-all duration-300 min-w-0 w-full max-w-full overflow-visible">
-                  {/* Scrollable content area */}
-                  <div className="flex-1 overflow-y-auto overflow-x-visible admin-tickets-scrollbar p-4 space-y-3 w-full max-w-full">
-                    {columnTickets.map((ticket) => (
-                      <div
-                        key={ticket.id}
-                        onClick={() => handleTicketClick(ticket)}
-                        className="cursor-pointer transform transition-all duration-200 hover:scale-105"
-                      >
-                        <ClientTicketCard ticket={ticket} />
-                      </div>
-                    ))}
-
-                    {columnTickets.length === 0 && (
-                      <div className="flex h-48 items-center justify-center rounded-xl bg-slate-800/30 backdrop-blur-sm">
-                        <div className="text-center">
-                          <div className="mb-2">
-                            <svg className="h-12 w-12 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <p className="text-slate-400">No tickets</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-            </div>
+            <StaffTicketBoard
+              tickets={filteredTickets}
+              onTicketClick={handleTicketClick}
+            />
           ) : (
             <TicketList
               tickets={filteredTickets}
@@ -487,27 +446,10 @@ function CreateTicketModal({
         <div className="p-6">
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
+          {/* Department - MOVED TO TOP */}
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-300">
-              Title <span className="text-red-400">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full rounded-xl bg-slate-800/50 backdrop-blur-xl px-5 py-4 text-white ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80 transition-all duration-300"
-                placeholder="Brief description of your issue"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-300">
-              Category <span className="text-red-400">*</span>
+              Department <span className="text-red-400">*</span>
             </label>
             <select
               value={formData.category}
@@ -515,7 +457,7 @@ function CreateTicketModal({
               className="w-full rounded-xl bg-slate-800/50 backdrop-blur-xl px-5 py-4 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80 transition-all duration-300"
               required
             >
-              <option value="">Select a category</option>
+              <option value="">Select a department</option>
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
                   {getCategoryIcon(cat)} {getCategoryLabel(cat)}
@@ -537,6 +479,23 @@ function CreateTicketModal({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className="mb-2 block text-sm font-bold text-slate-300">
+              Title <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full rounded-xl bg-slate-800/50 backdrop-blur-xl px-5 py-4 text-white ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80 transition-all duration-300"
+                placeholder="Brief description of your issue"
+                required
+              />
+            </div>
           </div>
 
           {/* Priority */}
@@ -589,7 +548,33 @@ function CreateTicketModal({
                   disabled={attachments.length >= 5}
                 />
                 
-                {attachments.length === 0 ? (
+                {uploading ? (
+                  // UPLOADING STATE - Show progress
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    {/* Spinner */}
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center">
+                      <div className="relative">
+                        <div className="h-16 w-16 rounded-full border-4 border-indigo-200/20 border-t-indigo-500 animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg className="h-6 w-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Upload Text */}
+                    <div className="space-y-2">
+                      <p className="text-lg font-bold text-indigo-400 animate-pulse">⬆️ Uploading images...</p>
+                      <p className="text-sm text-slate-400">{attachments.length} file{attachments.length > 1 ? 's' : ''} • Please wait</p>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full max-w-xs mx-auto h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                    </div>
+                  </div>
+                ) : attachments.length === 0 ? (
                   <>
                     {/* Upload Icon */}
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 transition-all group-hover:bg-indigo-500/30 group-hover:scale-110">
@@ -655,10 +640,20 @@ function CreateTicketModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 font-bold text-white transition-all hover:from-indigo-700 hover:to-purple-700 hover:scale-105 disabled:opacity-50 shadow-2xl shadow-indigo-500/50"
+              disabled={loading || uploading}
+              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 font-bold text-white transition-all hover:from-indigo-700 hover:to-purple-700 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-indigo-500/50 relative overflow-hidden"
             >
-              {uploading ? "⬆️ Uploading..." : loading ? "⏳ Creating..." : "✨ Create Ticket"}
+              {/* Loading Spinner Overlay */}
+              {(uploading || loading) && (
+                <div className="absolute inset-0 bg-indigo-600/50 backdrop-blur-sm flex items-center justify-center">
+                  <div className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                </div>
+              )}
+              
+              {/* Button Text */}
+              <span className={uploading || loading ? "opacity-50" : ""}>
+                {uploading ? "⬆️ Uploading Images..." : loading ? "⏳ Creating Ticket..." : "✨ Create Ticket"}
+              </span>
             </button>
           </div>
         </form>

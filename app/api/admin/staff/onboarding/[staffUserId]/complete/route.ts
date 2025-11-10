@@ -499,26 +499,29 @@ export async function POST(
       convertedTimes: `${convertedStartTime} - ${convertedEndTime}`
     })
 
-    // Create empty welcome form record
+    // Create empty welcome form record (staff_interests)
     try {
-      const welcomeForm = await prisma.staff_welcome_forms.create({
+      const interests = await prisma.staff_interests.create({
         data: {
+          id: randomUUID(),
           staffUserId: staffUser.id,
           name: fullName,
           client: company.companyName,
           startDate: new Date(startDate).toLocaleDateString(),
           favoriteFastFood: "", // Empty - to be filled by staff
-          completed: false
+          completed: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
         }
       })
-      console.log("✅ WELCOME FORM RECORD CREATED:", { 
-        welcomeFormId: welcomeForm.id,
+      console.log("✅ STAFF INTERESTS RECORD CREATED:", { 
+        interestsId: interests.id,
         staffUserId: staffUser.id,
         staffName: fullName
       })
     } catch (error) {
-      console.error("❌ WELCOME FORM CREATION FAILED:", error)
-      // Don't fail the entire onboarding process if welcome form creation fails
+      console.error("❌ STAFF INTERESTS CREATION FAILED:", error)
+      // Don't fail the entire onboarding process if interests creation fails
     }
 
     // Mark onboarding as complete

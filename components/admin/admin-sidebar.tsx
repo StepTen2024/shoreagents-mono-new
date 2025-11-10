@@ -197,7 +197,7 @@ const navItems = [
   { icon: "FileText", label: "Performance", href: "/admin/performance-reviews", badge: null },
   { icon: "CheckSquare", label: "Tasks", href: "/admin/tasks", badge: null },
   { icon: "BookOpen", label: "Knowledge Base", href: "/admin/knowledge-base", badge: null },
-  { icon: "Megaphone", label: "The Feed", href: "/admin/activity", badge: null },
+  { icon: "Megaphone", label: "The Feed", href: "/admin/posts", badge: null },
   { icon: "Trophy", label: "Leaderboard", href: "/admin/leaderboard", badge: null },
   { icon: "UserMinus", label: "Offboarding", href: "/admin/staff/offboarding", badge: null },
   { icon: "Briefcase", label: "Recruitment", href: "/admin/recruitment", badge: null },

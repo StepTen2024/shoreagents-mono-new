@@ -14,31 +14,25 @@ model activity_posts {
   type             PostType
   content          String
   achievement      Json?
-  images           String[]          @default([])
+  images           String[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime
   clientUserId     String?
   taggedUserIds    String[]          @default([])
   audience         PostAudience?     @default(ALL)
   managementUserId String?
-  
-  // 🔁 RESHARE FUNCTIONALITY
-  originalPostId   String?                    // If this is a reshare, reference original post
-  resharedBy       String?                    // Who reshared it (staffId, clientId, or managementId)
-  resharedByType   String?                    // "STAFF", "CLIENT", or "MANAGEMENT"
-  reshareComment   String?                    // Optional comment when resharing
-  
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_clientuserid_fkey")
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_managementuserid_fkey")
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   notifications    notifications[]
+  post_comments    post_comments[]
+  post_reactions   post_reactions[]
 
   @@index([audience])
   @@index([taggedUserIds], map: "activity_posts_tagged_users_idx", type: Gin)
   @@index([audience, createdAt(sort: Desc)], map: "idx_posts_audience_created")
   @@index([taggedUserIds], map: "idx_posts_tagged_users", type: Gin)
   @@index([type, createdAt(sort: Desc)], map: "idx_posts_type_created")
-  @@index([originalPostId])  // Index for reshares
 }
 
 model breaks {
@@ -61,13 +55,8 @@ model breaks {
   pauseUsed      Boolean?      @default(false)
   pausedAt       DateTime?     @db.Timestamp(6)
   pausedDuration Int?          @default(0)
-  shiftDate      DateTime?
-  shiftDayOfWeek String?
   staff_users    staff_users   @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   time_entries   time_entries? @relation(fields: [timeEntryId], references: [id])
-
-  @@index([shiftDate])
-  @@index([shiftDayOfWeek])
 }
 
 model client_profiles {
@@ -106,27 +95,11 @@ model client_users {
   client_profiles    client_profiles?
   company            company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   interview_requests interview_requests[]
+  post_comments      post_comments[]
+  post_reactions     post_reactions[]
   tasks              tasks[]
+  ticket_responses   ticket_responses[]
   tickets            tickets[]
-}
-
-model comments {
-  id              String   @id
-  commentableType String
-  commentableId   String
-  authorType      String
-  authorId        String
-  authorName      String
-  authorAvatar    String?
-  content         String
-  attachments     String[] @default([])
-  parentId        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime
-
-  @@index([authorType, authorId])
-  @@index([commentableType, commentableId])
-  @@index([parentId])
 }
 
 model company {
@@ -156,21 +129,24 @@ model company {
   work_schedules       work_schedules[]
 }
 
+// REMOVED: Consolidated into universal 'comments' table
+
 model documents {
-  id            String           @id
-  title         String
-  category      DocumentCategory
-  uploadedBy    String
-  size          String
-  fileUrl       String?
-  content       String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime
-  staffUserId   String
-  source        DocumentSource   @default(STAFF)
-  sharedWithAll Boolean          @default(false)
-  sharedWith    String[]         @default([])
-  staff_users   staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  id                String              @id
+  title             String
+  category          DocumentCategory
+  uploadedBy        String
+  size              String
+  fileUrl           String?
+  content           String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  staffUserId       String
+  source            DocumentSource      @default(STAFF)
+  sharedWithAll     Boolean             @default(false)
+  sharedWith        String[]            @default([])
+  document_comments document_comments[]
+  staff_users       staff_users         @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model employment_contracts {
@@ -245,7 +221,6 @@ model interview_requests {
   scheduledTime        DateTime?
   status               InterviewRequestStatus @default(PENDING)
   workSchedule         Json?
-  clientTimezone       String?
   client_users         client_users           @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   job_acceptances      job_acceptances?
 }
@@ -288,6 +263,27 @@ model kudos {
   staff_users_kudos_toIdTostaff_users   staff_users @relation("kudos_toIdTostaff_users", fields: [toId], references: [id], onDelete: Cascade)
 }
 
+model management_users {
+  id                  String               @id
+  authUserId          String               @unique
+  name                String
+  role                ManagementRole       @default(MANAGER)
+  avatar              String?
+  phone               String?
+  department          Department
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime
+  email               String               @unique
+  coverPhoto          String?
+  activity_posts      activity_posts[]
+  company             company[]
+  management_profiles management_profiles?
+  post_comments       post_comments[]
+  post_reactions      post_reactions[]
+  ticket_responses    ticket_responses[]
+  tickets             tickets[]
+}
+
 model management_profiles {
   id                 String           @id
   managementUserId   String           @unique
@@ -311,28 +307,29 @@ model management_profiles {
   civilStatus        String?
   dateOfBirth        DateTime?
   gender             String?
-  roleDescription    String?
   management_users   management_users @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
 }
 
-model management_users {
-  id                  String               @id
-  authUserId          String               @unique
-  name                String
-  role                ManagementRole       @default(MANAGER)
-  avatar              String?
-  phone               String?
-  department          Department
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime
-  email               String               @unique
-  coverPhoto          String?
-  activity_posts      activity_posts[]
-  company             company[]
-  management_profiles management_profiles?
-  tickets             tickets[]
+model salary_history {
+  id              String   @id
+  userId          String
+  userType        String
+  previousSalary  Decimal  @db.Decimal(10, 2)
+  newSalary       Decimal  @db.Decimal(10, 2)
+  increaseAmount  Decimal  @db.Decimal(10, 2)
+  increasePercent Decimal? @db.Decimal(5, 2)
+  reason          String?
+  notes           String?
+  approvedBy      String?
+  effectiveDate   DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([effectiveDate])
+  @@index([userId, effectiveDate])
 }
 
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model notifications {
   id             String           @id @default(dbgenerated("(gen_random_uuid())::text"))
   userId         String
@@ -371,32 +368,45 @@ model performance_metrics {
   tabsSwitched      Int         @default(0)
   productivityScore Int         @default(0)
   createdAt         DateTime    @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime    @updatedAt
   applicationsused  Json?       @default("[]")
   visitedurls       Json?       @default("[]")
   screenshoturls    Json?       @default("[]")
-  shiftDate         DateTime?
-  shiftDayOfWeek    String?
   staff_users       staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-
-  @@index([shiftDate])
-  @@index([shiftDayOfWeek])
 }
 
-model reactions {
-  id            String       @id
-  reactableType String
-  reactableId   String
-  authorType    String
-  authorId      String
-  authorName    String
-  authorAvatar  String?
-  type          ReactionType
-  createdAt     DateTime     @default(now())
+model post_comments {
+  id               String            @id
+  postId           String
+  staffUserId      String?
+  content          String
+  createdAt        DateTime          @default(now())
+  clientUserId     String?
+  managementUserId String?
+  client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_comments_clientuserid_fkey")
+  management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_comments_managementuserid_fkey")
+  activity_posts   activity_posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 
-  @@unique([reactableType, reactableId, authorId])
-  @@index([authorType, authorId])
-  @@index([reactableType, reactableId])
+  @@index([postId, createdAt], map: "idx_comments_post_created")
+}
+
+model post_reactions {
+  id               String            @id
+  postId           String
+  staffUserId      String?
+  type             ReactionType
+  createdAt        DateTime          @default(now())
+  clientUserId     String?
+  managementUserId String?
+  client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_reactions_clientuserid_fkey")
+  management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "post_reactions_managementuserid_fkey")
+  activity_posts   activity_posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, staffUserId, type])
+  @@index([postId], map: "idx_reactions_post")
+  @@index([postId, type], map: "idx_reactions_post_type")
 }
 
 model reviews {
@@ -423,70 +433,6 @@ model reviews {
   reviewedBy         String?
   reviewedDate       DateTime?
   staff_users        staff_users  @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-}
-
-model salary_history {
-  id              String   @id
-  userId          String
-  userType        String
-  previousSalary  Decimal  @db.Decimal(10, 2)
-  newSalary       Decimal  @db.Decimal(10, 2)
-  increaseAmount  Decimal  @db.Decimal(10, 2)
-  increasePercent Decimal? @db.Decimal(5, 2)
-  reason          String?
-  notes           String?
-  approvedBy      String?
-  effectiveDate   DateTime
-  createdAt       DateTime @default(now())
-
-  @@index([effectiveDate])
-  @@index([userId, effectiveDate])
-  @@index([userId])
-}
-
-model shares {
-  id             String   @id
-  shareableType  String
-  shareableId    String
-  sharedByType   String
-  sharedById     String
-  sharedByName   String
-  sharedByAvatar String?
-  sharedWithType String
-  sharedWithId   String?
-  message        String?
-  createdAt      DateTime @default(now())
-
-  @@index([shareableType, shareableId])
-  @@index([sharedByType, sharedById])
-  @@index([sharedWithType, sharedWithId])
-}
-
-model staff_interests {
-  id               String      @id
-  staffUserId      String      @unique
-  name             String
-  favoriteFastFood String
-  favoriteMovie    String?
-  completed        Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime
-  startDate        String
-  additionalInfo   String?
-  client           String
-  dreamDestination String?
-  favoriteBook     String?
-  favoriteColor    String?
-  favoriteGame     String?
-  favoriteMusic    String?
-  favoriteQuote    String?
-  favoriteSeason   String?
-  favoriteSport    String?
-  funFact          String?
-  hobby            String?
-  petName          String?
-  submittedAt      DateTime    @default(now())
-  staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model staff_offboarding {
@@ -664,8 +610,10 @@ model staff_users {
   kudos_kudos_toIdTostaff_users   kudos[]                 @relation("kudos_toIdTostaff_users")
   notifications                   notifications[]
   performance_metrics             performance_metrics[]
+  post_comments                   post_comments[]
+  post_reactions                  post_reactions[]
   reviews                         reviews[]
-  staff_interests                 staff_interests?
+  staff_welcome_forms             staff_welcome_forms?
   staff_offboarding               staff_offboarding?
   staff_onboarding                staff_onboarding?
   staff_personal_records          staff_personal_records?
@@ -673,8 +621,38 @@ model staff_users {
   company                         company?                @relation(fields: [companyId], references: [id])
   task_assignments                task_assignments[]
   tasks                           tasks[]
+  ticket_responses                ticket_responses[]
   tickets                         tickets[]
   time_entries                    time_entries[]
+}
+
+model staff_welcome_forms {
+  id               String      @id
+  staffUserId      String      @unique
+  name             String
+  favoriteFastFood String
+  favoriteMovie    String?
+  completed        Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime
+  startDate        String
+  additionalInfo   String?
+  client           String
+  dreamDestination String?
+  favoriteBook     String?
+  favoriteColor    String?
+  favoriteGame     String?
+  favoriteMusic    String?
+  favoriteQuote    String?
+  favoriteSeason   String?
+  favoriteSport    String?
+  funFact          String?
+  hobby            String?
+  petName          String?
+  submittedAt      DateTime    @default(now())
+  staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@map("staff_interests")
 }
 
 model subtasks {
@@ -700,6 +678,17 @@ model task_assignments {
   @@unique([taskId, staffUserId])
 }
 
+model task_responses {
+  id            String      @id
+  taskId        String
+  content       String
+  createdByType CreatorType
+  createdById   String
+  attachments   String[]    @default([])
+  createdAt     DateTime    @default(now())
+  tasks         tasks       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
 model tasks {
   id               String             @id
   staffUserId      String?
@@ -721,31 +710,49 @@ model tasks {
   clientUserId     String?
   subtasks         subtasks[]
   task_assignments task_assignments[]
+  task_responses   task_responses[]
   client_users     client_users?      @relation(fields: [clientUserId], references: [id])
   company          company?           @relation(fields: [companyId], references: [id])
   staff_users      staff_users?       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
-model tickets {
+model ticket_responses {
   id               String            @id
-  ticketId         String            @unique
+  ticketId         String
   staffUserId      String?
-  title            String
-  description      String
-  category         TicketCategory
-  priority         TicketPriority    @default(MEDIUM)
-  status           TicketStatus      @default(OPEN)
-  assignedTo       String?
-  resolvedDate     DateTime?
+  message          String
   createdAt        DateTime          @default(now())
-  updatedAt        DateTime
-  attachments      String[]          @default([])
-  createdByType    String            @default("STAFF")
   managementUserId String?
+  createdByType    String
+  attachments      String[]          @default([])
   clientUserId     String?
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  tickets          tickets           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model tickets {
+  id               String             @id
+  ticketId         String             @unique
+  staffUserId      String?
+  title            String
+  description      String
+  category         TicketCategory
+  priority         TicketPriority     @default(MEDIUM)
+  status           TicketStatus       @default(OPEN)
+  assignedTo       String?
+  resolvedDate     DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  attachments      String[]           @default([])
+  createdByType    String             @default("STAFF")
+  managementUserId String?
+  clientUserId     String?
+  ticket_responses ticket_responses[]
+  client_users     client_users?      @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+  management_users management_users?  @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model time_entries {
@@ -769,14 +776,9 @@ model time_entries {
   wasEarlyClockOut Boolean         @default(false)
   workScheduleId   String?
   workedFullShift  Boolean         @default(false)
-  shiftDate        DateTime?
-  shiftDayOfWeek   String?
   breaks           breaks[]
   staff_users      staff_users     @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-  work_schedules   work_schedules? @relation(fields: [workScheduleId], references: [id])
-
-  @@index([shiftDate])
-  @@index([shiftDayOfWeek])
+  work_schedule    work_schedules? @relation(fields: [workScheduleId], references: [id])
 }
 
 model user_badges {
@@ -805,13 +807,12 @@ model work_schedules {
   shiftType      ShiftType?        @default(DAY_SHIFT)
   timezone       String?           @default("Asia/Manila")
   workLocation   WorkLocationType? @default(WORK_FROM_HOME)
-  clientTimezone String?
   time_entries   time_entries[]
   company        company?          @relation(fields: [companyId], references: [id])
   staff_profiles staff_profiles    @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  @@index([companyId])
   @@index([profileId])
+  @@index([companyId])
 }
 
 enum AwayReason {
@@ -856,6 +857,19 @@ enum ClockOutReason {
   INTERNET_ISSUE
   POWER_OUTAGE
   PERSONAL
+  OTHER
+}
+
+enum LateReason {
+  TRAFFIC
+  OVERSLEPT
+  EMERGENCY
+  POWER_OUTAGE
+  INTERNET_ISSUE
+  FAMILY_MATTER
+  HEALTH_ISSUE
+  TRANSPORTATION
+  WEATHER
   OTHER
 }
 
@@ -913,19 +927,6 @@ enum InterviewRequestStatus {
   HIRED
 }
 
-enum LateReason {
-  TRAFFIC
-  OVERSLEPT
-  EMERGENCY
-  POWER_OUTAGE
-  INTERNET_ISSUE
-  FAMILY_MATTER
-  HEALTH_ISSUE
-  TRANSPORTATION
-  WEATHER
-  OTHER
-}
-
 enum ManagementRole {
   ADMIN
   MANAGER
@@ -964,25 +965,10 @@ enum OnboardingStatus {
 }
 
 enum PostAudience {
-  // Staff posting options
-  ALL_STAFF        // All staff can see
-  MY_TEAM          // Only my department/team
-  MY_CLIENT        // Only my assigned client + management
-  
-  // Management posting options
-  EVERYONE         // All staff + clients + management
-  ALL_CLIENTS      // All clients + management
-  ALL_STAFF_MGMT   // All staff + management (renamed from ALL_STAFF to avoid conflict)
-  MANAGEMENT_ONLY  // Management team only
-  
-  // Client posting options
-  MY_TEAM_AND_MANAGEMENT  // My team + my account manager
-  
-  // Legacy/fallback
-  ALL              // Everyone (legacy)
-  STAFF            // Legacy
-  CLIENT           // Legacy
-  MANAGEMENT       // Legacy
+  STAFF
+  CLIENT
+  MANAGEMENT
+  ALL
 }
 
 enum PostType {
@@ -993,7 +979,6 @@ enum PostType {
   CELEBRATION
   UPDATE
   ANNOUNCEMENT
-  RESHARE        // For reshared posts
 }
 
 enum ReactionType {
@@ -1021,12 +1006,6 @@ enum ReviewType {
   MONTH_3
   MONTH_5
   RECURRING
-}
-
-enum ShiftType {
-  DAY_SHIFT
-  NIGHT_SHIFT
-  MID_SHIFT
 }
 
 enum StaffRole {
@@ -1095,6 +1074,12 @@ enum TicketStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+enum ShiftType {
+  DAY_SHIFT
+  NIGHT_SHIFT
+  MID_SHIFT
 }
 
 enum WorkLocationType {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Plus, Grid3X3, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import TicketKanbanLight from "@/components/tickets/ticket-kanban-light"
+import ClientTicketBoard from "@/components/tickets/client-ticket-board"
 import TicketListLight from "@/components/tickets/ticket-list-light"
 import TicketDetailModal from "@/components/tickets/ticket-detail-modal"
 import { Ticket } from "@/types/ticket"
@@ -322,12 +322,11 @@ export default function ClientTicketsPage() {
           </div>
         </div>
 
-        {/* Tickets Display */}
+        {/* Tickets Display - CLIENT VIEW ONLY (NO DRAG AND DROP) */}
         {viewMode === 'board' ? (
-          <TicketKanbanLight
+          <ClientTicketBoard
             tickets={tickets || []}
             onTicketClick={handleTicketClick}
-            onStatusChange={() => {}}
           />
         ) : (
           <TicketListLight
@@ -574,6 +573,7 @@ export default function ClientTicketsPage() {
             onClose={handleCloseModal}
             onUpdate={handleModalUpdate}
             isManagement={false}
+            isClient={true}
           />
         )}
       </div>

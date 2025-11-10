@@ -96,5 +96,26 @@ export interface Ticket {
     avatar?: string
     role: string
   } | null
+  management_users?: {
+    id: string
+    name: string
+    email: string
+    avatar?: string
+    role: string
+    department: string
+  } | null
+  client_users?: {
+    id: string
+    name: string
+    email: string
+    avatar?: string
+  } | null
+  staff_users?: {
+    id: string
+    name: string
+    email: string
+    avatar?: string
+    role: string
+  } | null
 }
 

@@ -13,12 +13,7 @@ import {
   Cloud,
   Gift,
   Bus,
-  Paperclip,
-  Send,
-  Upload,
-  Trash2,
   Video,
-  Loader2,
 } from "lucide-react"
 import { Ticket, TicketResponse } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -26,12 +21,15 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import ImageLightbox from "@/components/ui/image-lightbox"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
+import CommentThread from "@/components/universal/comment-thread"
+import StaffUploadPreloader from "@/components/uploads/staff-upload-preloader"
 
 interface TicketDetailModalProps {
   ticket: Ticket
   onClose: () => void
   onUpdate: () => void
   isManagement?: boolean
+  isClient?: boolean  // NEW: Detect if client is viewing
 }
 
 const categoryConfig: Record<string, { label: string; icon: any; color: string }> = {
@@ -94,17 +92,16 @@ export default function TicketDetailModal({
   onClose,
   onUpdate,
   isManagement = false,
+  isClient = false,  // NEW: Default to false
 }: TicketDetailModalProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [message, setMessage] = useState("")
-  const [attachments, setAttachments] = useState<File[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState(ticket.status)
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [showLightbox, setShowLightbox] = useState(false)
+  const [uploadingAttachments, setUploadingAttachments] = useState(false)
+  const [ticketAttachments, setTicketAttachments] = useState<string[]>(ticket.attachments || [])
 
   const CategoryIcon = categoryConfig[ticket.category]?.icon || HelpCircle
 
@@ -114,151 +111,63 @@ export default function TicketDetailModal({
     setShowLightbox(true)
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files)
-      const validFiles = files.filter((f) => f.size <= 5 * 1024 * 1024).slice(0, 3)
-      setAttachments((prev) => [...prev, ...validFiles].slice(0, 3))
-    }
-  }
+  // Handle adding more attachments to ticket
+  const handleAddAttachments = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handleAddAttachmentsOnly = async () => {
-    if (attachments.length === 0) return
-
-    setUploading(true)
+    setUploadingAttachments(true)
     try {
-      // Upload attachments to Supabase
-      const formData = new FormData()
-      attachments.forEach((file) => {
-        formData.append("files", file)
-      })
+      const uploadedUrls: string[] = []
 
-      const uploadResponse = await fetch("/api/tickets/attachments", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json()
-        console.error("Upload failed:", errorData)
-        throw new Error(`Failed to upload attachments: ${errorData.error || "Unknown error"}`)
-      }
-
-      const uploadData = await uploadResponse.json()
-      console.log("Upload successful:", uploadData)
-      const attachmentUrls = uploadData.urls || []
-
-      // Add attachments as a response (with empty message, just images)
-      console.log("Creating response with attachments:", attachmentUrls)
-      const response = await fetch(`/api/tickets/${ticket.id}/responses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: "", // Empty message, just adding images
-          attachments: attachmentUrls,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error("Response creation failed:", errorData)
-        throw new Error(`Failed to add attachments to ticket: ${errorData.error || "Unknown error"}`)
-      }
-
-      toast({
-        title: "✅ Success!",
-        description: `${attachments.length} image${attachments.length > 1 ? 's' : ''} saved to ticket`,
-      })
-
-      setAttachments([])
-      onUpdate()
-      
-      // Auto-close modal after 500ms to show success message
-      setTimeout(() => {
-        onClose()
-      }, 500)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add images. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleSubmitResponse = async () => {
-    if (!message.trim() && attachments.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please enter a message or add at least one image",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      // Upload attachments first if any
-      let attachmentUrls: string[] = []
-
-      if (attachments.length > 0) {
-        setUploading(true)
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
         const formData = new FormData()
-        attachments.forEach((file) => {
-          formData.append("files", file)
-        })
+        formData.append("file", file)
 
-        const uploadResponse = await fetch("/api/tickets/attachments", {
+        const response = await fetch("/api/upload", {
           method: "POST",
-          body: formData,
+          body: formData
         })
 
-        if (uploadResponse.ok) {
-          const uploadData = await uploadResponse.json()
-          attachmentUrls = uploadData.urls || []
+        const data = await response.json()
+
+        if (data.url) {
+          uploadedUrls.push(data.url)
+        } else {
+          throw new Error(data.error || "Failed to upload image")
         }
-        setUploading(false)
       }
 
-      // Submit response
-      console.log("Submitting response with message:", message, "attachments:", attachmentUrls)
-      const response = await fetch(`/api/tickets/${ticket.id}/responses`, {
-        method: "POST",
+      // Update ticket with new attachments
+      const newAttachments = [...ticketAttachments, ...uploadedUrls]
+      
+      const response = await fetch(`/api/tickets/${ticket.id}/attachments`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message,
-          attachments: attachmentUrls,
-        }),
+        body: JSON.stringify({ attachments: newAttachments })
       })
 
-      if (!response.ok) throw new Error("Failed to submit response")
+      if (!response.ok) throw new Error("Failed to add attachments")
 
+      setTicketAttachments(newAttachments)
       toast({
-        title: "Success",
-        description: "Response added successfully",
+        title: "Images added!",
+        description: `${uploadedUrls.length} image(s) added to ticket.`,
       })
-
-      setMessage("")
-      setAttachments([])
-      onUpdate()
-    } catch (error) {
+      // Don't call onUpdate() - keep modal open for more edits
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to submit response. Please try again.",
-        variant: "destructive",
+        title: "Upload failed",
+        description: error.message || "Failed to upload images",
+        variant: "destructive"
       })
     } finally {
-      setSubmitting(false)
-      setUploading(false)
+      setUploadingAttachments(false)
     }
   }
 
+  // Handle status change (admin only)
   const handleStatusChange = async () => {
     if (selectedStatus === ticket.status) return
 
@@ -292,18 +201,30 @@ export default function TicketDetailModal({
     router.push(`/call/ticket-${ticket.ticketId}?ticketId=${ticket.id}`)
   }
 
-  // Use FUN dark theme for Staff, management theme for others
-  const isDark = true // Always fun theme!
+  // Client gets LIGHT theme, Staff/Management get DARK theme
+  const isDark = !isClient  // Light theme for clients, dark for staff/management
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-indigo-500/30 backdrop-blur-2xl animate-in slide-in-from-bottom duration-500 flex flex-col">
-        {/* Header - FUN STYLE! - STICKY */}
-        <div className="sticky top-0 z-10 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 backdrop-blur-xl p-8 pb-6 rounded-t-3xl ">
+      <div className={`w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl animate-in slide-in-from-bottom duration-500 flex flex-col ${
+        isDark
+          ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-indigo-500/30 backdrop-blur-2xl"
+          : "bg-white border-2 border-gray-200"
+      }`}>
+        {/* Header - STICKY */}
+        <div className={`sticky top-0 z-10 p-8 pb-6 rounded-t-3xl ${
+          isDark
+            ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 backdrop-blur-xl"
+            : "bg-white border-b-2 border-gray-200"
+        }`}>
           <div className="flex items-start justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-indigo-300 bg-indigo-500/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-indigo-500/30 shadow-lg shadow-indigo-500/20">
+                <span className={`font-mono text-sm font-bold px-3 py-1.5 rounded-lg shadow ${
+                  isDark 
+                    ? "text-indigo-300 bg-indigo-500/20 backdrop-blur-sm border border-indigo-500/30 shadow-indigo-500/20"
+                    : "text-blue-700 bg-blue-50 border border-blue-200"
+                }`}>
                   {ticket.ticketId}
                 </span>
                 <span
@@ -322,21 +243,33 @@ export default function TicketDetailModal({
                   {statusConfig[ticket.status]?.label}
                 </span>
               </div>
-              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
+              <h2 className={`text-3xl font-bold ${
+                isDark 
+                  ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"
+                  : "text-gray-900"
+              }`}>
                 {ticket.title}
               </h2>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleStartVideoCall}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/50 hover:scale-105 transition-all rounded-xl px-4 py-2"
+                className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                  isDark
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/50"
+                    : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
+                }`}
               >
                 <Video className="h-4 w-4" />
                 Video Call 📹
               </Button>
               <button
                 onClick={onClose}
-                className="rounded-xl p-2.5 transition-all hover:scale-110 text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-1 ring-slate-700 hover:ring-red-500 backdrop-blur-sm"
+                className={`rounded-xl p-2.5 transition-all hover:scale-110 ring-1 backdrop-blur-sm ${
+                  isDark
+                    ? "text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-slate-700 hover:ring-red-500"
+                    : "text-gray-600 hover:bg-red-500/10 hover:text-red-600 ring-gray-300 hover:ring-red-400"
+                }`}
                 title="Close"
               >
                 <X className="h-6 w-6" />
@@ -545,27 +478,37 @@ export default function TicketDetailModal({
 
         {/* Ticket Description */}
         <div className="mb-6 space-y-4">
-          <div className="rounded-2xl p-6 bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10">
+          <div className={`rounded-2xl p-6 ${
+            isDark
+              ? "bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10"
+              : "bg-white border-2 border-gray-200"
+          }`}>
             <div className="mb-4">
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${isDark ? "text-white" : "text-gray-900"}`}>
                 📝 Description
               </h3>
-              <div className="mb-3 flex items-center justify-between text-xs text-slate-400">
+              <div className={`mb-3 flex items-center justify-between text-xs ${isDark ? "text-slate-400" : "text-gray-600"}`}>
                 <span className="flex items-center gap-2">
                   🕐 Created {new Date(ticket.createdAt).toLocaleString()}
                 </span>
                 {(ticket.staff_users || ticket.client_users) && (
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400">Created by:</span>
-                    <span className="font-bold text-white">
+                    <span className={isDark ? "text-slate-400" : "text-gray-600"}>Created by:</span>
+                    <span className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
                       {ticket.staff_users?.name || ticket.client_users?.name}
                     </span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm ${
-                      ticket.createdByType === "CLIENT"
-                        ? "bg-green-500/30 text-green-300 border border-green-500/30"
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      isDark
+                        ? ticket.createdByType === "CLIENT"
+                          ? "bg-green-500/30 text-green-300 border border-green-500/30"
+                          : ticket.createdByType === "MANAGEMENT"
+                          ? "bg-purple-500/30 text-purple-300 border border-purple-500/30"
+                          : "bg-emerald-500/30 text-emerald-300 border border-emerald-500/30"
+                        : ticket.createdByType === "CLIENT"
+                        ? "bg-blue-100 text-blue-700 border border-blue-200"
                         : ticket.createdByType === "MANAGEMENT"
-                        ? "bg-purple-500/30 text-purple-300 border border-purple-500/30"
-                        : "bg-emerald-500/30 text-emerald-300 border border-emerald-500/30"
+                        ? "bg-purple-100 text-purple-700 border border-purple-200"
+                        : "bg-green-100 text-green-700 border border-green-200"
                     }`}>
                       {ticket.createdByType === "STAFF" ? "👤 STAFF" : ticket.createdByType === "CLIENT" ? "👔 CLIENT" : "📋 MANAGEMENT"}
                     </span>
@@ -573,272 +516,132 @@ export default function TicketDetailModal({
                 )}
               </div>
             </div>
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
-              <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{ticket.description}</p>
+            <div className={`rounded-lg p-4 border ${
+              isDark
+                ? "bg-slate-900/50 border-slate-700/50"
+                : "bg-gray-50 border-gray-200"
+            }`}>
+              <p className={`whitespace-pre-wrap leading-relaxed ${isDark ? "text-slate-200" : "text-gray-900"}`}>{ticket.description}</p>
             </div>
 
-            {ticket.attachments && ticket.attachments.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <div className="text-sm font-bold text-indigo-300 flex items-center gap-2">
-                  📎 Attachments ({ticket.attachments.length})
+            {(ticketAttachments.length > 0 || uploadingAttachments) && (
+              <div className="mt-6 space-y-4">
+                <div className={`text-sm font-bold flex items-center gap-2 ${isDark ? "text-indigo-300" : "text-gray-900"}`}>
+                  📎 Attachments ({ticketAttachments.length})
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {ticket.attachments.map((url, index) => (
-                    <button
-                      key={index}
-                      onClick={() => openLightbox(ticket.attachments, index)}
-                      className="group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-1 ring-white/10 hover:ring-indigo-400/50 hover:scale-105 transform shadow-lg hover:shadow-indigo-500/20"
-                    >
-                      <img
-                        src={url}
-                        alt={`Attachment ${index + 1}`}
-                        className="h-32 w-full object-cover transition-transform group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-black/0 group-hover:from-indigo-900/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="bg-indigo-500/90 rounded-full p-3 ring-2 ring-white/50 backdrop-blur-sm transform scale-90 group-hover:scale-100 transition-transform">
-                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                          </svg>
+
+                {/* Existing Attachments Grid */}
+                {ticketAttachments.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {ticketAttachments.map((url, index) => (
+                      <button
+                        key={index}
+                        onClick={() => openLightbox(ticketAttachments, index)}
+                        className="group relative overflow-hidden rounded-xl transition-all cursor-pointer ring-1 ring-white/10 hover:ring-indigo-400/50 hover:scale-105 transform shadow-lg hover:shadow-indigo-500/20"
+                      >
+                        <img
+                          src={url}
+                          alt={`Attachment ${index + 1}`}
+                          className="h-32 w-full object-cover transition-transform group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-black/0 group-hover:from-indigo-900/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <div className="bg-indigo-500/90 rounded-full p-3 ring-2 ring-white/50 backdrop-blur-sm transform scale-90 group-hover:scale-100 transition-transform">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* ADD MORE SECTION - Staff Upload Preloader Style */}
+                <div className={`relative rounded-xl border-2 border-dashed p-6 text-center transition-all ${
+                  isDark
+                    ? "border-indigo-400/50 bg-slate-800/30 hover:border-indigo-400/70 hover:bg-slate-800/40"
+                    : "border-blue-300 bg-blue-50/50 hover:border-blue-400 hover:bg-blue-50"
+                }`}>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleAddAttachments}
+                    className="hidden"
+                    id="add-more-attachments"
+                    disabled={uploadingAttachments}
+                  />
+                  
+                  {uploadingAttachments ? (
+                    // ⬆️ UPLOADING STATE
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      {/* Spinner */}
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center">
+                        <div className="relative">
+                          <div className={`h-16 w-16 rounded-full border-4 animate-spin ${
+                            isDark 
+                              ? "border-indigo-200/20 border-t-indigo-500"
+                              : "border-blue-200 border-t-blue-500"
+                          }`}></div>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <svg className={`h-6 w-6 ${isDark ? "text-indigo-400" : "text-blue-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                    </button>
-                  ))}
+                      
+                      {/* Upload Text */}
+                      <div className="space-y-2">
+                        <p className={`text-lg font-bold animate-pulse ${isDark ? "text-indigo-400" : "text-blue-600"}`}>⬆️ Uploading images...</p>
+                        <p className={`text-sm ${isDark ? "text-slate-400" : "text-gray-600"}`}>Please wait while we upload your files</p>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className={`w-full max-w-xs mx-auto h-2 rounded-full overflow-hidden ${
+                        isDark ? "bg-slate-700/50" : "bg-gray-200"
+                      }`}>
+                        <div className={`h-full rounded-full animate-pulse ${
+                          isDark 
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-500"
+                            : "bg-gradient-to-r from-blue-500 to-cyan-500"
+                        }`} style={{ width: '70%' }}></div>
+                      </div>
+                    </div>
+                  ) : (
+                    // 📤 READY TO ADD MORE STATE
+                    <label htmlFor="add-more-attachments" className="cursor-pointer block group">
+                      {/* Upload Icon */}
+                      <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full transition-all group-hover:scale-110 ${
+                        isDark
+                          ? "bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/30"
+                          : "bg-blue-100 text-blue-600 group-hover:bg-blue-200"
+                      }`}>
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      
+                      {/* Upload Text */}
+                      <div className="space-y-1">
+                        <p className={`text-base font-bold ${isDark ? "text-white" : "text-gray-900"}`}>Add More Images</p>
+                        <p className={`text-xs ${isDark ? "text-slate-400" : "text-gray-600"}`}>Click to upload • PNG, JPG up to 5MB</p>
+                      </div>
+                    </label>
+                  )}
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Responses/Comments - FUN STYLE! */}
-        {ticket.responses && ticket.responses.length > 0 && (
-          <div className="mb-6">
-            <h3 className="mb-4 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 flex items-center gap-2">
-              💬 Responses ({ticket.responses.length})
-            </h3>
-            <div className="space-y-3">
-              {ticket.responses.map((response) => {
-                const user = response.staff_users || response.management_users || response.client_users
-                const initials = user?.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2)
-
-                // Determine styling based on creator type
-                const isManagementResp = response.createdByType === "MANAGEMENT"
-                const isClientResp = response.createdByType === "CLIENT"
-                
-                const bgColor = isManagementResp 
-                    ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 ring-1 ring-indigo-500/30 backdrop-blur-xl shadow-lg shadow-indigo-500/10" 
-                    : isClientResp 
-                    ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 ring-1 ring-green-500/30 backdrop-blur-xl shadow-lg shadow-green-500/10"
-                    : "bg-gradient-to-r from-slate-800/70 to-slate-800/50 ring-1 ring-white/10 backdrop-blur-xl shadow-lg"
-                
-                const avatarColor = isManagementResp
-                  ? "bg-gradient-to-br from-indigo-500 to-purple-600"
-                  : isClientResp
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                  : "bg-gradient-to-br from-blue-500 to-cyan-600"
-                
-                const textColor = isManagementResp
-                    ? "text-indigo-300"
-                    : isClientResp
-                    ? "text-green-300"
-                    : "text-white"
-                
-                const badgeColor = isManagementResp
-                    ? "bg-indigo-500/30 text-indigo-200 border border-indigo-500/30"
-                    : isClientResp
-                    ? "bg-green-500/30 text-green-200 border border-green-500/30"
-                    : "bg-emerald-500/30 text-emerald-200 border border-emerald-500/30"
-
-                return (
-                  <div
-                    key={response.id}
-                    className={`rounded-2xl p-5 ${bgColor}`}
-                  >
-                    <div className="mb-3 flex items-center gap-3">
-                      <Avatar className="h-10 w-10 ring-2 ring-white/20 shadow-lg">
-                        <AvatarImage src={user?.avatar} alt={user?.name} />
-                        <AvatarFallback className={`${avatarColor} text-white font-bold`}>
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-bold ${textColor}`}>
-                            {user?.name}
-                          </span>
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-bold backdrop-blur-sm ${badgeColor}`}>
-                            {response.createdByType === "STAFF" ? "👤 STAFF" : response.createdByType === "MANAGEMENT" ? "📋 MGMT" : "👔 CLIENT"}
-                          </span>
-                        </div>
-                        <span className="text-xs text-slate-400">
-                          {new Date(response.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    {response.message && response.message.trim() && (
-                      <p className="text-slate-200 leading-relaxed">{response.message}</p>
-                    )}
-
-                    {response.attachments && response.attachments.length > 0 && (
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        {response.attachments.map((url, index) => (
-                          <button
-                            key={index}
-                            onClick={() => openLightbox(response.attachments, index)}
-                            className={`group overflow-hidden rounded transition-all cursor-pointer relative ${
-                              isDark 
-                                ? "ring-1 ring-white/10 hover:ring-indigo-400/50" 
-                                : "border-2 border-gray-200 hover:border-blue-400"
-                            }`}
-                          >
-                            <img
-                              src={url}
-                              alt={`Attachment ${index + 1}`}
-                              className="h-20 w-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                              </svg>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Add Response - FUN STYLE! */}
-        <div className="space-y-4 rounded-2xl bg-slate-800/30 backdrop-blur-xl p-6 ring-1 ring-indigo-500/20">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 flex items-center gap-2">
-              💭 Add Response (Optional)
-            </h3>
-            {attachments.length > 0 && (
-              <span className="text-xs font-bold text-indigo-300 bg-indigo-500/20 px-3 py-1 rounded-full border border-indigo-500/30">
-                📎 {attachments.length} image{attachments.length > 1 ? 's' : ''} attached
-              </span>
-            )}
-          </div>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your response... (optional - you can just add images) 💬"
-            rows={4}
-            className="w-full rounded-xl px-5 py-4 outline-none transition-all bg-slate-800/50 backdrop-blur-xl text-white placeholder-slate-500 ring-1 ring-white/10 focus:ring-2 focus:ring-indigo-500 focus:bg-slate-800/80"
-          />
-
-          {/* Attachments */}
-          {attachments.length > 0 && (
-            <div className="space-y-2">
-              {uploading && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/20 ring-1 ring-blue-500/30 backdrop-blur-xl shadow-lg">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-sm font-bold text-blue-300">
-                    Uploading {attachments.length} image{attachments.length > 1 ? 's' : ''}...
-                  </span>
-                </div>
-              )}
-              {attachments.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 rounded-xl p-3 bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10 hover:ring-indigo-500/30 transition-all"
-                >
-                  <Paperclip className="h-4 w-4 text-indigo-400" />
-                  <span className="flex-1 truncate text-sm font-medium text-slate-200">{file.name}</span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </span>
-                  <button
-                    onClick={() => removeAttachment(index)}
-                    disabled={uploading || submitting}
-                    className="rounded-lg p-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:bg-red-500/20 hover:scale-110"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Actions - FUN BUTTONS! */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              {attachments.length < 5 && (
-                <label className="flex cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all bg-gradient-to-r from-slate-700 to-slate-800 text-indigo-300 hover:from-slate-600 hover:to-slate-700 hover:scale-105 shadow-lg ring-1 ring-white/10">
-                  <Upload className="h-4 w-4" />
-                  📸 Add Images
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                </label>
-              )}
-              {attachments.length > 0 && (
-                <Button
-                  onClick={handleAddAttachmentsOnly}
-                  disabled={uploading || submitting}
-                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-lg shadow-green-500/50 hover:scale-105 transition-all rounded-xl px-4 py-3"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Uploading {attachments.length} image{attachments.length > 1 ? 's' : ''}...
-                    </>
-                  ) : (
-                    <>
-                      <Paperclip className="h-4 w-4" />
-                      💾 Save {attachments.length} Image{attachments.length > 1 ? 's' : ''} & Close
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 ml-auto">
-              {message.trim() && (
-                <div className="relative group">
-                  <Button
-                    onClick={handleSubmitResponse}
-                    disabled={submitting || uploading}
-                    className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold shadow-lg shadow-indigo-500/50 hover:scale-105 transition-all rounded-xl px-4 py-3"
-                  >
-                    {submitting || uploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {uploading ? "⏳ Uploading..." : "📤 Submitting..."}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        🚀 Submit Response
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-              
-              <Button
-                onClick={onClose}
-                variant="outline"
-                className="border-2 border-slate-700 text-slate-300 hover:bg-slate-800 hover:border-slate-600 hover:scale-105 transition-all rounded-xl px-4 py-3 font-bold"
-              >
-                ✖️ Close
-              </Button>
-            </div>
-          </div>
-        </div>
+        {/* 💬 UNIVERSAL COMMENT SYSTEM - COMMENTS & REACTIONS! */}
+        <CommentThread
+          commentableType="TICKET"
+          commentableId={ticket.id}
+          variant={isClient ? "client" : isManagement ? "management" : "staff"}
+          onUpdate={onUpdate}
+        />
         </div>
       </div>
       

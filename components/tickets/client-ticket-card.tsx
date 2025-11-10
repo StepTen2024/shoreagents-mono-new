@@ -54,28 +54,28 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
   return (
     <div
       onClick={onClick}
-      className="group relative rounded-2xl bg-slate-900/50 backdrop-blur-xl shadow-xl border border-white/10 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 cursor-pointer overflow-visible hover:scale-[1.02] transform"
+      className="group relative rounded-xl bg-white border border-gray-200 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer overflow-hidden"
     >
       {/* Status indicator bar - PROMINENT TOP BORDER! */}
-      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg`} />
+      <div className={`h-1 w-full ${statusColors[ticket.status]}`} />
 
       <div className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm">
+              <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
                 {ticket.ticketId}
               </span>
               <span
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg backdrop-blur-sm ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
                   priorityColors[ticket.priority]
                 }`}
               >
                 {priorityEmojis[ticket.priority]} {ticket.priority}
               </span>
             </div>
-            <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-600 group-hover:to-purple-600 transition-all">
+            <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-all">
               {ticket.title}
             </h3>
           </div>
@@ -83,7 +83,7 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
 
         {/* Category */}
         <div className="mb-3">
-          <span className="inline-flex items-center text-xs font-bold text-purple-700 bg-purple-100 px-3 py-1.5 rounded-full border border-purple-200 shadow-sm">
+          <span className="inline-flex items-center text-xs font-medium text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
             {getCategoryIcon(ticket.category)} {ticket.category.replace(/_/g, " ")}
           </span>
         </div>
@@ -112,14 +112,28 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer - WITH REACTIONS! */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            {/* Responses count */}
-            {ticket.responses && ticket.responses.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-blue-100 px-2 py-1 rounded-lg border border-blue-200">
-                <MessageSquare className="w-4 h-4 text-blue-600" />
-                <span className="font-bold text-blue-700">{ticket.responses.length}</span>
+          <div className="flex items-center gap-3 text-sm">
+            {/* Comment Count - ALWAYS SHOW */}
+            <div className="flex items-center gap-1.5 bg-blue-100 px-2 py-1 rounded-full border border-blue-200">
+              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+              <span className="font-bold text-blue-700">{ticket.responses?.length || 0}</span>
+            </div>
+            
+            {/* Reactions Preview */}
+            {ticket.reactions && ticket.reactions.length > 0 && (
+              <div className="flex items-center gap-0.5">
+                {ticket.reactions.slice(0, 3).map((reaction: any, i: number) => (
+                  <span key={i} className="text-sm">
+                    {reaction.emoji}
+                  </span>
+                ))}
+                {ticket.reactions.length > 3 && (
+                  <span className="text-xs text-gray-500 ml-1">
+                    +{ticket.reactions.length - 3}
+                  </span>
+                )}
               </div>
             )}
 
@@ -141,9 +155,9 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
           {/* Assigned Manager (for Staff tickets) or Account Manager (for Client tickets) */}
           {ticket.management_users && (
             <div className="relative group/assigned">
-              <Avatar className="h-8 w-8 border-2 border-indigo-500/50 shadow-lg shadow-indigo-500/50 ring-2 ring-indigo-500/20">
+              <Avatar className="h-8 w-8 border-2 border-blue-200 shadow-sm">
                 <AvatarImage src={ticket.management_users.avatar} alt={ticket.management_users.name} />
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-bold">
                   {ticket.management_users.name
                     .split(" ")
                     .map((n) => n[0])
@@ -152,16 +166,16 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
                     .slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
-               <div className="absolute -top-12 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
+               <div className="absolute -top-12 -right-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
                  Assigned to: {ticket.management_users.name}
                </div>
             </div>
           )}
           {!ticket.management_users && ticket.accountManager && (
             <div className="relative group/assigned">
-              <Avatar className="h-8 w-8 border-2 border-purple-500/50 shadow-lg shadow-purple-500/50 ring-2 ring-purple-500/20">
+              <Avatar className="h-8 w-8 border-2 border-blue-200 shadow-sm">
                 <AvatarImage src={ticket.accountManager.avatar} alt={ticket.accountManager.name} />
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-white text-xs font-bold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-bold">
                   {ticket.accountManager.name
                     .split(" ")
                     .map((n) => n[0])
@@ -170,7 +184,7 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
                     .slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
-               <div className="absolute -top-12 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
+               <div className="absolute -top-12 -right-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
                  Assigned to: {ticket.accountManager.name}
                </div>
             </div>
@@ -180,7 +194,7 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
       </div>
 
       {/* Hover effect overlay - Subtle shimmer for white background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-purple-500/5 to-pink-500/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-xl" />
     </div>
   )
 }

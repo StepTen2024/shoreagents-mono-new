@@ -47,7 +47,7 @@ async function getStaffUser(id: string) {
             currentRole: true,
           },
         },
-        staff_welcome_forms: {
+        staff_interests: {
           select: {
             id: true,
             name: true,
@@ -70,7 +70,7 @@ async function getStaffUser(id: string) {
             submittedAt: true,
           },
         },
-      } as any,
+      },
     })
 
     return staffUser

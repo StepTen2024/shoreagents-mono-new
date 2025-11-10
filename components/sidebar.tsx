@@ -41,7 +41,7 @@ const navItems = [
   { href: "/performance-reviews", icon: Star, label: "Performance Reviews" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
   { href: "/ai-assistant", icon: MessageSquare, label: "AI Assistant" },
-  { href: "/activity", icon: FileText, label: "The Feed" },
+  { href: "/posts", icon: FileText, label: "The Feed" },
   { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/offboarding", icon: UserMinus, label: "Offboarding" },
   { href: "/settings", icon: Settings, label: "Settings" },
