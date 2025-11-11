@@ -36,7 +36,11 @@ function createWindow() {
     // Production: Load from Railway server
     const productionUrl = config.API_BASE_URL
     console.log('[Main] Loading from production server:', productionUrl)
+    console.log('[Main] API_BASE_URL from config:', productionUrl)
+    console.log('[Main] process.env.API_BASE_URL:', process.env.API_BASE_URL)
     mainWindow.loadURL(productionUrl)
+    // Open dev tools in production to debug
+    mainWindow.webContents.openDevTools()
   }
 
   // Prevent window from closing, hide instead
@@ -53,6 +57,13 @@ function createWindow() {
     
     // Send tracking status to renderer
     mainWindow.webContents.send('tracking-status', performanceTracker.getStatus())
+  })
+  
+  // Handle loading errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('[Main] Failed to load:', errorDescription)
+    console.error('[Main] Error code:', errorCode)
+    console.error('[Main] URL:', validatedURL)
   })
   
   // Listen for URL changes to detect user type changes
