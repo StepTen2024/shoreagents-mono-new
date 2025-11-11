@@ -2,7 +2,7 @@
 # Builds Windows installer for Shore Agents Desktop App
 
 appId: com.shoreagents.desktop
-productName: Shore Agents
+productName: ShoreAgentsAI
 copyright: Copyright © 2025 Shore Agents
 
 # Build output directory
@@ -32,7 +32,7 @@ win:
       arch:
         - x64
   # icon: build/icon.ico  # Commented out - using default Electron icon
-  artifactName: "${productName}-Setup-${version}.${ext}"
+  artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   
 # Windows installer configuration (NSIS)
 nsis:
@@ -40,11 +40,11 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: "Shore Agents"
+  shortcutName: "ShoreAgentsAI"
   # installerIcon: build/icon.ico  # Commented out - using default Electron icon
   # uninstallerIcon: build/icon.ico  # Commented out - using default Electron icon
   # license: LICENSE  # Commented out if LICENSE file doesn't exist
-  artifactName: "${productName}-Setup-${version}.${ext}"
+  artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   deleteAppDataOnUninstall: false
 
 # Environment variables to embed in build

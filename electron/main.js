@@ -33,8 +33,10 @@ function createWindow() {
     mainWindow.loadURL("http://localhost:3000") // Next.js dev server
     mainWindow.webContents.openDevTools()
   } else {
-    console.log('[Main] Loading from production build')
-    mainWindow.loadFile(path.join(__dirname, "../out/index.html"))
+    // Production: Load from Railway server
+    const productionUrl = config.API_BASE_URL
+    console.log('[Main] Loading from production server:', productionUrl)
+    mainWindow.loadURL(productionUrl)
   }
 
   // Prevent window from closing, hide instead
@@ -405,7 +407,7 @@ async function initializeTracking() {
   
   // Initialize screenshot service (detection mode)
   await screenshotService.initialize({
-    apiUrl: 'http://localhost:3000'
+    apiUrl: config.API_BASE_URL
   })
   console.log('[Main] Screenshot service initialized (detection mode)')
   
