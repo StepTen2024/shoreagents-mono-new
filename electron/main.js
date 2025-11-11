@@ -15,7 +15,7 @@ let tray = null
 
 function createWindow() {
   // Set window icon
-  const iconPath = path.join(__dirname, '../build/icon.ico')
+  const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
   
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -165,7 +165,7 @@ function createWindow() {
 
 function createTray() {
   // Use the app icon for system tray
-  const iconPath = path.join(__dirname, '../build/icon.ico')
+  const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
   const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon)
   
