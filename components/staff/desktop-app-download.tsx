@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 export function DesktopAppDownload() {
   const appVersion = "1.0.0"
   const fileSize = "~250 MB"
-  const downloadUrl = "/downloads/Shore-Agents-Setup-1.0.0.exe"
+  // Self-hosted on Railway server
+  const downloadUrl = "/downloads/ShoreAgentsAI-Setup-1.0.0.exe"
 
   const handleDownload = () => {
     if (typeof window !== 'undefined') {

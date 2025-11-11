@@ -5,6 +5,9 @@ node_modules/
 .next/
 out/
 
+# Downloads (large installer files)
+public/downloads/*.exe
+
 # Environment variables
 .env
 .env.local
