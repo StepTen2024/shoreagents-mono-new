@@ -36,7 +36,15 @@ export function WebSocketProvider({ children, userId, userName }: WebSocketProvi
 
   useEffect(() => {
     // Initialize Socket.IO client
-    const socketInstance = io('http://localhost:3000', {
+    // In production (Electron), use the current window location origin
+    // In development, use localhost
+    const socketUrl = process.env.NODE_ENV === 'production' 
+      ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+      : 'http://localhost:3000'
+    
+    console.log('[WebSocket] Connecting to:', socketUrl)
+    
+    const socketInstance = io(socketUrl, {
       path: '/api/socketio',
       addTrailingSlash: false,
       autoConnect: true,   

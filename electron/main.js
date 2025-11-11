@@ -35,10 +35,18 @@ function createWindow() {
   } else {
     // Production: Load from Railway server
     const productionUrl = config.API_BASE_URL
-    console.log('[Main] Loading from production server:', productionUrl)
+    console.log('[Main] ========================================')
+    console.log('[Main] LOADING PRODUCTION APP')
+    console.log('[Main] Production URL:', productionUrl)
     console.log('[Main] API_BASE_URL from config:', productionUrl)
     console.log('[Main] process.env.API_BASE_URL:', process.env.API_BASE_URL)
-    mainWindow.loadURL(productionUrl)
+    console.log('[Main] ========================================')
+    
+    // Load with proper user agent
+    mainWindow.loadURL(productionUrl, {
+      userAgent: 'ShoreAgentsAI-Desktop/1.0.0 (Electron)'
+    })
+    
     // Open dev tools in production to debug
     mainWindow.webContents.openDevTools()
   }
@@ -64,6 +72,36 @@ function createWindow() {
     console.error('[Main] Failed to load:', errorDescription)
     console.error('[Main] Error code:', errorCode)
     console.error('[Main] URL:', validatedURL)
+    
+    // If loading failed, try to reload after a delay
+    if (errorCode !== -3) { // -3 is ERR_ABORTED which is normal for navigation
+      console.log('[Main] Retrying in 3 seconds...')
+      setTimeout(() => {
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.reload()
+        }
+      }, 3000)
+    }
+  })
+  
+  // Log console messages from the renderer
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer Console] ${message}`)
+  })
+  
+  // Check what content is being loaded
+  mainWindow.webContents.on('dom-ready', () => {
+    console.log('[Main] DOM is ready')
+    console.log('[Main] Current URL:', mainWindow.webContents.getURL())
+    
+    // Check if page shows error
+    mainWindow.webContents.executeJavaScript(`
+      document.body.innerText.substring(0, 200)
+    `).then(text => {
+      console.log('[Main] Page content preview:', text)
+    }).catch(err => {
+      console.error('[Main] Could not read page content:', err)
+    })
   })
   
   // Listen for URL changes to detect user type changes
