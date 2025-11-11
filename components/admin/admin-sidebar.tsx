@@ -234,7 +234,7 @@ export function AdminSidebar({
       }
     }
     
-    await signOut({ callbackUrl: '/login', redirect: true })
+    await signOut({ callbackUrl: '/login/admin', redirect: true })
   }
 
   // Get user initials for fallback

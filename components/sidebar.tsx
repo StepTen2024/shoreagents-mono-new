@@ -122,7 +122,7 @@ export default function Sidebar() {
       }
     }
     
-    await signOut({ callbackUrl: '/login', redirect: true })
+    await signOut({ callbackUrl: '/login/staff', redirect: true })
   }
 
   // Get user initials
