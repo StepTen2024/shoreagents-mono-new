@@ -1,6 +1,8 @@
 {
-  "name": "my-v0-project",
+  "name": "ShoreAgentsAI",
   "version": "0.1.0",
+  "description": "ShoreAgentsAI",
+  "author": "ShoreAgents",
   "private": true,
   "main": "electron/main.js",
   "engines": {
