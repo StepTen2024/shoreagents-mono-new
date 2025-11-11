@@ -64,11 +64,34 @@ function createWindow() {
   })
 
   // Window ready
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-finish-load', async () => {
     console.log('[Main] Window loaded successfully')
     
     // Send tracking status to renderer
     mainWindow.webContents.send('tracking-status', performanceTracker.getStatus())
+    
+    // Check for session cookie after page load (in case user just logged in)
+    setTimeout(async () => {
+      try {
+        const cookies = await mainWindow.webContents.session.cookies.get({
+          url: config.API_BASE_URL
+        })
+        
+        const sessionCookie = cookies.find(c => 
+          c.name === 'authjs.session-token' || 
+          c.name === 'next-auth.session-token' ||
+          c.name === '__Secure-authjs.session-token' ||
+          c.name === '__Secure-next-auth.session-token'
+        )
+        
+        if (sessionCookie) {
+          console.log('[Main] 🔄 Updating session token in sync service')
+          syncService.setSessionToken(sessionCookie.value)
+        }
+      } catch (err) {
+        console.error('[Main] Error updating session cookie:', err)
+      }
+    }, 2000) // Wait 2 seconds for cookies to be set
   })
   
   // Handle loading errors
@@ -455,29 +478,55 @@ async function initializeTracking() {
   activityTracker.startTracking()
   console.log('[Main] Activity tracking started (integrated with performance tracker and screenshot service)')
   
-  // Start sync service (it will automatically get session cookie from Electron's cookie store)
-  syncService.start()
-  console.log('[Main] Sync service started')
-  
-  // Initialize screenshot service (detection mode)
-  await screenshotService.initialize({
-    apiUrl: config.API_BASE_URL
-  })
-  console.log('[Main] Screenshot service initialized (detection mode)')
-  
-  // Start screenshot capture (will try to get session token from cookies)
+  // Get session cookie for sync service and screenshot service
   try {
-    const cookies = await mainWindow.webContents.session.cookies.get({})
+    const cookies = await mainWindow.webContents.session.cookies.get({
+      url: config.API_BASE_URL
+    })
+    
+    console.log('[Main] 🔍 Looking for session cookie...')
+    console.log('[Main] Available cookies:', cookies.map(c => c.name).join(', '))
+    
     const sessionCookie = cookies.find(c => 
       c.name === 'authjs.session-token' || 
-      c.name === 'next-auth.session-token'
+      c.name === 'next-auth.session-token' ||
+      c.name === '__Secure-authjs.session-token' ||
+      c.name === '__Secure-next-auth.session-token'
     )
+    
     if (sessionCookie) {
+      console.log(`[Main] ✅ Found session cookie: ${sessionCookie.name}`)
+      
+      // Start sync service with session token
+      syncService.start(sessionCookie.value)
+      console.log('[Main] Sync service started with authentication')
+      
+      // Initialize and start screenshot service
+      await screenshotService.initialize({
+        apiUrl: config.API_BASE_URL
+      })
       await screenshotService.start(sessionCookie.value)
-      console.log('[Main] Screenshot service started')
+      console.log('[Main] Screenshot service started with authentication')
+    } else {
+      console.warn('[Main] ⚠️  No session cookie found - services will start but may fail authentication')
+      console.warn('[Main] User needs to login first')
+      
+      // Start services anyway - they'll get the cookie after login
+      syncService.start()
+      console.log('[Main] Sync service started (waiting for authentication)')
+      
+      await screenshotService.initialize({
+        apiUrl: config.API_BASE_URL
+      })
+      console.log('[Main] Screenshot service initialized (waiting for authentication)')
     }
   } catch (err) {
-    console.error('[Main] Error starting screenshot service:', err)
+    console.error('[Main] Error starting services:', err)
+    // Start services anyway
+    syncService.start()
+    await screenshotService.initialize({
+      apiUrl: config.API_BASE_URL
+    })
   }
   
   // Update tray menu with current status
