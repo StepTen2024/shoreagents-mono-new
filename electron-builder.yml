@@ -41,8 +41,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: "ShoreAgentsAI"
-  installerIcon: build/shoreagents-icon.png
-  uninstallerIcon: build/shoreagents-icon.png
+  # installerIcon and uninstallerIcon will be auto-generated from the main icon
   # license: LICENSE  # Commented out if LICENSE file doesn't exist
   artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   deleteAppDataOnUninstall: false
