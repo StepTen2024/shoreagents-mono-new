@@ -598,6 +598,27 @@ function setupIPC() {
     return { success: true }
   })
   
+  // Clear all cookies (for debugging auth issues)
+  ipcMain.handle('clear-cookies', async () => {
+    try {
+      const { session } = require('electron')
+      const cookies = await session.defaultSession.cookies.get({})
+      console.log(`[Main] Clearing ${cookies.length} cookies...`)
+      
+      for (const cookie of cookies) {
+        const url = `${cookie.secure ? 'https' : 'http'}://${cookie.domain}${cookie.path}`
+        await session.defaultSession.cookies.remove(url, cookie.name)
+        console.log(`[Main] ❌ Removed cookie: ${cookie.name} from ${cookie.domain}`)
+      }
+      
+      console.log('[Main] ✅ All cookies cleared!')
+      return { success: true, cleared: cookies.length }
+    } catch (error) {
+      console.error('[Main] Error clearing cookies:', error)
+      return { success: false, error: error.message }
+    }
+  })
+  
   // Get break status
   ipcMain.handle('get-break-status', () => {
     return breakHandler.getStatus()

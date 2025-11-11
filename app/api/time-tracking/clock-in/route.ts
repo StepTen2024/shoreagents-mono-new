@@ -209,7 +209,8 @@ export async function POST(request: NextRequest) {
         tabsSwitched: 0,
         productivityScore: 0,
         applicationsused: [],
-        visitedurls: []
+        visitedurls: [],
+        updatedAt: new Date()
       } as any
     })
     
