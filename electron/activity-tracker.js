@@ -667,10 +667,7 @@ class ActivityTracker {
     <div class="counter" id="counter">0s</div>
     <p class="counter-label">Are you still there?</p>
     
-    <div class="button-container">
-      <button class="btn-primary" onclick="handleImHere()">I'm Here</button>
-      <button class="btn-secondary" onclick="handleTakeBreak()">Take a Break</button>
-    </div>
+    
   </div>
   
   <script>

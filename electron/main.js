@@ -14,9 +14,13 @@ let mainWindow = null
 let tray = null
 
 function createWindow() {
+  // Set window icon
+  const iconPath = path.join(__dirname, '../build/icon.ico')
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -160,8 +164,9 @@ function createWindow() {
 }
 
 function createTray() {
-  // Create a simple icon (1x1 transparent pixel as fallback)
-  const icon = nativeImage.createEmpty()
+  // Use the app icon for system tray
+  const iconPath = path.join(__dirname, '../build/icon.ico')
+  const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon)
   
   const contextMenu = Menu.buildFromTemplate([

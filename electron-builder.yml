@@ -31,7 +31,7 @@ win:
     - target: nsis
       arch:
         - x64
-  # icon: build/icon.ico  # Commented out - using default Electron icon
+  icon: build/icon.ico
   artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   
 # Windows installer configuration (NSIS)
@@ -41,8 +41,8 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: "ShoreAgentsAI"
-  # installerIcon: build/icon.ico  # Commented out - using default Electron icon
-  # uninstallerIcon: build/icon.ico  # Commented out - using default Electron icon
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
   # license: LICENSE  # Commented out if LICENSE file doesn't exist
   artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   deleteAppDataOnUninstall: false
