@@ -8,7 +8,7 @@ export function DesktopAppDownload() {
   const fileSize = "~250 MB"
   // Installer hosted on GitHub Releases
   // Replace YOUR-USERNAME/YOUR-REPO with your actual GitHub repo
-  const downloadUrl = "https://github.com/ShoreAgents/shoreagents-mono-new/releases/download/v1.0.0/ShoreAgentsAI-Setup-1.0.0.exe"
+  const downloadUrl = "https://github.com/StepTen2024/shoreagents-mono-new/releases/download/app-release/ShoreAgentsAI-Setup-1.0.0.exe"
 
   const handleDownload = () => {
     if (typeof window !== 'undefined') {
