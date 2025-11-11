@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button"
 export function DesktopAppDownload() {
   const appVersion = "1.0.0"
   const fileSize = "~250 MB"
-  // Installer hosted in Git with Git LFS
-  const downloadUrl = "/downloads/ShoreAgentsAI-Setup-1.0.0.exe"
+  // Installer hosted on GitHub Releases
+  // Replace YOUR-USERNAME/YOUR-REPO with your actual GitHub repo
+  const downloadUrl = "https://github.com/ShoreAgents/shoreagents-mono-new/releases/download/v1.0.0/ShoreAgentsAI-Setup-1.0.0.exe"
 
   const handleDownload = () => {
     if (typeof window !== 'undefined') {
