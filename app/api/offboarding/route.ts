@@ -9,18 +9,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const staffUser = await prisma.staffUser.findUnique({
+    const staffUser = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id },
-      include: { offboarding: true }
+      include: { staff_offboarding: true }
     })
 
     if (!staffUser) {
       return NextResponse.json({ error: "Staff not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ offboarding: staffUser.offboarding })
+    return NextResponse.json({ offboarding: staffUser.staff_offboarding })
   } catch (error) {
-    console.error("Error:", error)
+    console.error("Error fetching offboarding:", error)
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 })
   }
 }
@@ -32,23 +32,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const staffUser = await prisma.staffUser.findUnique({
+    const staffUser = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id },
-      include: { offboarding: true }
+      include: { staff_offboarding: true }
     })
 
-    if (!staffUser || !staffUser.offboarding) {
+    if (!staffUser || !staffUser.staff_offboarding) {
       return NextResponse.json({ error: "No offboarding found" }, { status: 404 })
     }
 
-    if (staffUser.offboarding.exitInterviewCompleted) {
+    if (staffUser.staff_offboarding.exitInterviewCompleted) {
       return NextResponse.json({ error: "Already submitted" }, { status: 400 })
     }
 
     const body = await req.json()
 
-    await prisma.staffOffboarding.update({
-      where: { id: staffUser.offboarding.id },
+    await prisma.staff_offboarding.update({
+      where: { id: staffUser.staff_offboarding.id },
       data: {
         exitInterviewCompleted: true,
         exitInterviewData: JSON.stringify(body),
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error:", error)
+    console.error("Error submitting offboarding:", error)
     return NextResponse.json({ error: "Failed to submit" }, { status: 500 })
   }
 }
