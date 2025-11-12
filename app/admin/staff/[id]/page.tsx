@@ -13,7 +13,16 @@ import {
   Phone,
   MapPin,
   Clock,
-  Hash
+  Hash,
+  DollarSign,
+  TrendingUp,
+  Umbrella,
+  Heart,
+  Award,
+  Globe,
+  Users,
+  Cake,
+  Shield
 } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -41,11 +50,9 @@ async function getStaffUser(id: string) {
           },
         },
         staff_profiles: {
-          select: {
-            phone: true,
-            location: true,
-            currentRole: true,
-          },
+          include: {
+            work_schedules: true  // Include shift schedules
+          }
         },
         staff_interests: {
           select: {
@@ -70,6 +77,7 @@ async function getStaffUser(id: string) {
             submittedAt: true,
           },
         },
+        staff_personal_records: true,
       },
     })
 
@@ -255,125 +263,377 @@ export default async function StaffDetailPage({
             </Card>
           )}
 
-          {/* Welcome Form Responses */}
-          {staff.staff_welcome_forms && (
+          {/* Employment Details */}
+          {staff.staff_profiles && (
             <Card className="p-6 border-border bg-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Welcome Form Responses</h3>
-                <Badge variant={staff.staff_welcome_forms.completed ? "default" : "secondary"}>
-                  {staff.staff_welcome_forms.completed ? "Completed" : "Incomplete"}
-                </Badge>
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-blue-500" />
+                Employment Details
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Employment Status</div>
+                    <Badge variant={staff.staff_profiles.employmentStatus === 'REGULAR' ? 'default' : 'secondary'}>
+                      {staff.staff_profiles.employmentStatus}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Start Date</div>
+                    <div className="font-medium text-foreground">
+                      {new Date(staff.staff_profiles.startDate).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Days Employed</div>
+                    <div className="font-medium text-foreground">{staff.staff_profiles.daysEmployed} days</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Timezone</div>
+                    <div className="font-medium text-foreground">{staff.staff_profiles.timezone || 'Asia/Manila'}</div>
+                  </div>
+                </div>
               </div>
-              
-              {staff.staff_welcome_forms.completed ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Name</div>
-                      <div className="text-sm font-medium text-foreground">{staff.staff_welcome_forms.name}</div>
+            </Card>
+          )}
+
+          {/* Compensation */}
+          {staff.staff_profiles && (
+            <Card className="p-6 border-border bg-card">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-500" />
+                Compensation & Pay
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Monthly Salary</div>
+                    <div className="font-semibold text-foreground text-lg">
+                      ₱{Number(staff.staff_profiles.salary).toLocaleString()}
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Client</div>
-                      <div className="text-sm text-foreground">{staff.staff_welcome_forms.client}</div>
+                  </div>
+                </div>
+                {staff.staff_profiles.lastPayIncrease && (
+                  <>
+                    <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Last Pay Increase</div>
+                        <div className="font-medium text-foreground">
+                          {new Date(staff.staff_profiles.lastPayIncrease).toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Start Date</div>
-                      <div className="text-sm text-foreground">{staff.staff_welcome_forms.startDate}</div>
+                    {staff.staff_profiles.lastIncreaseAmount && (
+                      <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="text-xs text-muted-foreground">Increase Amount</div>
+                          <div className="font-medium text-green-600">
+                            +₱{Number(staff.staff_profiles.lastIncreaseAmount).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Leave Management */}
+          {staff.staff_profiles && (
+            <Card className="p-6 border-border bg-card">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Umbrella className="h-5 w-5 text-orange-500" />
+                Leave Management
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Total Leave Allowance</div>
+                    <div className="font-medium text-foreground">{staff.staff_profiles.totalLeave} days</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Used Leave</div>
+                    <div className="font-medium text-foreground">{staff.staff_profiles.usedLeave} days</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Umbrella className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Vacation Leave Used</div>
+                    <div className="font-medium text-foreground">{staff.staff_profiles.vacationUsed} days</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Heart className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Sick Leave Used</div>
+                    <div className="font-medium text-foreground">{staff.staff_profiles.sickUsed} days</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Remaining Leave</div>
+                    <div className="font-semibold text-green-600">
+                      {staff.staff_profiles.totalLeave - staff.staff_profiles.usedLeave} days
                     </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Work Schedule */}
+          {staff.staff_profiles?.work_schedules && staff.staff_profiles.work_schedules.length > 0 && (
+            <Card className="p-6 border-border bg-card">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-purple-500" />
+                Work Schedule
+              </h3>
+              <div className="space-y-2">
+                {staff.staff_profiles.work_schedules.map((schedule: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 font-medium text-foreground">{schedule.dayOfWeek}</div>
+                      {schedule.isWorkday ? (
+                        <>
+                          <Badge variant="outline" className="text-xs">{schedule.shiftType || 'DAY_SHIFT'}</Badge>
+                          <div className="text-sm text-muted-foreground">
+                            {schedule.startTime} - {schedule.endTime}
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {schedule.timezone || 'Asia/Manila'}
+                          </Badge>
+                        </>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Rest Day</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Personal Information */}
+          {staff.staff_profiles && (
+            <Card className="p-6 border-border bg-card">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-500" />
+                Personal Information
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                {staff.staff_profiles.dateOfBirth && (
+                  <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                    <Cake className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <div className="text-xs text-muted-foreground mb-1">Submitted At</div>
-                      <div className="text-sm text-foreground">
-                        {staff.staff_welcome_forms.submittedAt ? new Date(staff.staff_welcome_forms.submittedAt).toLocaleString() : 'N/A'}
+                      <div className="text-xs text-muted-foreground">Date of Birth</div>
+                      <div className="font-medium text-foreground">
+                        {new Date(staff.staff_profiles.dateOfBirth).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
                       </div>
                     </div>
                   </div>
+                )}
+                {staff.staff_profiles.gender && (
+                  <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Gender</div>
+                      <div className="font-medium text-foreground">{staff.staff_profiles.gender}</div>
+                    </div>
+                  </div>
+                )}
+                {staff.staff_profiles.civilStatus && (
+                  <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                    <Heart className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Civil Status</div>
+                      <div className="font-medium text-foreground">{staff.staff_profiles.civilStatus}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Benefits */}
+          {staff.staff_profiles && (
+            <Card className="p-6 border-border bg-card">
+              <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-teal-500" />
+                Benefits & Coverage
+              </h3>
+              <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
+                <Heart className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <div className="text-xs text-muted-foreground">HMO Coverage</div>
+                  <Badge variant={staff.staff_profiles.hmo ? 'default' : 'secondary'}>
+                    {staff.staff_profiles.hmo ? 'Active' : 'Not Enrolled'}
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Staff Interests */}
+          {staff.staff_interests && (
+            <Card className="p-6 border-border bg-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-pink-500" />
+                  Staff Interests & Personal Info
+                </h3>
+                <Badge variant={staff.staff_interests.completed ? "default" : "secondary"}>
+                  {staff.staff_interests.completed ? "Completed" : "Incomplete"}
+                </Badge>
+              </div>
+              
+              {staff.staff_interests.completed ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    {staff.staff_interests.name && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Name</div>
+                        <div className="text-sm font-medium text-foreground">{staff.staff_interests.name}</div>
+                    </div>
+                    )}
+                    {staff.staff_interests.client && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Client</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.client}</div>
+                    </div>
+                    )}
+                    {staff.staff_interests.startDate && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Start Date</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.startDate}</div>
+                    </div>
+                    )}
+                    {staff.staff_interests.submittedAt && (
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Submitted At</div>
+                      <div className="text-sm text-foreground">
+                          {new Date(staff.staff_interests.submittedAt).toLocaleString()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="space-y-3">
-                    {staff.staff_welcome_forms.favoriteFastFood && (
+                    {staff.staff_interests.favoriteFastFood && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Fast Food</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteFastFood}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteFastFood}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteColor && (
+                    {staff.staff_interests.favoriteColor && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Color</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteColor}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteColor}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteMovie && (
+                    {staff.staff_interests.favoriteMovie && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Movie</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteMovie}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteMovie}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteBook && (
+                    {staff.staff_interests.favoriteBook && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Book</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteBook}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteBook}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.hobby && (
+                    {staff.staff_interests.hobby && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Hobby</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.hobby}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.hobby}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.dreamDestination && (
+                    {staff.staff_interests.dreamDestination && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Dream Destination</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.dreamDestination}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.dreamDestination}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteSeason && (
+                    {staff.staff_interests.favoriteSeason && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Season</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteSeason}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteSeason}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.petName && (
+                    {staff.staff_interests.petName && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Pet Name</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.petName}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.petName}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteSport && (
+                    {staff.staff_interests.favoriteSport && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Sport</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteSport}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteSport}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteGame && (
+                    {staff.staff_interests.favoriteGame && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Game</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteGame}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteGame}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteQuote && (
+                    {staff.staff_interests.favoriteQuote && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Quote</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteQuote}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteQuote}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.funFact && (
+                    {staff.staff_interests.funFact && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Fun Fact</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.funFact}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.funFact}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.additionalInfo && (
+                    {staff.staff_interests.additionalInfo && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Additional Info</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.additionalInfo}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.additionalInfo}</div>
                       </div>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="text-muted-foreground mb-2">Welcome form not yet completed</div>
+                  <div className="text-muted-foreground mb-2">Staff interests not yet completed</div>
                   <div className="text-sm text-muted-foreground">
-                    Staff member needs to fill out the welcome form after onboarding completion
+                    Staff member needs to fill out their interests form
                   </div>
                 </div>
               )}
