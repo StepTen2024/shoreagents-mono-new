@@ -14,9 +14,13 @@ let mainWindow = null
 let tray = null
 
 function createWindow() {
+  // Set window icon
+  const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -33,8 +37,22 @@ function createWindow() {
     mainWindow.loadURL("http://localhost:3000") // Next.js dev server
     mainWindow.webContents.openDevTools()
   } else {
-    console.log('[Main] Loading from production build')
-    mainWindow.loadFile(path.join(__dirname, "../out/index.html"))
+    // Production: Load from Railway server
+    const productionUrl = config.API_BASE_URL
+    console.log('[Main] ========================================')
+    console.log('[Main] LOADING PRODUCTION APP')
+    console.log('[Main] Production URL:', productionUrl)
+    console.log('[Main] API_BASE_URL from config:', productionUrl)
+    console.log('[Main] process.env.API_BASE_URL:', process.env.API_BASE_URL)
+    console.log('[Main] ========================================')
+    
+    // Load with proper user agent
+    mainWindow.loadURL(productionUrl, {
+      userAgent: 'ShoreAgentsAI-Desktop/1.0.0 (Electron)'
+    })
+    
+    // Open dev tools in production to debug
+    mainWindow.webContents.openDevTools()
   }
 
   // Prevent window from closing, hide instead
@@ -46,11 +64,71 @@ function createWindow() {
   })
 
   // Window ready
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-finish-load', async () => {
     console.log('[Main] Window loaded successfully')
     
     // Send tracking status to renderer
     mainWindow.webContents.send('tracking-status', performanceTracker.getStatus())
+    
+    // Check for session cookie after page load (in case user just logged in)
+    setTimeout(async () => {
+      try {
+        const cookies = await mainWindow.webContents.session.cookies.get({
+          url: config.API_BASE_URL
+        })
+        
+        const sessionCookie = cookies.find(c => 
+          c.name === 'authjs.session-token' || 
+          c.name === 'next-auth.session-token' ||
+          c.name === '__Secure-authjs.session-token' ||
+          c.name === '__Secure-next-auth.session-token'
+        )
+        
+        if (sessionCookie) {
+          console.log('[Main] 🔄 Updating session token in sync service')
+          syncService.setSessionToken(sessionCookie.value)
+        }
+      } catch (err) {
+        console.error('[Main] Error updating session cookie:', err)
+      }
+    }, 2000) // Wait 2 seconds for cookies to be set
+  })
+  
+  // Handle loading errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('[Main] Failed to load:', errorDescription)
+    console.error('[Main] Error code:', errorCode)
+    console.error('[Main] URL:', validatedURL)
+    
+    // If loading failed, try to reload after a delay
+    if (errorCode !== -3) { // -3 is ERR_ABORTED which is normal for navigation
+      console.log('[Main] Retrying in 3 seconds...')
+      setTimeout(() => {
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.reload()
+        }
+      }, 3000)
+    }
+  })
+  
+  // Log console messages from the renderer
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer Console] ${message}`)
+  })
+  
+  // Check what content is being loaded
+  mainWindow.webContents.on('dom-ready', () => {
+    console.log('[Main] DOM is ready')
+    console.log('[Main] Current URL:', mainWindow.webContents.getURL())
+    
+    // Check if page shows error
+    mainWindow.webContents.executeJavaScript(`
+      document.body.innerText.substring(0, 200)
+    `).then(text => {
+      console.log('[Main] Page content preview:', text)
+    }).catch(err => {
+      console.error('[Main] Could not read page content:', err)
+    })
   })
   
   // Listen for URL changes to detect user type changes
@@ -109,8 +187,9 @@ function createWindow() {
 }
 
 function createTray() {
-  // Create a simple icon (1x1 transparent pixel as fallback)
-  const icon = nativeImage.createEmpty()
+  // Use the app icon for system tray
+  const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon)
   
   const contextMenu = Menu.buildFromTemplate([
@@ -399,29 +478,55 @@ async function initializeTracking() {
   activityTracker.startTracking()
   console.log('[Main] Activity tracking started (integrated with performance tracker and screenshot service)')
   
-  // Start sync service (it will automatically get session cookie from Electron's cookie store)
-  syncService.start()
-  console.log('[Main] Sync service started')
-  
-  // Initialize screenshot service (detection mode)
-  await screenshotService.initialize({
-    apiUrl: 'http://localhost:3000'
-  })
-  console.log('[Main] Screenshot service initialized (detection mode)')
-  
-  // Start screenshot capture (will try to get session token from cookies)
+  // Get session cookie for sync service and screenshot service
   try {
-    const cookies = await mainWindow.webContents.session.cookies.get({})
+    const cookies = await mainWindow.webContents.session.cookies.get({
+      url: config.API_BASE_URL
+    })
+    
+    console.log('[Main] 🔍 Looking for session cookie...')
+    console.log('[Main] Available cookies:', cookies.map(c => c.name).join(', '))
+    
     const sessionCookie = cookies.find(c => 
       c.name === 'authjs.session-token' || 
-      c.name === 'next-auth.session-token'
+      c.name === 'next-auth.session-token' ||
+      c.name === '__Secure-authjs.session-token' ||
+      c.name === '__Secure-next-auth.session-token'
     )
+    
     if (sessionCookie) {
+      console.log(`[Main] ✅ Found session cookie: ${sessionCookie.name}`)
+      
+      // Start sync service with session token
+      syncService.start(sessionCookie.value)
+      console.log('[Main] Sync service started with authentication')
+      
+      // Initialize and start screenshot service
+      await screenshotService.initialize({
+        apiUrl: config.API_BASE_URL
+      })
       await screenshotService.start(sessionCookie.value)
-      console.log('[Main] Screenshot service started')
+      console.log('[Main] Screenshot service started with authentication')
+    } else {
+      console.warn('[Main] ⚠️  No session cookie found - services will start but may fail authentication')
+      console.warn('[Main] User needs to login first')
+      
+      // Start services anyway - they'll get the cookie after login
+      syncService.start()
+      console.log('[Main] Sync service started (waiting for authentication)')
+      
+      await screenshotService.initialize({
+        apiUrl: config.API_BASE_URL
+      })
+      console.log('[Main] Screenshot service initialized (waiting for authentication)')
     }
   } catch (err) {
-    console.error('[Main] Error starting screenshot service:', err)
+    console.error('[Main] Error starting services:', err)
+    // Start services anyway
+    syncService.start()
+    await screenshotService.initialize({
+      apiUrl: config.API_BASE_URL
+    })
   }
   
   // Update tray menu with current status
@@ -491,6 +596,27 @@ function setupIPC() {
   ipcMain.handle('stop-sync-service', () => {
     syncService.stop()
     return { success: true }
+  })
+  
+  // Clear all cookies (for debugging auth issues)
+  ipcMain.handle('clear-cookies', async () => {
+    try {
+      const { session } = require('electron')
+      const cookies = await session.defaultSession.cookies.get({})
+      console.log(`[Main] Clearing ${cookies.length} cookies...`)
+      
+      for (const cookie of cookies) {
+        const url = `${cookie.secure ? 'https' : 'http'}://${cookie.domain}${cookie.path}`
+        await session.defaultSession.cookies.remove(url, cookie.name)
+        console.log(`[Main] ❌ Removed cookie: ${cookie.name} from ${cookie.domain}`)
+      }
+      
+      console.log('[Main] ✅ All cookies cleared!')
+      return { success: true, cleared: cookies.length }
+    } catch (error) {
+      console.error('[Main] Error clearing cookies:', error)
+      return { success: false, error: error.message }
+    }
   })
   
   // Get break status

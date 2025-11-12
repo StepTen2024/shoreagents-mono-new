@@ -165,7 +165,12 @@ class SyncService {
         // Try to find the exact cookie name that was found
         const { session } = require('electron')
         const cookies = await session.defaultSession.cookies.get({ url: config.API_BASE_URL })
-        const sessionCookie = cookies.find(c => c.name === 'authjs.session-token' || c.name === 'next-auth.session-token')
+        const sessionCookie = cookies.find(c => 
+          c.name === 'authjs.session-token' || 
+          c.name === 'next-auth.session-token' ||
+          c.name === '__Secure-authjs.session-token' || 
+          c.name === '__Secure-next-auth.session-token'
+        )
         
         if (sessionCookie) {
           request.setHeader('Cookie', `${sessionCookie.name}=${sessionCookie.value}`)
