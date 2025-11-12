@@ -3,26 +3,32 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 
-const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY
-
-if (!apiKey) {
-  console.error('❌ [CHAT API] MISSING API KEY! Check .env.local file for ANTHROPIC_API_KEY or CLAUDE_API_KEY')
-} else {
-  console.log('✅ [CHAT API] API key loaded')
-  console.log('   Length:', apiKey.length)
-  console.log('   Starts with:', apiKey.substring(0, 11))
-  console.log('   Has spaces?', apiKey.includes(' '))
-  console.log('   Has quotes?', apiKey.includes('"') || apiKey.includes("'"))
-  console.log('   Trimmed length:', apiKey.trim().length)
+// ⚡ Get API key fresh every time to avoid caching issues
+function getApiKey() {
+  return (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY)?.trim()
 }
 
-const anthropic = new Anthropic({
-  apiKey: apiKey?.trim() || 'dummy-key-to-prevent-sdk-error',
-})
+// ⚡ Create Anthropic client fresh every time
+function getAnthropicClient() {
+  const key = getApiKey()
+  console.log('🔑 [CHAT API] Creating fresh Anthropic client with key:', key?.substring(0, 30) || 'MISSING')
+  return new Anthropic({
+    apiKey: key || 'dummy-key-to-prevent-sdk-error',
+  })
+}
 
 // POST /api/chat - AI chat endpoint
 export async function POST(request: NextRequest) {
   try {
+    // ⚡ Get fresh API key for this request
+    const apiKey = getApiKey()
+    
+    // 🔍 DEBUG: Log what key we're actually using
+    console.log('🔍 [CHAT API] Request received - checking API key...')
+    console.log('   ANTHROPIC_API_KEY exists?', !!process.env.ANTHROPIC_API_KEY)
+    console.log('   CLAUDE_API_KEY exists?', !!process.env.CLAUDE_API_KEY)
+    console.log('   Using key starts with:', apiKey?.substring(0, 30) || 'NONE')
+    
     // Check API key first
     if (!apiKey) {
       console.error('❌ [CHAT API] Request blocked: No API key configured')
@@ -333,17 +339,19 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
     console.log('🤖 [CHAT API] Calling Claude...')
     console.log('   System prompt length:', systemPrompt.length)
     console.log('   Messages:', messages.length)
-    console.log('   Model:', process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022')
+    console.log('   Model:', process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514')
+
+    // ⚡ Create fresh Anthropic client for this request
+    const anthropic = getAnthropicClient()
     
     const response = await anthropic.messages.create({
-      model: process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
+      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       system: systemPrompt,
       messages: messages.map((msg: any) => ({
         role: msg.role,
         content: msg.content,
       })),
-      timeout: 60000, // 60 second timeout
     })
     
     console.log('✅ [CHAT API] Claude response received')
