@@ -267,11 +267,20 @@ export default function AdminRecruitmentPage() {
           hour12: true
         })
         
-        // Get timezone abbreviation for client timezone
-        const clientTzAbbrev = clientDate.toLocaleString('en-US', {
+        // Get timezone abbreviation for client timezone using appropriate locale
+        const getLocaleForTimezone = (tz: string) => {
+          if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+          if (tz.startsWith('America/')) return 'en-US'
+          if (tz.startsWith('Europe/')) return 'en-GB'
+          if (tz.startsWith('Asia/')) return 'en-SG'
+          return 'en-US'
+        }
+        
+        const locale = getLocaleForTimezone(clientTimezone)
+        const clientTzAbbrev = new Intl.DateTimeFormat(locale, {
           timeZone: clientTimezone,
           timeZoneName: 'short'
-        }).split(' ').pop() || clientTimezone
+        }).formatToParts(clientDate).find(part => part.type === 'timeZoneName')?.value || clientTimezone
         
         // To convert timezone properly:
         // 1. Create a UTC date (arbitrary, we'll adjust it)
@@ -402,12 +411,20 @@ export default function AdminRecruitmentPage() {
     try {
       const [hours, minutes] = time24.split(':').map(Number)
       
-      // Get timezone abbreviation
+      // Get timezone abbreviation using appropriate locale
       const tempDate = new Date()
-      const tzAbbrev = tempDate.toLocaleString('en-US', {
+      const getLocaleForTimezone = (tz: string) => {
+        if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+        if (tz.startsWith('America/')) return 'en-US'
+        if (tz.startsWith('Europe/')) return 'en-GB'
+        if (tz.startsWith('Asia/')) return 'en-SG'
+        return 'en-US'
+      }
+      const locale = getLocaleForTimezone(clientTimezone)
+      const tzAbbrev = new Intl.DateTimeFormat(locale, {
         timeZone: clientTimezone,
         timeZoneName: 'short'
-      }).split(' ').pop() || clientTimezone
+      }).formatToParts(tempDate).find(part => part.type === 'timeZoneName')?.value || clientTimezone
       
       // Create a date object representing today at the given time
       const today = new Date()
@@ -581,7 +598,8 @@ export default function AdminRecruitmentPage() {
           email: i.candidate_email,
           phone: i.candidate_phone,
           position: i.candidate_position,
-          location: i.candidate_location
+          location: i.candidate_location,
+          avatar_url: i.candidate_avatar_url
         })))
         setInterviews(data.interviews)
         const pendingCount = data.interviews.filter((i: InterviewRequest) => i.status === 'pending').length
@@ -1362,10 +1380,17 @@ export default function AdminRecruitmentPage() {
                       className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => setSelectedCandidate(candidate)}
                     >
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={candidate.avatar_url || undefined} />
-                        <AvatarFallback>{candidate.first_name?.[0] || '?'}</AvatarFallback>
-                      </Avatar>
+                      {candidate.avatar_url ? (
+                        <img 
+                          src={candidate.avatar_url} 
+                          alt={candidate.first_name}
+                          className="h-12 w-12 rounded-full object-cover border-2 border-blue-200"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                          {candidate.first_name?.[0] || '?'}
+                        </div>
+                      )}
                       
                       <div className="flex-1">
                         <h3 className="font-semibold text-foreground">{candidate.first_name || 'Unknown'}</h3>
@@ -1608,10 +1633,17 @@ export default function AdminRecruitmentPage() {
                       
                       {/* Header - Full Width with Buttons */}
                       <div className="flex items-start gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={interview.candidate_avatar_url || undefined} />
-                          <AvatarFallback>{interview.candidateFirstName?.[0] || '?'}</AvatarFallback>
-                        </Avatar>
+                        {interview.candidate_avatar_url ? (
+                          <img 
+                            src={interview.candidate_avatar_url} 
+                            alt={interview.candidateFirstName}
+                            className="h-12 w-12 rounded-full object-cover border-2 border-blue-200"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                            {interview.candidateFirstName?.[0] || '?'}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 flex-wrap">
                               <h3 className="text-xl font-semibold text-foreground">{interview.candidateFirstName}</h3>
@@ -1662,6 +1694,45 @@ export default function AdminRecruitmentPage() {
                                 <span>•</span>
                                 <Phone className="h-3 w-3 inline" />
                                 <span>{interview.candidate_phone || 'Not Provided'}</span>
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 inline" />
+                                <span>Requested on {(() => {
+                                  const date = new Date(interview.createdAt || interview.created_at || '');
+                                  const phTimezone = 'Asia/Manila';
+                                  
+                                  // Convert to Philippines timezone
+                                  const formatted = date.toLocaleString('en-US', {
+                                    timeZone: phTimezone,
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  });
+                                  
+                                  // For Philippines, use hardcoded abbreviation
+                                  const tzAbbr = phTimezone === 'Asia/Manila' ? 'PH' : (() => {
+                                    const getLocaleForTimezone = (tz: string) => {
+                                      if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+                                      if (tz.startsWith('America/')) return 'en-US'
+                                      if (tz.startsWith('Europe/')) return 'en-GB'
+                                      if (tz.startsWith('Asia/')) return 'en-SG'
+                                      return 'en-US'
+                                    }
+                                    
+                                    const locale = getLocaleForTimezone(phTimezone)
+                                    return new Intl.DateTimeFormat(locale, {
+                                      timeZone: phTimezone,
+                                      timeZoneName: 'short'
+                                    }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || ''
+                                  })();
+                                  
+                                  return `${formatted} (${tzAbbr})`;
+                                })()}</span>
                               </span>
                             </div>
                         </div>
@@ -1854,10 +1925,20 @@ export default function AdminRecruitmentPage() {
                                       minute: '2-digit',
                                       hour12: true
                                     })
-                                    const clientTzName = date.toLocaleString('en-US', {
+                                    
+                                    // Get proper timezone abbreviation
+                                    const getLocaleForTimezone = (tz: string) => {
+                                      if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+                                      if (tz.startsWith('America/')) return 'en-US'
+                                      if (tz.startsWith('Europe/')) return 'en-GB'
+                                      if (tz.startsWith('Asia/')) return 'en-SG'
+                                      return 'en-US'
+                                    }
+                                    const locale = getLocaleForTimezone(clientTimezone)
+                                    const clientTzName = new Intl.DateTimeFormat(locale, {
                                       timeZone: clientTimezone,
                                       timeZoneName: 'short'
-                                    }).split(' ').pop()
+                                    }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || clientTimezone
                                     
                                     // PH timezone
                                     const phTime = date.toLocaleString('en-US', {
@@ -2373,10 +2454,17 @@ export default function AdminRecruitmentPage() {
           {selectedCandidate && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={selectedCandidate.avatar_url || undefined} />
-                  <AvatarFallback>{selectedCandidate.first_name?.[0] || '?'}</AvatarFallback>
-                </Avatar>
+                {selectedCandidate.avatar_url ? (
+                  <img 
+                    src={selectedCandidate.avatar_url} 
+                    alt={selectedCandidate.first_name}
+                    className="h-20 w-20 rounded-full object-cover border-2 border-blue-200"
+                  />
+                ) : (
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl text-white font-semibold">
+                    {selectedCandidate.first_name?.[0] || '?'}
+                  </div>
+                )}
                 <div>
                   <h3 className="text-xl font-bold text-foreground">{selectedCandidate.first_name || 'Unknown'}</h3>
                   <p className="text-muted-foreground">{selectedCandidate.position || 'Professional'}</p>
@@ -2533,12 +2621,17 @@ export default function AdminRecruitmentPage() {
               {/* Header - Candidate Info Card */}
               <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-20 w-20 border-4 border-slate-700 shadow-lg">
-                    <AvatarImage src={selectedInterview.candidate_avatar_url || undefined} />
-                    <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-600">
+                  {selectedInterview.candidate_avatar_url ? (
+                    <img 
+                      src={selectedInterview.candidate_avatar_url} 
+                      alt={selectedInterview.candidateFirstName}
+                      className="h-20 w-20 rounded-full object-cover border-4 border-slate-700 shadow-lg"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl text-white font-semibold border-4 border-slate-700 shadow-lg">
                       {selectedInterview.candidateFirstName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                    </div>
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-2xl font-bold text-slate-100">{selectedInterview.candidateFirstName}</h3>
@@ -2634,10 +2727,20 @@ export default function AdminRecruitmentPage() {
                             minute: '2-digit',
                             hour12: true
                           })
-                          const clientTzName = date.toLocaleString('en-US', {
+                          
+                          // Get proper timezone abbreviation
+                          const getLocaleForTimezone = (tz: string) => {
+                            if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+                            if (tz.startsWith('America/')) return 'en-US'
+                            if (tz.startsWith('Europe/')) return 'en-GB'
+                            if (tz.startsWith('Asia/')) return 'en-SG'
+                            return 'en-US'
+                          }
+                          const locale = getLocaleForTimezone(clientTimezone)
+                          const clientTzName = new Intl.DateTimeFormat(locale, {
                             timeZone: clientTimezone,
                             timeZoneName: 'short'
-                          }).split(' ').pop()
+                          }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || clientTimezone
                           
                           // PH timezone
                           const phTime = date.toLocaleString('en-US', {
@@ -3287,12 +3390,17 @@ export default function AdminRecruitmentPage() {
               {/* Candidate Info Card */}
               <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
-                    <AvatarImage src={interviewToHire.candidate_avatar_url || undefined} />
-                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                  {interviewToHire.candidate_avatar_url ? (
+                    <img 
+                      src={interviewToHire.candidate_avatar_url} 
+                      alt={interviewToHire.candidateFirstName}
+                      className="h-16 w-16 rounded-full object-cover border-4 border-slate-700 shadow-lg"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl text-white font-semibold border-4 border-slate-700 shadow-lg">
                       {interviewToHire.candidateFirstName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                    </div>
+                  )}
                   <div className="flex-1">
                     <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToHire.candidateFirstName}</h3>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -3647,12 +3755,17 @@ export default function AdminRecruitmentPage() {
               {/* Candidate Info Card */}
               <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
-                    <AvatarImage src={interviewToSchedule.candidate_avatar_url || undefined} />
-                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                  {interviewToSchedule.candidate_avatar_url ? (
+                    <img 
+                      src={interviewToSchedule.candidate_avatar_url} 
+                      alt={interviewToSchedule.candidateFirstName}
+                      className="h-16 w-16 rounded-full object-cover border-4 border-slate-700 shadow-lg"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl text-white font-semibold border-4 border-slate-700 shadow-lg">
                       {interviewToSchedule.candidateFirstName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                    </div>
+                  )}
                   <div className="flex-1">
                     <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToSchedule.candidateFirstName}</h3>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -4005,12 +4118,17 @@ export default function AdminRecruitmentPage() {
               {/* Candidate Info Card */}
               <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
-                    <AvatarImage src={interviewToConfirm.candidate_avatar_url || undefined} />
-                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                  {interviewToConfirm.candidate_avatar_url ? (
+                    <img 
+                      src={interviewToConfirm.candidate_avatar_url} 
+                      alt={interviewToConfirm.candidateFirstName}
+                      className="h-16 w-16 rounded-full object-cover border-4 border-slate-700 shadow-lg"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl text-white font-semibold border-4 border-slate-700 shadow-lg">
                       {interviewToConfirm.candidateFirstName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                    </div>
+                  )}
                   <div className="flex-1">
                     <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToConfirm.candidateFirstName}</h3>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -4171,12 +4289,17 @@ export default function AdminRecruitmentPage() {
               {/* Candidate Info Card */}
               <div className="bg-gradient-to-r from-blue-500/10 via-slate-800/50 to-purple-500/10 border border-slate-700 rounded-xl p-5">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-16 w-16 border-4 border-slate-700 shadow-lg">
-                    <AvatarImage src={interviewToDecline.candidate_avatar_url || undefined} />
-                    <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600">
+                  {interviewToDecline.candidate_avatar_url ? (
+                    <img 
+                      src={interviewToDecline.candidate_avatar_url} 
+                      alt={interviewToDecline.candidateFirstName}
+                      className="h-16 w-16 rounded-full object-cover border-4 border-slate-700 shadow-lg"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl text-white font-semibold border-4 border-slate-700 shadow-lg">
                       {interviewToDecline.candidateFirstName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
+                    </div>
+                  )}
                   <div className="flex-1">
                     <h3 className="text-xl font-bold text-slate-100 mb-2">{interviewToDecline.candidateFirstName}</h3>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">

@@ -137,42 +137,111 @@ export default function ClientInterviewsPage() {
 
   function formatDate(dateString: string, timezone?: string) {
     const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
+    
+    // Format the date/time
+    const formatted = date.toLocaleString('en-US', {
       timeZone: timezone || undefined,
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
-      timeZoneName: 'short'
+      hour12: true
     })
+    
+    // Get timezone abbreviation using appropriate locale
+    if (timezone) {
+      const getLocaleForTimezone = (tz: string) => {
+        if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+        if (tz.startsWith('America/')) return 'en-US'
+        if (tz.startsWith('Europe/')) return 'en-GB'
+        if (tz.startsWith('Asia/')) return 'en-SG'
+        return 'en-US'
+      }
+      
+      const locale = getLocaleForTimezone(timezone)
+      const tzAbbr = new Intl.DateTimeFormat(locale, {
+        timeZone: timezone,
+        timeZoneName: 'short'
+      }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || ''
+      
+      return `${formatted} ${tzAbbr}`
+    }
+    
+    return formatted
   }
 
   function formatPreferredTime(time: string | PreferredTime) {
     try {
       // Handle new object format
       if (typeof time === 'object' && time.datetime) {
-        const date = new Date(time.datetime)
+        // Parse the datetime string in the context of the stored timezone
+        // The datetime is in format "2025-01-15T14:00" and represents that time in the stored timezone
+        const [datePart, timePart] = time.datetime.split('T')
+        const [year, month, day] = datePart.split('-').map(Number)
+        const [hours, minutes] = timePart.split(':').map(Number)
         
-        // Get the full date/time string with timezone abbreviation
-        const fullString = date.toLocaleString('en-US', {
+        // Create a date object and format it in the client's timezone
+        // We use a reference UTC date and adjust it to show in the client's timezone
+        const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
+        
+        // Get what time it shows in the client's timezone
+        const testStr = utcDate.toLocaleString('en-US', {
           timeZone: time.timezone,
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
-          hour12: true,
-          timeZoneName: 'short'
+          hour12: false
         })
         
-        // Extract timezone abbreviation (e.g., "CST", "AEDT")
-        const tzAbbr = fullString.split(' ').pop() || ''
+        // Parse to find offset
+        const match = testStr.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/)
+        if (match) {
+          const [, testMonth, testDay, testYear, testHour, testMinute] = match.map(Number)
+          
+          // Calculate offset
+          const wantedTime = new Date(year, month - 1, day, hours, minutes).getTime()
+          const gotTime = new Date(testYear, testMonth - 1, testDay, testHour, testMinute).getTime()
+          const offsetMs = wantedTime - gotTime
+          
+          // Apply offset to get correct UTC
+          const correctDate = new Date(utcDate.getTime() + offsetMs)
+          
+          // Now format in the client's timezone
+          const formatted = correctDate.toLocaleString('en-US', {
+            timeZone: time.timezone,
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          })
+          
+          // Get timezone abbreviation using the appropriate locale for better abbreviations
+          // Use locale matching the timezone region to get proper abbreviations (e.g., AEDT instead of GMT+10)
+          const getLocaleForTimezone = (tz: string) => {
+            if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
+            if (tz.startsWith('America/')) return 'en-US'
+            if (tz.startsWith('Europe/')) return 'en-GB'
+            if (tz.startsWith('Asia/')) return 'en-SG'
+            return 'en-US'
+          }
+          
+          const locale = getLocaleForTimezone(time.timezone)
+          const tzAbbr = new Intl.DateTimeFormat(locale, {
+            timeZone: time.timezone,
+            timeZoneName: 'short'
+          }).formatToParts(correctDate).find(part => part.type === 'timeZoneName')?.value || ''
+          
+          return `${formatted} (${tzAbbr})`
+        }
         
-        // Format without timezone first
-        const formatted = date.toLocaleString('en-US', {
-          timeZone: time.timezone,
+        // Fallback: just display the time as-is
+        const fallbackDate = new Date(`${time.datetime}:00`)
+        return fallbackDate.toLocaleString('en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -180,8 +249,6 @@ export default function ClientInterviewsPage() {
           minute: '2-digit',
           hour12: true
         })
-        
-        return `${formatted} (${tzAbbr})`
       }
       
       // Handle old string format
@@ -336,7 +403,7 @@ export default function ClientInterviewsPage() {
                             {interview.candidateFirstName}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            Requested on {formatDate(interview.createdAt)}
+                            Requested on {formatDate(interview.createdAt, clientTimezone)}
                           </p>
                         </div>
                       </div>

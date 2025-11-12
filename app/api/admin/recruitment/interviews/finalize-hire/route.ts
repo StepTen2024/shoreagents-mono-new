@@ -109,12 +109,16 @@ export async function POST(request: NextRequest) {
       jobAcceptance = await prisma.job_acceptances.create({
         data: {
           id: crypto.randomUUID(),
-          interviewRequestId: interviewRequestId,
           bpocCandidateId: bpocCandidateId || '',
           candidateEmail: staffEmail,
           candidatePhone: candidatePhone,
           position: candidateData?.position || 'Staff Member',
-          companyId: interview.client_users?.companyId || '',
+          company: {
+            connect: { id: interview.client_users?.companyId || '' }
+          },
+          interview_requests: {
+            connect: { id: interviewRequestId }
+          },
           acceptedByAdminId: session.user.id,
           acceptedAt: new Date(),
           signupEmailSent: false,

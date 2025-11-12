@@ -186,17 +186,20 @@ export async function POST(request: NextRequest) {
     const jobAcceptance = await prisma.job_acceptances.create({
       data: {
         id: crypto.randomUUID(),
-        interviewRequestId,
         bpocCandidateId,
         candidateEmail,
         candidatePhone: candidatePhone || null,
         position,
-        companyId,
+        company: {
+          connect: { id: companyId }
+        },
+        interview_requests: {
+          connect: { id: interviewRequestId }
+        },
         acceptedByAdminId: managementUser.id,
         workDays,
-        workStartTime,
-        workEndTime,
-        hasCustomHours,
+        workStartTime: workStartTime || '09:00',
+        workEndTime: workEndTime || '18:00',
         customHours,
         clientTimezone: scheduleTimezone,
         isDefaultSchedule,
