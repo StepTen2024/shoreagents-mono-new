@@ -164,6 +164,28 @@ contextBridge.exposeInMainWorld('electron', {
     captureNow: () => ipcRenderer.invoke('screenshot:capture-now'),
   },
   
+  // Auto-Updater API
+  updater: {
+    // Check for updates
+    checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+    
+    // Download update
+    downloadUpdate: () => ipcRenderer.invoke('updater:download-update'),
+    
+    // Quit and install update
+    quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
+    
+    // Listen for update status changes
+    onUpdateStatus: (callback) => {
+      const subscription = (event, data) => callback(data)
+      ipcRenderer.on('update-status', subscription)
+      
+      return () => {
+        ipcRenderer.removeListener('update-status', subscription)
+      }
+    },
+  },
+  
   // Utility to check if running in Electron
   isElectron: true,
   

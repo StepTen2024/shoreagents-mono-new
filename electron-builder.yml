@@ -5,6 +5,13 @@ appId: com.shoreagents.desktop
 productName: ShoreAgentsAI
 copyright: Copyright © 2025 Shore Agents
 
+# Auto-update configuration (GitHub Releases)
+publish:
+  provider: github
+  owner: StepTen2024
+  repo: shoreagents-mono-new
+  releaseType: release
+
 # Build output directory
 directories:
   buildResources: build

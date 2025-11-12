@@ -9,6 +9,7 @@ const activityTracker = require('./activity-tracker')
 const screenshotService = require('./services/screenshotService')
 const permissions = require('./utils/permissions')
 const config = require('./config/trackerConfig')
+const autoUpdater = require('./services/autoUpdater')
 
 let mainWindow = null
 let tray = null
@@ -704,6 +705,20 @@ function setupIPC() {
     return await screenshotService.captureNow()
   })
   
+  // Auto-updater handlers
+  ipcMain.handle('updater:check-for-updates', async () => {
+    return await autoUpdater.checkForUpdates()
+  })
+  
+  ipcMain.handle('updater:download-update', async () => {
+    return await autoUpdater.downloadUpdate()
+  })
+  
+  ipcMain.handle('updater:quit-and-install', () => {
+    autoUpdater.quitAndInstall()
+    return { success: true }
+  })
+  
   console.log('[Main] IPC handlers registered')
 }
 
@@ -719,6 +734,9 @@ app.whenReady().then(async () => {
   
   // Create system tray
   createTray()
+  
+  // Initialize auto-updater (works in both staff and client modes)
+  autoUpdater.initialize(mainWindow)
   
   // Initialize tracking services
   await initializeTracking()
@@ -750,6 +768,7 @@ app.on('before-quit', () => {
   syncService.stop()
   activityTracker.destroy()
   screenshotService.destroy()
+  autoUpdater.destroy()
 })
 
 // Handle crashes and errors
