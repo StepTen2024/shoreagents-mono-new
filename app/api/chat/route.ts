@@ -14,7 +14,7 @@ function getAnthropicClient() {
   console.log('🔑 [CHAT API] Creating fresh Anthropic client with key:', key?.substring(0, 30) || 'MISSING')
   return new Anthropic({
     apiKey: key || 'dummy-key-to-prevent-sdk-error',
-  })
+})
 }
 
 // POST /api/chat - AI chat endpoint
