@@ -441,3 +441,4 @@ npm run electron:build:railway
 
 **Build time: 5-10 minutes | File size: ~250 MB | Distribution: Upload and share link!** 🚀
 
+

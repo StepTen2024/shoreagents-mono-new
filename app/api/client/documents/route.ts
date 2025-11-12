@@ -95,6 +95,10 @@ export async function GET(request: NextRequest) {
       views: 0, // TODO: Add view tracking
       isStaffUpload: staffUserIds.includes(doc.staffUserId),
       source: doc.source, // Include source for badge display
+      status: doc.status, // Include approval status
+      approvedBy: doc.approvedBy,
+      approvedAt: doc.approvedAt,
+      rejectionNote: doc.rejectionNote,
     }))
 
     // Get category counts

@@ -3,13 +3,41 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-})
+// ⚡ Get API key fresh every time to avoid caching issues
+function getApiKey() {
+  return (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY)?.trim()
+}
+
+// ⚡ Create Anthropic client fresh every time
+function getAnthropicClient() {
+  const key = getApiKey()
+  console.log('🔑 [CHAT API] Creating fresh Anthropic client with key:', key?.substring(0, 30) || 'MISSING')
+  return new Anthropic({
+    apiKey: key || 'dummy-key-to-prevent-sdk-error',
+  })
+}
 
 // POST /api/chat - AI chat endpoint
 export async function POST(request: NextRequest) {
   try {
+    // ⚡ Get fresh API key for this request
+    const apiKey = getApiKey()
+    
+    // 🔍 DEBUG: Log what key we're actually using
+    console.log('🔍 [CHAT API] Request received - checking API key...')
+    console.log('   ANTHROPIC_API_KEY exists?', !!process.env.ANTHROPIC_API_KEY)
+    console.log('   CLAUDE_API_KEY exists?', !!process.env.CLAUDE_API_KEY)
+    console.log('   Using key starts with:', apiKey?.substring(0, 30) || 'NONE')
+    
+    // Check API key first
+    if (!apiKey) {
+      console.error('❌ [CHAT API] Request blocked: No API key configured')
+      return NextResponse.json({ 
+        error: 'AI service not configured',
+        details: 'API key is missing. Check .env.local for ANTHROPIC_API_KEY or CLAUDE_API_KEY'
+      }, { status: 500 })
+    }
+
     const session = await auth()
     
     if (!session?.user?.email) {
@@ -17,20 +45,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user details for personalization
-    // Try StaffUser first
+    // Try StaffUser first (with interests and profile!)
     let user = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id },
-      select: { id: true, name: true },
+      select: { 
+        id: true, 
+        name: true,
+        email: true,
+        companyId: true,
+        staff_interests: true,  // Get all interests!
+        staff_profiles: {
+          select: {
+            currentRole: true,
+            daysEmployed: true,
+            timezone: true,
+            startDate: true,
+            employmentStatus: true,
+          }
+        }
+      },
     })
+
+    let userType = 'STAFF'
 
     // If not staff, try ClientUser
     if (!user) {
       const clientUser = await prisma.client_users.findUnique({
         where: { authUserId: session.user.id },
-        select: { id: true, name: true },
+        select: { id: true, name: true, email: true, companyId: true },
       })
       if (clientUser) {
-        user = clientUser
+        user = clientUser as any
+        userType = 'CLIENT'
       }
     }
 
@@ -38,10 +84,11 @@ export async function POST(request: NextRequest) {
     if (!user) {
       const managementUser = await prisma.management_users.findUnique({
         where: { authUserId: session.user.id },
-        select: { id: true, name: true },
+        select: { id: true, name: true, email: true },
       })
       if (managementUser) {
-        user = managementUser
+        user = managementUser as any
+        userType = 'ADMIN'
       }
     }
 
@@ -58,22 +105,29 @@ export async function POST(request: NextRequest) {
     // Get referenced documents if any
     let documentContext = ''
     if (documentIds && documentIds.length > 0) {
-      const docs = await prisma.document.findMany({
+      const docs = await prisma.documents.findMany({
         where: {
           id: { in: documentIds },
-          // Documents are accessible based on sharing permissions
+          // Only show APPROVED documents to staff, all to client/admin
+          ...(userType === 'STAFF' ? { status: 'APPROVED' } : {}),
         },
         select: {
           title: true,
           category: true,
           content: true,
+          status: true,
+          uploadedByRole: true,
+          uploadedBy: true,
         },
       })
 
       if (docs.length > 0) {
-        documentContext = '\n\nREFERENCED DOCUMENTS:\n' + docs.map(doc => 
-          `\n---\nTitle: ${doc.title}\nCategory: ${doc.category}\n${doc.content || 'Content not available yet (file only)'}\n---`
-        ).join('\n')
+        documentContext = '\n\nREFERENCED DOCUMENTS:\n' + docs.map(doc => {
+          const docType = doc.uploadedByRole === 'ADMIN' ? '📋 COMPANY POLICY' : 
+                         doc.uploadedByRole === 'CLIENT' ? '📄 CLIENT PROCEDURE' : 
+                         '📝 WORK DOCUMENT'
+          return `\n---\n${docType}\nTitle: ${doc.title}\nCategory: ${doc.category}\nUploaded By: ${doc.uploadedBy}\n${doc.content || 'Content not available yet (file only)'}\n---`
+        }).join('\n')
       }
     }
     
@@ -207,10 +261,47 @@ TASK DETAILS:\n` + tasks.map(task => {
     // Get user's first name
     const firstName = user.name.split(' ')[0]
 
+    // Build personalization context for STAFF users
+    let personalizationContext = ''
+    if (userType === 'STAFF' && (user as any).staff_interests) {
+      const interests = (user as any).staff_interests
+      const profile = (user as any).staff_profiles
+      
+      personalizationContext = `\n\nPERSONAL CONTEXT FOR ${firstName.toUpperCase()}:\n`
+      
+      // Interests
+      if (interests.favoriteGame) personalizationContext += `- Loves gaming: ${interests.favoriteGame}\n`
+      if (interests.hobby) personalizationContext += `- Hobby: ${interests.hobby}\n`
+      if (interests.favoriteSport) personalizationContext += `- Sports: ${interests.favoriteSport}\n`
+      if (interests.favoriteMusic) personalizationContext += `- Music taste: ${interests.favoriteMusic}\n`
+      if (interests.favoriteMovie) personalizationContext += `- Favorite movie: ${interests.favoriteMovie}\n`
+      if (interests.favoriteBook) personalizationContext += `- Favorite book: ${interests.favoriteBook}\n`
+      if (interests.favoriteColor) personalizationContext += `- Favorite color: ${interests.favoriteColor}\n`
+      if (interests.favoriteFastFood) personalizationContext += `- Food: ${interests.favoriteFastFood}\n`
+      if (interests.dreamDestination) personalizationContext += `- Dream travel: ${interests.dreamDestination}\n`
+      if (interests.funFact) personalizationContext += `- Fun fact: ${interests.funFact}\n`
+      if (interests.favoriteQuote) personalizationContext += `- Favorite quote: "${interests.favoriteQuote}"\n`
+      if (interests.petName) personalizationContext += `- Pet: ${interests.petName}\n`
+      
+      // Profile
+      if (profile) {
+        if (profile.currentRole) personalizationContext += `- Role: ${profile.currentRole}\n`
+        if (profile.daysEmployed) personalizationContext += `- Days employed: ${profile.daysEmployed}\n`
+        if (profile.timezone) personalizationContext += `- Timezone: ${profile.timezone}\n`
+        if (profile.employmentStatus) personalizationContext += `- Status: ${profile.employmentStatus}\n`
+        if (profile.startDate) {
+          const startDate = new Date(profile.startDate)
+          personalizationContext += `- Started: ${startDate.toLocaleDateString()}\n`
+        }
+      }
+      
+      personalizationContext += `\nUSE THIS INFO to make conversations more personal and relatable! Reference their interests when appropriate (e.g., "I know you love ${interests.favoriteGame}, this task is like leveling up!"). Keep it natural and authentic.\n`
+    }
+
     // System prompt for BPO training assistant
     const systemPrompt = `You are a friendly AI assistant helping ${firstName} with their BPO work. You're here to help them understand training materials, manage tasks, and bring more value to their clients.
 
-IMPORTANT: Always greet ${firstName} by their first name when starting your responses (e.g., "Hi ${firstName}," or "Hey ${firstName},").
+IMPORTANT: Always greet ${firstName} by their first name when starting your responses (e.g., "Hi ${firstName}," or "Hey ${firstName},").${personalizationContext}
 
 RESPONSE STYLE:
 - Write naturally and conversationally, like a helpful colleague
@@ -218,6 +309,11 @@ RESPONSE STYLE:
 - Use simple paragraphs and occasional bullet points when listing things
 - Avoid heavy marketing language or excessive enthusiasm
 - Be warm but professional
+
+DOCUMENT TYPES:
+- 📋 COMPANY POLICY: HR policies, leave policies, SOPs uploaded by Admin (accessible to all staff)
+- 📄 CLIENT PROCEDURE: Client-specific processes uploaded by clients (only for their staff)
+- 📝 WORK DOCUMENT: Staff work samples, drafts (needs client approval before being used)
 
 WHEN DOCUMENTS OR TASKS ARE REFERENCED:
 - For documents: Stick to the information in those specific documents, quote or paraphrase relevant sections
@@ -240,8 +336,16 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
 - Assist with task management and time management strategies${fullContext}`
 
     // Call Claude API
+    console.log('🤖 [CHAT API] Calling Claude...')
+    console.log('   System prompt length:', systemPrompt.length)
+    console.log('   Messages:', messages.length)
+    console.log('   Model:', process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514')
+
+    // ⚡ Create fresh Anthropic client for this request
+    const anthropic = getAnthropicClient()
+    
     const response = await anthropic.messages.create({
-      model: process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
+      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       system: systemPrompt,
       messages: messages.map((msg: any) => ({
@@ -249,6 +353,8 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
         content: msg.content,
       })),
     })
+    
+    console.log('✅ [CHAT API] Claude response received')
 
     const assistantMessage = response.content[0].type === 'text' 
       ? response.content[0].text 
@@ -259,9 +365,20 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
       sources: documentIds || [],
     })
   } catch (error) {
-    console.error('Error in chat API:', error)
+    console.error('❌ [CHAT API] Error:', error)
+    console.error('❌ [CHAT API] Error details:', JSON.stringify(error, null, 2))
+    
+    // Check if it's an Anthropic API error
+    if (error instanceof Error) {
+      console.error('❌ [CHAT API] Error message:', error.message)
+      console.error('❌ [CHAT API] Error stack:', error.stack)
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to process chat message' },
+      { 
+        error: 'Failed to process chat message',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

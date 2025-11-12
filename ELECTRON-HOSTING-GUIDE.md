@@ -373,3 +373,4 @@ https://developers.cloudflare.com/r2/
 
 **Recommended: Use Supabase Storage - easiest and fastest to set up!**
 
+

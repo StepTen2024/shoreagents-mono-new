@@ -3,6 +3,9 @@
  * This server handles both Next.js pages and WebSocket connections
  */
 
+// ⚡ CRITICAL: Load environment variables from .env.local FIRST!
+require('dotenv').config({ path: '.env.local' })
+
 const { createServer } = require('http')
 const { parse } = require('url')
 const next = require('next')

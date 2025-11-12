@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { supabaseAdmin } from "@/lib/supabase"
 import CloudConvert from 'cloudconvert'
+import { randomUUID } from "crypto"
 
 // GET /api/documents - Fetch all documents for current staff user (own + client uploads)
 export async function GET(req: NextRequest) {
@@ -23,38 +24,42 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
 
-    // Fetch documents with proper filtering based on source:
-    // 1. Staff's own uploads (any source)
-    // 2. CLIENT documents - if sharedWithAll AND company name matches, OR staff ID in sharedWith array
-    // 3. ADMIN documents - if sharedWithAll (global) OR staff ID in sharedWith array
+    // Fetch documents with proper filtering based on source and approval status:
+    // 1. Staff's own uploads (any status - they can see their pending/rejected docs)
+    // 2. CLIENT documents - APPROVED only, for their company
+    // 3. ADMIN documents - APPROVED only, for all staff (company policies/SOPs)
     const documents = await prisma.documents.findMany({
       where: {
         OR: [
-          // Staff's own uploads - show regardless of sharing settings
+          // Staff's own uploads - show ALL statuses (pending, approved, rejected)
           { staffUserId: staffUser.id },
           
-          // CLIENT documents shared with ALL staff in the same company (dynamic)
+          // CLIENT documents (APPROVED only) - shared with ALL staff in the same company
           {
-            source: 'CLIENT',
+            uploadedByRole: 'CLIENT',
+            status: 'APPROVED',
             sharedWithAll: true,
             uploadedBy: staffUser.company?.companyName  // Match by company name
           },
           
-          // CLIENT documents specifically shared with this user
+          // CLIENT documents (APPROVED only) - specifically shared with this user
           {
-            source: 'CLIENT',
+            uploadedByRole: 'CLIENT',
+            status: 'APPROVED',
             sharedWith: { has: staffUser.id }
           },
           
-          // ADMIN documents shared with all (global)
+          // ADMIN documents (APPROVED only) - shared with all staff (policies, SOPs)
           {
-            source: 'ADMIN',
+            uploadedByRole: 'ADMIN',
+            status: 'APPROVED',
             sharedWithAll: true
           },
           
-          // ADMIN documents specifically shared with this user
+          // ADMIN documents (APPROVED only) - specifically shared with this user
           {
-            source: 'ADMIN',
+            uploadedByRole: 'ADMIN',
+            status: 'APPROVED',
             sharedWith: { has: staffUser.id }
           }
         ]
@@ -285,16 +290,20 @@ export async function POST(req: NextRequest) {
     // Create the document
     const document = await prisma.documents.create({
       data: {
+        id: randomUUID(),
         staffUserId: staffUser.id,
         title,
         category,
-        source: 'STAFF',  // Mark as staff upload
+        source: 'STAFF',  // Legacy field
+        uploadedByRole: 'STAFF',  // Who uploaded it
+        status: 'PENDING',  // Needs client approval before staff can use it
         content,
         uploadedBy: staffUser.name,
         size: fileSize,
         fileUrl,
         sharedWithAll: false,  // For STAFF docs, use sharedWith array
-        sharedWith
+        sharedWith,
+        updatedAt: new Date()
       },
       include: {
         staff_users: {
