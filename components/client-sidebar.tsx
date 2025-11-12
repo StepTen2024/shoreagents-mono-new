@@ -98,7 +98,7 @@ export function ClientSidebar({ user }: { user: ClientUserWithCompany }) {
     { href: "/client/performance-reviews", label: "Performance", icon: FileText, badge: pendingReviewsCount },
     { href: "/client/tasks", label: "Tasks", icon: ClipboardList },
     { href: "/client/knowledge-base", label: "Knowledge Base", icon: BookOpen },
-    { href: "/client/news-feed", label: "The Feed", icon: Bell },
+    { href: "/client/posts", label: "The Feed", icon: Bell },
     { href: "/client/leaderboard", label: "Leaderboard", icon: Trophy },
     { href: "/client/offboarding", label: "Offboarding", icon: UserMinus },
     { href: "/client/recruitment", label: "Recruitment", icon: Briefcase },

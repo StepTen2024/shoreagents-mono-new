@@ -10,13 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/manager (allow both ADMIN and MANAGER)
+    // Check if user is admin
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id },
     })
 
-    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
-      return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
+    if (!managementUser || managementUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -63,13 +63,13 @@ export async function GET(request: NextRequest) {
         },
         performance_metrics: {
           where: {
-            date: {
+            shiftDate: {
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            date: "desc",
+            shiftDate: "desc",
           },
         },
         time_entries: {
@@ -123,8 +123,8 @@ export async function GET(request: NextRequest) {
       // Get all visited URLs (from JSON field)
       const allVisitedUrls: any[] = []
       metrics.forEach((metric) => {
-        if (metric.visitedUrls && Array.isArray(metric.visitedUrls)) {
-          allVisitedUrls.push(...metric.visitedUrls)
+        if (metric.visitedurls && Array.isArray(metric.visitedurls)) {
+          allVisitedUrls.push(...metric.visitedurls)
         }
       })
 
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
           hasSuspiciousActivity,
           suspiciousUrlCount: suspiciousUrls.length,
         },
-        lastActivity: metrics[0]?.date || timeEntries[0]?.clockIn || null,
+        lastActivity: metrics[0]?.shiftDate || timeEntries[0]?.clockIn || null,
       }
     })
 

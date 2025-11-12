@@ -58,12 +58,17 @@ export async function POST(req: NextRequest) {
     })
 
     // Recalculate completion percentage
-    const completionPercent = await updateCompletionPercent(onboarding.id)
+    await updateCompletionPercent(onboarding.id)
+
+    // Fetch updated onboarding to get completion percent
+    const updatedOnboarding = await prisma.staff_onboarding.findUnique({
+      where: { id: onboarding.id }
+    })
 
     return NextResponse.json({ 
       success: true,
       message: "Emergency contact saved successfully",
-      completionPercent
+      completionPercent: updatedOnboarding?.completionPercent || 0
     })
 
   } catch (error) {
@@ -76,12 +81,12 @@ export async function POST(req: NextRequest) {
 }
 
 // Helper function to calculate completion percentage
-async function updateCompletionPercent(onboardingId: string): Promise<number> {
+async function updateCompletionPercent(onboardingId: string) {
   const onboarding = await prisma.staff_onboarding.findUnique({
     where: { id: onboardingId }
   })
 
-  if (!onboarding) return 0
+  if (!onboarding) return
 
   const totalSteps = 8
   let completedSteps = 0
@@ -109,7 +114,5 @@ async function updateCompletionPercent(onboardingId: string): Promise<number> {
       // isComplete is NOT updated here - only in admin complete route!
     }
   })
-
-  return completionPercent
 }
 

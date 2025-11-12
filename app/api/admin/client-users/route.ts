@@ -41,7 +41,12 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     })
 
-    return NextResponse.json({ clientUsers })
+    console.log(`✅ [ADMIN] Found ${clientUsers.length} client users`)
+    clientUsers.forEach(user => {
+      console.log(`   - ${user.name} (${user.email}) at ${user.company?.companyName || 'No Company'}`)
+    })
+
+    return NextResponse.json({ client_users: clientUsers })
   } catch (error) {
     console.error("Error fetching client users:", error)
     return NextResponse.json(

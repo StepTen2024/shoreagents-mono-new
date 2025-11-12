@@ -31,101 +31,6 @@ import {
   Building
 } from "lucide-react"
 
-// Helper function to convert 24hr time to 12hr format
-function convertTo12Hour(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hour12 = hours % 12 || 12
-  return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`
-}
-
-// Helper function to format work schedule times with timezone conversion to PH time
-function formatWorkTimeWithTimezone(time24: string, clientTimezone: string) {
-  try {
-    const [hours, minutes] = time24.split(':').map(Number)
-    
-    // Get timezone abbreviation
-    const tempDate = new Date()
-    const tzAbbrev = tempDate.toLocaleString('en-US', {
-      timeZone: clientTimezone,
-      timeZoneName: 'short'
-    }).split(' ').pop() || clientTimezone
-    
-    // Create a date object representing today at the given time
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = today.getMonth()
-    const day = today.getDate()
-    
-    // Create a UTC date
-    const utcRef = new Date(Date.UTC(year, month, day, hours, minutes))
-    
-    // Format this UTC date in the client's timezone to see what time it shows
-    const clientTestStr = utcRef.toLocaleString('en-US', {
-      timeZone: clientTimezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })
-    
-    // Parse the result to find the offset
-    const match = clientTestStr.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/)
-    if (!match) {
-      // Fallback: just display the time as-is
-      return {
-        clientTime: convertTo12Hour(time24),
-        clientTimezone: tzAbbrev,
-        phTime: convertTo12Hour(time24),
-        fullDisplay: `${convertTo12Hour(time24)} (${tzAbbrev})`
-      }
-    }
-    
-    const [, testMonth, testDay, testYear, testHour, testMinute] = match.map(Number)
-    
-    // Calculate the difference between what we wanted and what we got
-    const wantedTime = new Date(year, month, day, hours, minutes).getTime()
-    const gotTime = new Date(testYear, testMonth - 1, testDay, testHour, testMinute).getTime()
-    const offsetMs = wantedTime - gotTime
-    
-    // Create the correct UTC date by applying the offset
-    const correctUTC = new Date(utcRef.getTime() + offsetMs)
-    
-    // Format this correct UTC date in Manila timezone
-    const phTimeStr = correctUTC.toLocaleString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila'
-    })
-    
-    // Format client time
-    const clientTimeStr = convertTo12Hour(time24)
-    
-    return {
-      clientTime: clientTimeStr,
-      clientTimezone: tzAbbrev,
-      phTime: phTimeStr,
-      fullDisplay: `${clientTimeStr} (${tzAbbrev}) → ${phTimeStr} (PH)`
-    }
-  } catch (error) {
-    console.error('Error formatting work time with timezone:', error)
-    const tempDate = new Date()
-    const tzAbbrev = tempDate.toLocaleString('en-US', {
-      timeZone: clientTimezone,
-      timeZoneName: 'short'
-    }).split(' ').pop() || clientTimezone
-    return {
-      clientTime: convertTo12Hour(time24),
-      clientTimezone: tzAbbrev,
-      phTime: convertTo12Hour(time24),
-      fullDisplay: `${convertTo12Hour(time24)} (${tzAbbrev})`
-    }
-  }
-}
-
 interface OnboardingData {
   // Personal Info
   firstName: string
@@ -249,17 +154,9 @@ export default function AdminOnboardingDetailPage() {
   const [employmentStatus, setEmploymentStatus] = useState<string>("PROBATION")
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [shiftTime, setShiftTime] = useState<string>("9:00 AM - 6:00 PM")
-  const [workDays, setWorkDays] = useState<string[]>(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
-  const [hasCustomHours, setHasCustomHours] = useState<boolean>(false)
-  const [customHours, setCustomHours] = useState<Record<string, string> | null>(null)
-  const [clientTimezone, setClientTimezone] = useState<string>("UTC")
   const [currentRole, setCurrentRole] = useState<string>("")
   const [salary, setSalary] = useState<string>("")
-  const [basicSalary, setBasicSalary] = useState<number>(0)
-  const [deMinimis, setDeMinimis] = useState<number>(0)
   const [hmo, setHmo] = useState<boolean>(true)
-  const [contractSigned, setContractSigned] = useState<boolean>(false)
-  const [contractSignedAt, setContractSignedAt] = useState<string | null>(null)
 
   useEffect(() => {
     fetchOnboardingDetails()
@@ -312,59 +209,6 @@ export default function AdminOnboardingDetailPage() {
       setStaff(data.staff)
       setOnboarding(data.onboarding)
       setProfile(data.profile)
-      
-      // Auto-fill employment details from contract/job acceptance if available
-      if (data.autoFillData) {
-        console.log("🎯 AUTO-FILL DATA:", data.autoFillData)
-        
-        if (data.autoFillData.companyId) {
-          setSelectedCompanyId(data.autoFillData.companyId)
-        }
-        if (data.autoFillData.position) {
-          setCurrentRole(data.autoFillData.position)
-        }
-        if (data.autoFillData.startDate) {
-          setStartDate(data.autoFillData.startDate)
-        }
-        if (data.autoFillData.workSchedule) {
-          setShiftTime(data.autoFillData.workSchedule)
-        }
-        if (data.autoFillData.workDays && data.autoFillData.workDays.length > 0) {
-          console.log("📅 Auto-filling workDays:", data.autoFillData.workDays)
-          setWorkDays(data.autoFillData.workDays)
-        }
-        if (data.autoFillData.hasCustomHours !== undefined) {
-          setHasCustomHours(data.autoFillData.hasCustomHours)
-        }
-        if (data.autoFillData.customHours) {
-          setCustomHours(data.autoFillData.customHours)
-        }
-        if (data.autoFillData.clientTimezone) {
-          setClientTimezone(data.autoFillData.clientTimezone)
-        }
-        if (data.autoFillData.totalMonthlyGross && data.autoFillData.totalMonthlyGross > 0) {
-          setSalary(data.autoFillData.totalMonthlyGross.toString())
-        }
-        if (data.autoFillData.basicSalary) {
-          setBasicSalary(data.autoFillData.basicSalary)
-        }
-        if (data.autoFillData.deMinimis) {
-          setDeMinimis(data.autoFillData.deMinimis)
-        }
-        if (data.autoFillData.hmo !== undefined) {
-          console.log("🏥 Auto-filling HMO:", data.autoFillData.hmo)
-          setHmo(data.autoFillData.hmo)
-        }
-        if (data.autoFillData.employmentStatus) {
-          setEmploymentStatus(data.autoFillData.employmentStatus)
-        }
-        if (data.autoFillData.contractSigned !== undefined) {
-          setContractSigned(data.autoFillData.contractSigned)
-        }
-        if (data.autoFillData.contractSignedAt) {
-          setContractSignedAt(data.autoFillData.contractSignedAt)
-        }
-      }
     } catch (err) {
       setError("Failed to load onboarding details")
     } finally {
@@ -489,12 +333,6 @@ export default function AdminOnboardingDetailPage() {
       return
     }
     
-    // Validate work days
-    if (workDays.length === 0) {
-      setError("Please select at least one work day.")
-      return
-    }
-    
     setConfirmCompleteModal(true)
   }
 
@@ -515,7 +353,7 @@ export default function AdminOnboardingDetailPage() {
       companyId: selectedCompanyId,
       employmentStatus,
       startDate,
-      shiftTime: shiftTime,
+      shiftTime,
       currentRole,
       salary: parseFloat(salary),
       hmo
@@ -533,7 +371,7 @@ export default function AdminOnboardingDetailPage() {
       salary: parseFloat(salary),
       employmentStatus,
       startDate,
-      shiftTime: shiftTime,
+      shiftTime,
       hmo,
       onboardingStatus: {
         personalInfoStatus: onboarding?.personalInfoStatus,
@@ -873,6 +711,36 @@ export default function AdminOnboardingDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                
+                {/* Employment Contract Section */}
+                <div className="space-y-2">
+                  <Label className="text-white text-lg font-semibold">
+                    Employment Contract
+                  </Label>
+                  <div className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-slate-300 text-sm">
+                          Contract must be signed before completing onboarding
+                        </p>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Staff member needs to sign their employment contract
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          // TODO: Implement contract viewing/management
+                          alert("Contract management feature coming soon!")
+                        }}
+                        variant="outline"
+                        className="border-blue-600 text-blue-300 hover:bg-blue-900/20"
+                      >
+                        View Contract
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   {/* Company Assignment */}
                   <div className="space-y-2">
@@ -914,81 +782,34 @@ export default function AdminOnboardingDetailPage() {
                   </div>
                 </div>
 
-                {/* Start Date - Full Width */}
-                <div className="space-y-2">
-                  <Label htmlFor="startDate" className="text-white">
-                    Start Date *
-                  </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-slate-800 border-slate-700 text-white scheme-dark"
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Start Date */}
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate" className="text-white">
+                      Start Date *
+                    </Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-slate-800 border-slate-700 text-white scheme-dark"
+                    />
+                  </div>
 
-                {/* Work Days Selection - Read Only */}
-                <div className="space-y-2">
-                  <Label className="text-white text-sm">Work Days & Schedule</Label>
-                  <p className="text-xs text-slate-400">Auto-filled from job acceptance</p>
-                  <div className="grid grid-cols-7 gap-2">
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
-                      const isSelected = workDays.includes(day);
-                      
-                      // Get time for this specific day with timezone conversion
-                      let startConverted = null;
-                      let endConverted = null;
-                      
-                      if (hasCustomHours && customHours && customHours[day]) {
-                        // Parse custom start time (24hr format like "09:00")
-                        const startTime24 = customHours[day];
-                        const [hours, minutes] = startTime24.split(':').map(Number);
-                        const endHour = (hours + 9) % 24;
-                        const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                        
-                        // Convert using timezone helper
-                        startConverted = formatWorkTimeWithTimezone(startTime24, clientTimezone);
-                        endConverted = formatWorkTimeWithTimezone(endTime24, clientTimezone);
-                      }
-                      
-                      return (
-                        <div
-                          key={day}
-                          className={`flex flex-col items-center px-2 py-3 rounded-lg border-2 cursor-default ${
-                            isSelected 
-                              ? 'bg-gradient-to-br from-blue-500/30 to-purple-500/30 border-blue-400/60 text-blue-200' 
-                              : 'bg-slate-800/60 border-slate-600/70 text-slate-400'
-                          }`}
-                        >
-                          <div className="text-xs font-bold mb-1">{day.slice(0, 3)}</div>
-                          {isSelected ? (
-                            <>
-                              <div className="text-[10px] font-semibold text-blue-300 mb-1">Working</div>
-                              {startConverted && endConverted && (
-                                <>
-                                  <div className="text-[9px] text-blue-300 text-center leading-tight mb-0.5">
-                                    {startConverted.clientTime} - {endConverted.clientTime}
-                                  </div>
-                                  <div className="text-[8px] text-blue-400/80 mb-1">
-                                    ({startConverted.clientTimezone})
-                                  </div>
-                                  <div className="text-[8px] text-blue-400 mb-1">↓</div>
-                                  <div className="text-[9px] text-green-300 font-semibold leading-tight mb-0.5">
-                                    {startConverted.phTime} - {endConverted.phTime}
-                                  </div>
-                                  <div className="text-[8px] text-green-400/80">
-                                    (PH)
-                                  </div>
-                                </>
-                              )}
-                            </>
-                          ) : (
-                            <div className="text-[10px] text-slate-500">Off</div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  {/* Shift Time */}
+                  <div className="space-y-2">
+                    <Label htmlFor="shiftTime" className="text-white">
+                      Shift Time *
+                    </Label>
+                    <Input
+                      id="shiftTime"
+                      type="text"
+                      value={shiftTime}
+                      onChange={(e) => setShiftTime(e.target.value)}
+                      placeholder="e.g., 9:00 AM - 6:00 PM"
+                      className="bg-slate-800 border-slate-700 text-white"
+                    />
                   </div>
                 </div>
 
@@ -1011,7 +832,7 @@ export default function AdminOnboardingDetailPage() {
                   {/* Salary */}
                   <div className="space-y-2">
                     <Label htmlFor="salary" className="text-white">
-                      Total Monthly Gross (PHP) *
+                      Monthly Salary (PHP) *
                     </Label>
                     <Input
                       id="salary"
@@ -1021,22 +842,6 @@ export default function AdminOnboardingDetailPage() {
                       placeholder="e.g., 25000"
                       className="bg-slate-800 border-slate-700 text-white"
                     />
-                    {(basicSalary > 0 || deMinimis > 0) && (
-                      <div className="text-xs text-slate-400 space-y-1 mt-2 p-2 bg-slate-800/50 rounded border border-slate-700">
-                        <div className="flex justify-between">
-                          <span>Basic Salary:</span>
-                          <span className="font-semibold">₱{basicSalary.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>De Minimis:</span>
-                          <span className="font-semibold">₱{deMinimis.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between border-t border-slate-600 pt-1 mt-1">
-                          <span className="text-slate-300">Total:</span>
-                          <span className="font-bold text-slate-200">₱{(basicSalary + deMinimis).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -2677,7 +2482,7 @@ export default function AdminOnboardingDetailPage() {
               <p className="text-sm text-slate-400 mb-1">This will:</p>
               <ul className="text-sm text-slate-300 space-y-1">
                 <li>• Create their profile and personal records</li>
-                <li>• Set up their work schedule: <span className="font-semibold text-blue-300">{workDays.length} days/week</span> ({workDays.join(', ')})</li>
+                <li>• Set up their work schedule</li>
                 <li>• Assign them to {companies.find(c => c.id === selectedCompanyId)?.companyName || 'selected company'}</li>
                 <li>• Set their role as {currentRole}</li>
                 <li>• Set their salary to ₱{salary}/month</li>

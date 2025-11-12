@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Plus, Grid3X3, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import TicketKanbanLight from "@/components/tickets/ticket-kanban-light"
+import ClientTicketBoard from "@/components/tickets/client-ticket-board"
 import TicketListLight from "@/components/tickets/ticket-list-light"
 import TicketDetailModal from "@/components/tickets/ticket-detail-modal"
 import { Ticket } from "@/types/ticket"
@@ -214,20 +214,20 @@ export default function ClientTicketsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-        <div className="w-full max-w-7xl mx-auto">
+      <div className="p-8 bg-gray-50 min-h-screen">
+        <div className="w-full">
           {/* Header skeleton */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 md:mb-8">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <div className="h-7 md:h-8 w-36 md:w-48 bg-gray-200 rounded mb-2 animate-pulse"></div>
-              <div className="h-4 w-48 md:w-64 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 w-48 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 w-64 bg-gray-200 rounded"></div>
             </div>
-            <div className="flex items-center gap-3 md:gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <div className={`h-8 w-16 rounded-md ${viewMode === 'board' ? 'bg-gray-300' : 'bg-gray-200'} animate-pulse`}></div>
-                <div className={`h-8 w-16 rounded-md ${viewMode === 'list' ? 'bg-gray-300' : 'bg-gray-200'} animate-pulse`}></div>
+                <div className={`h-8 w-16 rounded-md ${viewMode === 'board' ? 'bg-gray-300' : 'bg-gray-200'}`}></div>
+                <div className={`h-8 w-16 rounded-md ${viewMode === 'list' ? 'bg-gray-300' : 'bg-gray-200'}`}></div>
               </div>
-              <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-10 w-24 bg-gray-200 rounded"></div>
             </div>
           </div>
 
@@ -255,16 +255,16 @@ export default function ClientTicketsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-      <div className="w-full max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 md:mb-8">
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="w-full">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Support Tickets</h1>
-            <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">
+            <h1 className="text-3xl font-bold text-gray-900">Support Tickets</h1>
+            <p className="text-gray-600 mt-2">
               View and manage your support requests
             </p>
           </div>
-          <div className="flex items-center gap-3 md:gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
             {/* View Toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button
@@ -299,35 +299,34 @@ export default function ClientTicketsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-gray-500 font-medium">Total Tickets</div>
-            <div className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</div>
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="text-sm text-gray-500">Total Tickets</div>
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
           </div>
-          <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-blue-600 font-medium">Open</div>
-            <div className="text-2xl font-bold text-blue-700 mt-1">{stats.open}</div>
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="text-sm text-gray-500">Open</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.open}</div>
           </div>
-          <div className="p-4 bg-gradient-to-br from-yellow-50 to-orange-100 border border-yellow-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-orange-600 font-medium">In Progress</div>
-            <div className="text-2xl font-bold text-orange-700 mt-1">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="text-sm text-gray-500">In Progress</div>
+            <div className="text-2xl font-bold text-yellow-600">
               {stats.inProgress}
             </div>
           </div>
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm text-green-600 font-medium">Resolved</div>
-            <div className="text-2xl font-bold text-green-700 mt-1">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="text-sm text-gray-500">Resolved</div>
+            <div className="text-2xl font-bold text-green-600">
               {stats.resolved}
             </div>
           </div>
         </div>
 
-        {/* Tickets Display */}
+        {/* Tickets Display - CLIENT VIEW ONLY (NO DRAG AND DROP) */}
         {viewMode === 'board' ? (
-          <TicketKanbanLight
+          <ClientTicketBoard
             tickets={tickets || []}
             onTicketClick={handleTicketClick}
-            onStatusChange={() => {}}
           />
         ) : (
           <TicketListLight
@@ -574,6 +573,7 @@ export default function ClientTicketsPage() {
             onClose={handleCloseModal}
             onUpdate={handleModalUpdate}
             isManagement={false}
+            isClient={true}
           />
         )}
       </div>

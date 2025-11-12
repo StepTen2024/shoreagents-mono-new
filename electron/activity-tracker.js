@@ -130,6 +130,8 @@ class ActivityTracker {
 
     // Start uIOhook to listen for keyboard and mouse events
     try {
+      console.log('🎯 [ActivityTracker] Setting up uIOhook event listeners...')
+      
       // Mouse movement (throttled to avoid overwhelming the system)
       uIOhook.on('mousemove', (event) => {
         const now = Date.now()
@@ -138,28 +140,85 @@ class ActivityTracker {
           this.lastMouseTrack = now
         }
       })
+      console.log('   ✅ Mouse movement listener registered')
       
       // Mouse clicks
       uIOhook.on('mousedown', (event) => this.onActivity('mousedown', event))
       uIOhook.on('mouseup', (event) => this.onActivity('mouseup', event))
       uIOhook.on('click', (event) => this.onActivity('click', event))
+      console.log('   ✅ Mouse click listeners registered')
       
       // Mouse wheel
       uIOhook.on('wheel', (event) => this.onActivity('wheel', event))
+      console.log('   ✅ Mouse wheel listener registered')
 
       // Keyboard events
-      uIOhook.on('keydown', (event) => this.onActivity('keydown', event))
+      uIOhook.on('keydown', (event) => {
+        console.log(`⌨️  [ActivityTracker] RAW keydown event received! Keycode: ${event.keycode}`)
+        this.onActivity('keydown', event)
+      })
       uIOhook.on('keyup', (event) => this.onActivity('keyup', event))
+      console.log('   ✅ Keyboard listeners registered (keydown + keyup)')
 
       // Start the hook
+      console.log('🚀 [ActivityTracker] Starting uIOhook...')
       uIOhook.start()
-      console.log('[ActivityTracker] uIOhook started successfully')
+      console.log('✅ [ActivityTracker] uIOhook started successfully - NOW TRACKING INPUT!')
 
       // Start interval to check for inactivity
       this.intervalId = setInterval(() => this.checkInactivity(), this.checkInterval)
-      console.log('[ActivityTracker] Inactivity checker started')
+      console.log('✅ [ActivityTracker] Inactivity checker started')
+      
+      // Test log after 5 seconds to confirm tracking is working
+      setTimeout(() => {
+        console.log('\n╔═══════════════════════════════════════════════════════╗')
+        console.log('║  🔍 [ActivityTracker] 5-SECOND STATUS CHECK          ║')
+        console.log('╚═══════════════════════════════════════════════════════╝')
+        console.log(`📊 Tracking Status:`)
+        console.log(`   Is Tracking: ${this.isTracking ? '✅ YES' : '❌ NO'}`)
+        console.log(`   Performance Tracker Available: ${this.performanceTracker ? '✅ YES' : '❌ NO'}`)
+        
+        if (this.performanceTracker && this.performanceTracker.metrics) {
+          console.log(`\n📈 Current Metrics (After 5 Seconds):`)
+          console.log(`   🖱️  Mouse movements: ${this.performanceTracker.metrics.mouseMovements} ${this.performanceTracker.metrics.mouseMovements > 0 ? '✅' : '⚠️ ZERO - Move mouse!'}`)
+          console.log(`   🖱️  Mouse clicks: ${this.performanceTracker.metrics.mouseClicks} ${this.performanceTracker.metrics.mouseClicks > 0 ? '✅' : '⚠️ ZERO - Try clicking!'}`)
+          console.log(`   ⌨️  Keystrokes: ${this.performanceTracker.metrics.keystrokes} ${this.performanceTracker.metrics.keystrokes > 0 ? '✅ WORKING!' : '❌ ZERO - KEYBOARD NOT TRACKING!'}`)
+          
+          if (this.performanceTracker.metrics.keystrokes === 0) {
+            console.log(`\n🚨 KEYBOARD NOT WORKING - Possible Causes:`)
+            console.log(`\n   🪟 WINDOWS (Most Common):`)
+            console.log(`      1. Antivirus blocking keyboard hooks (Norton/McAfee/AVG/Avast/Defender)`)
+            console.log(`      2. Try: Disable antivirus temporarily and test`)
+            console.log(`      3. Try: Run Electron as Administrator`)
+            console.log(`      4. If works: Add Electron to antivirus whitelist`)
+            console.log(`\n   🍎 MACOS:`)
+            console.log(`      1. Accessibility Permissions NOT granted`)
+            console.log(`      2. System Preferences → Security & Privacy → Privacy → Accessibility`)
+            console.log(`      3. Add Electron app to allowed list`)
+            console.log(`      4. Restart Electron app`)
+          }
+        }
+        console.log('╚═══════════════════════════════════════════════════════╝\n')
+      }, 5000)
     } catch (error) {
-      console.error('[ActivityTracker] Error starting uIOhook:', error)
+      console.error('\n╔═══════════════════════════════════════════════════════╗')
+      console.error('║  ❌ [ActivityTracker] UIOHOOK FAILED TO START!        ║')
+      console.error('╚═══════════════════════════════════════════════════════╝')
+      console.error('Error:', error.message)
+      console.error('Stack:', error.stack)
+      console.error('\n🚨 COMMON CAUSES BY PLATFORM:')
+      console.error('\n   🪟 WINDOWS:')
+      console.error('      1. Antivirus blocking uiohook (most common)')
+      console.error('      2. Administrator privileges needed')
+      console.error('      3. uiohook-napi module not installed correctly')
+      console.error('\n   🍎 MACOS:')
+      console.error('      1. Accessibility permissions not granted (always required)')
+      console.error('      2. uiohook-napi module not installed correctly')
+      console.error('\n🔧 SOLUTIONS:')
+      console.error('   Windows: Disable antivirus temporarily OR Run as Administrator')
+      console.error('   macOS: System Preferences → Security & Privacy → Privacy → Accessibility → Add app')
+      console.error('   Both: Run "npm install" to reinstall modules')
+      console.error('╚═══════════════════════════════════════════════════════╝\n')
     }
   }
 
@@ -290,15 +349,22 @@ class ActivityTracker {
       switch (eventType) {
         case 'mousemove':
           metrics.mouseMovements++
+          // Log every 100th mouse movement to reduce spam
+          if (metrics.mouseMovements % 100 === 0) {
+            console.log(`🖱️  [ActivityTracker] Mouse movements: ${metrics.mouseMovements} ✅`)
+          }
           break
         
         case 'click':
           // Only count 'click' events, not mousedown/mouseup to avoid double counting
           metrics.mouseClicks++
+          console.log(`🖱️  [ActivityTracker] Mouse click detected! Total: ${metrics.mouseClicks} ✅`)
           break
         
         case 'keydown':
           metrics.keystrokes++
+          // Log every keystroke to debug keystroke tracking
+          console.log(`⌨️  [ActivityTracker] KEYSTROKE DETECTED! Total: ${metrics.keystrokes} ✅`)
           break
         
         // mousedown, mouseup, wheel, keyup don't increment counters but still count as activity

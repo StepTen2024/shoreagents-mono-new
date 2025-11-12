@@ -1,0 +1,58 @@
+# Electron Builder Configuration
+# Builds Windows installer for Shore Agents Desktop App
+
+appId: com.shoreagents.desktop
+productName: ShoreAgentsAI
+copyright: Copyright © 2025 Shore Agents
+
+# Build output directory
+directories:
+  buildResources: build
+  output: dist
+
+# Files to include in build
+files:
+  - "electron/**/*"
+  - "node_modules/**/*"
+  - "!node_modules/.cache"
+  - "package.json"
+  - "build/**/*"
+
+# Exclude files (reduce bundle size)
+# Don't include Next.js files - Electron connects to Railway
+# Staff don't need the web server files
+asarUnpack:
+  - "node_modules/uiohook-napi/**/*"
+  - "node_modules/@paulcbetts/**/*"
+  - "node_modules/active-win/**/*"
+
+# Windows-specific configuration
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/shoreagents-icon.png
+  artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
+  
+# Windows installer configuration (NSIS)
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "ShoreAgentsAI"
+  # installerIcon and uninstallerIcon will be auto-generated from the main icon
+  # license: LICENSE  # Commented out if LICENSE file doesn't exist
+  artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
+  deleteAppDataOnUninstall: false
+
+# Environment variables to embed in build
+# Set these when building for production
+extraMetadata:
+  name: shore-agents-desktop
+  version: 1.0.0
+
+# Build resources (icons, etc.)
+# Place icon.ico in /build folder
+

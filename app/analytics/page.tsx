@@ -1,5 +1,5 @@
-import GamifiedAnalyticsDashboard from "@/components/gamified-analytics-dashboard"
+import PerformanceDashboard from "@/components/performance-dashboard"
 
 export default function PerformancePage() {
-  return <GamifiedAnalyticsDashboard />
+  return <PerformanceDashboard />
 }

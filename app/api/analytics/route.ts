@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
       orderBy: { date: "desc" },
     })
 
-    // Get today's metrics (SUM all records for today in case of multiple entries)
+    // Get today's metrics
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    const allTodayMetrics = await prisma.performance_metrics.findMany({
+    const todayMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
         date: {
@@ -55,29 +55,6 @@ export async function GET(request: NextRequest) {
         },
       },
     })
-
-    // SUM all metrics from multiple records (in case Electron creates multiple entries per day)
-    const todayMetric = allTodayMetrics.length > 0 ? {
-      id: allTodayMetrics[0].id,
-      staffUserId: allTodayMetrics[0].staffUserId,
-      date: allTodayMetrics[0].date,
-      mouseMovements: allTodayMetrics.reduce((sum, m) => sum + m.mouseMovements, 0),
-      mouseClicks: allTodayMetrics.reduce((sum, m) => sum + m.mouseClicks, 0),
-      keystrokes: allTodayMetrics.reduce((sum, m) => sum + m.keystrokes, 0),
-      activeTime: allTodayMetrics.reduce((sum, m) => sum + m.activeTime, 0),
-      idleTime: allTodayMetrics.reduce((sum, m) => sum + m.idleTime, 0),
-      screenTime: allTodayMetrics.reduce((sum, m) => sum + m.screenTime, 0),
-      downloads: allTodayMetrics.reduce((sum, m) => sum + m.downloads, 0),
-      uploads: allTodayMetrics.reduce((sum, m) => sum + m.uploads, 0),
-      bandwidth: allTodayMetrics.reduce((sum, m) => sum + m.bandwidth, 0),
-      clipboardActions: allTodayMetrics.reduce((sum, m) => sum + m.clipboardActions, 0),
-      filesAccessed: allTodayMetrics.reduce((sum, m) => sum + m.filesAccessed, 0),
-      urlsVisited: allTodayMetrics.reduce((sum, m) => sum + m.urlsVisited, 0),
-      tabsSwitched: allTodayMetrics.reduce((sum, m) => sum + m.tabsSwitched, 0),
-      productivityScore: Math.round(allTodayMetrics.reduce((sum, m) => sum + m.productivityScore, 0) / allTodayMetrics.length),
-      createdAt: allTodayMetrics[0].createdAt,
-      updatedAt: allTodayMetrics[allTodayMetrics.length - 1].updatedAt, // Most recent update
-    } : null
 
     // Calculate total screenshot count (sum of all clipboardActions)
     const allMetrics = await prisma.performance_metrics.findMany({
@@ -90,16 +67,16 @@ export async function GET(request: NextRequest) {
     })
     const totalScreenshotCount = allMetrics.reduce((sum, m) => sum + m.clipboardActions, 0)
 
-    // Format metrics for frontend (values already in seconds - no conversion needed)
+    // Format metrics for frontend (convert minutes to seconds for consistent display)
     const formattedMetrics = metrics.map((m) => ({
       id: m.id,
       date: m.date.toISOString(),
       mouseMovements: m.mouseMovements,
       mouseClicks: m.mouseClicks,
       keystrokes: m.keystrokes,
-      activeTime: m.activeTime, // Already in seconds
-      idleTime: m.idleTime, // Already in seconds
-      screenTime: m.screenTime, // Already in seconds
+      activeTime: m.activeTime * 60, // Convert minutes to seconds
+      idleTime: m.idleTime * 60, // Convert minutes to seconds
+      screenTime: m.screenTime * 60, // Convert minutes to seconds
       downloads: m.downloads,
       uploads: m.uploads,
       bandwidth: m.bandwidth,
@@ -120,9 +97,9 @@ export async function GET(request: NextRequest) {
           mouseMovements: todayMetric.mouseMovements,
           mouseClicks: todayMetric.mouseClicks,
           keystrokes: todayMetric.keystrokes,
-          activeTime: todayMetric.activeTime, // Already in seconds
-          idleTime: todayMetric.idleTime, // Already in seconds
-          screenTime: todayMetric.screenTime, // Already in seconds
+          activeTime: todayMetric.activeTime * 60, // Convert minutes to seconds
+          idleTime: todayMetric.idleTime * 60, // Convert minutes to seconds
+          screenTime: todayMetric.screenTime * 60, // Convert minutes to seconds
           downloads: todayMetric.downloads,
           uploads: todayMetric.uploads,
           bandwidth: todayMetric.bandwidth,
@@ -189,81 +166,118 @@ export async function POST(request: NextRequest) {
       visitedUrls,
     } = body
 
-    // Check if there's already a metric for today
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // ✅ Get active time entry to find shift date
+    const activeTimeEntry = await prisma.time_entries.findFirst({
+      where: {
+        staffUserId: staffUser.id,
+        clockOut: null
+      },
+      select: {
+        shiftDate: true,
+        shiftDayOfWeek: true
+      }
+    })
 
+    // If no active time entry, staff is not clocked in - don't track performance
+    if (!activeTimeEntry) {
+      console.log('[Performance API] ⚠️ No active time entry - staff not clocked in')
+      return NextResponse.json({ 
+        success: false, 
+        message: "Not clocked in - performance not tracked" 
+      }, { status: 400 })
+    }
+
+    const shiftDate = activeTimeEntry.shiftDate
+    const shiftDayOfWeek = activeTimeEntry.shiftDayOfWeek
+
+    console.log(`📊 [Performance API] Tracking for shift:`, {
+      shiftDate,
+      shiftDayOfWeek
+    })
+
+    // ✅ Check if there's already a metric for THIS SHIFT (not calendar day)
+    const startOfShiftDate = shiftDate ? new Date(shiftDate) : new Date()
+    startOfShiftDate.setHours(0, 0, 0, 0)
+    const endOfShiftDate = new Date(startOfShiftDate)
+    endOfShiftDate.setDate(endOfShiftDate.getDate() + 1)
+
+    // ✅ SIMPLIFIED: Row is guaranteed to exist (created at clock-in)
+    // Just find it and UPDATE (no creation logic needed)
     const existingMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
-        date: {
-          gte: today,
-          lt: tomorrow,
+        shiftDate: {
+          gte: startOfShiftDate,
+          lt: endOfShiftDate,
         },
       },
     })
 
-    let metric
-
-    if (existingMetric) {
-      // Update existing metric: Use MAX value (Electron sends cumulative totals)
-      // If Electron restarts, new values will be lower, so keep the higher existing values
-      metric = await prisma.performance_metrics.update({
-        where: { id: existingMetric.id },
-        data: {
-          // Use MAXIMUM value (handles both: new activity increasing count, and Electron restarts)
-          mouseMovements: Math.max(existingMetric.mouseMovements || 0, mouseMovements || 0),
-          mouseClicks: Math.max(existingMetric.mouseClicks || 0, mouseClicks || 0),
-          keystrokes: Math.max(existingMetric.keystrokes || 0, keystrokes || 0),
-          activeTime: Math.max(existingMetric.activeTime || 0, activeTime || 0),
-          idleTime: Math.max(existingMetric.idleTime || 0, idleTime || 0),
-          screenTime: Math.max(existingMetric.screenTime || 0, screenTime || 0),
-          downloads: Math.max(existingMetric.downloads || 0, downloads || 0),
-          uploads: Math.max(existingMetric.uploads || 0, uploads || 0),
-          bandwidth: Math.max(existingMetric.bandwidth || 0, bandwidth || 0),
-          // NEVER overwrite clipboardActions from sync - it's managed by screenshot service
-          clipboardActions: existingMetric.clipboardActions,
-          filesAccessed: Math.max(existingMetric.filesAccessed || 0, filesAccessed || 0),
-          urlsVisited: Math.max(existingMetric.urlsVisited || 0, urlsVisited || 0),
-          tabsSwitched: Math.max(existingMetric.tabsSwitched || 0, tabsSwitched || 0),
-          // Use latest productivity score
-          productivityScore: productivityScore ?? existingMetric.productivityScore,
-          // Merge arrays for applications and URLs (deduplicate)
-          ...(applicationsUsed !== undefined && { 
-            applicationsused: [...new Set([...(existingMetric.applicationsused || []), ...applicationsUsed])]
-          }),
-          ...(visitedUrls !== undefined && { 
-            visitedurls: [...new Set([...(existingMetric.visitedurls || []), ...visitedUrls])]
-          }),
-        } as any,
-      })
-    } else {
-      // Create new metric
-      metric = await prisma.performance_metrics.create({
-        data: {
-          id: randomUUID(),
-          staffUserId: staffUser.id,
-          mouseMovements: mouseMovements || 0,
-          mouseClicks: mouseClicks || 0,
-          keystrokes: keystrokes || 0,
-          activeTime: activeTime || 0,
-          idleTime: idleTime || 0,
-          screenTime: screenTime || 0,
-          downloads: downloads || 0,
-          uploads: uploads || 0,
-          bandwidth: bandwidth || 0,
-          clipboardActions: clipboardActions || 0,
-          filesAccessed: filesAccessed || 0,
-          urlsVisited: urlsVisited || 0,
-          tabsSwitched: tabsSwitched || 0,
-          productivityScore: productivityScore || 0,
-          applicationsused: applicationsUsed || [],
-          visitedurls: visitedUrls || [],
-        } as any,
-      })
+    if (!existingMetric) {
+      console.error(`❌ [Performance API] No metric row found for shift! This should never happen.`)
+      return NextResponse.json({ 
+        success: false, 
+        message: "Performance metric row not found. Please clock in again." 
+      }, { status: 400 })
     }
+
+    // Parse existing JSON arrays
+    const existingApps = Array.isArray(existingMetric.applicationsused) 
+      ? existingMetric.applicationsused 
+      : []
+    const existingUrls = Array.isArray(existingMetric.visitedurls) 
+      ? existingMetric.visitedurls 
+      : []
+    
+    // Merge new apps/URLs with existing (remove duplicates)
+    const newApps = applicationsUsed ? (Array.isArray(applicationsUsed) ? applicationsUsed : []) : []
+    const newUrls = visitedUrls ? (Array.isArray(visitedUrls) ? visitedUrls : []) : []
+    
+    const mergedApps = Array.from(new Set([...existingApps, ...newApps]))
+    const mergedUrls = Array.from(new Set([...existingUrls, ...newUrls]))
+
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📈 [Performance API] INCREMENTING METRICS (Adding Deltas)')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`🖱️  Mouse Movements: ${existingMetric.mouseMovements} + ${mouseMovements || 0} = ${existingMetric.mouseMovements + (mouseMovements || 0)}`)
+    console.log(`🖱️  Mouse Clicks: ${existingMetric.mouseClicks} + ${mouseClicks || 0} = ${existingMetric.mouseClicks + (mouseClicks || 0)}`)
+    console.log(`⌨️  Keystrokes: ${existingMetric.keystrokes} + ${keystrokes || 0} = ${existingMetric.keystrokes + (keystrokes || 0)}`)
+    console.log(`✅ Active Time: ${existingMetric.activeTime} min + ${activeTime || 0} sec (${Math.round((activeTime || 0) / 60)} min) = ${existingMetric.activeTime + Math.round((activeTime || 0) / 60)} min`)
+    console.log(`🌐 URLs Visited: ${existingMetric.urlsVisited} + ${urlsVisited || 0} = ${existingMetric.urlsVisited + (urlsVisited || 0)}`)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+    
+    // 🔧 Convert time values from SECONDS (received) to MINUTES (stored)
+    // Electron sends deltas in seconds, we store in minutes
+    const activeTimeMinutes = activeTime ? Math.round(activeTime / 60) : 0
+    const idleTimeMinutes = idleTime ? Math.round(idleTime / 60) : 0
+    const screenTimeMinutes = screenTime ? Math.round(screenTime / 60) : 0
+
+    // ✅ UPDATE the existing row (created at clock-in)
+    const metric = await prisma.performance_metrics.update({
+      where: { id: existingMetric.id },
+      data: {
+        // ✅ INCREMENT all numeric values (these are DELTAS from Electron)
+        mouseMovements: existingMetric.mouseMovements + (mouseMovements || 0),
+        mouseClicks: existingMetric.mouseClicks + (mouseClicks || 0),
+        keystrokes: existingMetric.keystrokes + (keystrokes || 0),
+        // Time values: convert seconds to minutes before adding
+        activeTime: existingMetric.activeTime + activeTimeMinutes,
+        idleTime: existingMetric.idleTime + idleTimeMinutes,
+        screenTime: existingMetric.screenTime + screenTimeMinutes,
+        downloads: existingMetric.downloads + (downloads || 0),
+        uploads: existingMetric.uploads + (uploads || 0),
+        bandwidth: existingMetric.bandwidth + (bandwidth || 0),
+        clipboardActions: existingMetric.clipboardActions + (clipboardActions || 0),
+        filesAccessed: existingMetric.filesAccessed + (filesAccessed || 0),
+        urlsVisited: existingMetric.urlsVisited + (urlsVisited || 0),
+        tabsSwitched: existingMetric.tabsSwitched + (tabsSwitched || 0),
+        // Productivity score = average or latest (not cumulative)
+        productivityScore: productivityScore ?? existingMetric.productivityScore,
+        // ✅ MERGE JSON arrays
+        applicationsused: mergedApps,
+        visitedurls: mergedUrls,
+      } as any,
+    })
 
     // Emit real-time update to monitoring clients
     if (global.emitPerformanceUpdate) {

@@ -21,10 +21,13 @@ model activity_posts {
   taggedUserIds    String[]          @default([])
   audience         PostAudience?     @default(ALL)
   managementUserId String?
-  originalPostId   String?
-  reshareComment   String?
-  resharedBy       String?
-  resharedByType   String?
+  
+  // 🔁 RESHARE FUNCTIONALITY
+  originalPostId   String?                    // If this is a reshare, reference original post
+  resharedBy       String?                    // Who reshared it (staffId, clientId, or managementId)
+  resharedByType   String?                    // "STAFF", "CLIENT", or "MANAGEMENT"
+  reshareComment   String?                    // Optional comment when resharing
+  
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_clientuserid_fkey")
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_managementuserid_fkey")
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
@@ -35,7 +38,7 @@ model activity_posts {
   @@index([audience, createdAt(sort: Desc)], map: "idx_posts_audience_created")
   @@index([taggedUserIds], map: "idx_posts_tagged_users", type: Gin)
   @@index([type, createdAt(sort: Desc)], map: "idx_posts_type_created")
-  @@index([originalPostId])
+  @@index([originalPostId])  // Index for reshares
 }
 
 model breaks {
@@ -107,6 +110,25 @@ model client_users {
   tickets            tickets[]
 }
 
+model comments {
+  id              String   @id
+  commentableType String
+  commentableId   String
+  authorType      String
+  authorId        String
+  authorName      String
+  authorAvatar    String?
+  content         String
+  attachments     String[] @default([])
+  parentId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+
+  @@index([authorType, authorId])
+  @@index([commentableType, commentableId])
+  @@index([parentId])
+}
+
 model company {
   id                   String                 @id
   companyName          String
@@ -135,25 +157,20 @@ model company {
 }
 
 model documents {
-  id             String           @id
-  title          String
-  category       DocumentCategory
-  uploadedBy     String
-  size           String
-  fileUrl        String?
-  content        String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime
-  staffUserId    String
-  source         DocumentSource   @default(STAFF)
-  sharedWithAll  Boolean          @default(false)
-  sharedWith     String[]         @default([])
-  approvedAt     DateTime?
-  approvedBy     String?
-  rejectionNote  String?
-  status         DocumentStatus   @default(PENDING)
-  uploadedByRole DocumentSource   @default(STAFF)
-  staff_users    staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  id            String           @id
+  title         String
+  category      DocumentCategory
+  uploadedBy    String
+  size          String
+  fileUrl       String?
+  content       String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime
+  staffUserId   String
+  source        DocumentSource   @default(STAFF)
+  sharedWithAll Boolean          @default(false)
+  sharedWith    String[]         @default([])
+  staff_users   staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model employment_contracts {
@@ -255,14 +272,6 @@ model job_acceptances {
   workDays             String[]              @default(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
   workEndTime          String                @default("18:00")
   workStartTime        String                @default("09:00")
-  customHours          Json?
-  salary               Decimal?              @db.Decimal(10, 2)
-  shiftType            String?               @db.VarChar(255)
-  workLocation         String?               @db.VarChar(255)
-  hmoIncluded          Boolean               @default(false)
-  leaveCredits         Int                   @default(12)
-  workHours            String?
-  preferredStartDate   DateTime?             @db.Timestamp(6)
   employment_contracts employment_contracts?
   company              company               @relation(fields: [companyId], references: [id])
   interview_requests   interview_requests    @relation(fields: [interviewRequestId], references: [id], onDelete: Cascade)
@@ -277,24 +286,6 @@ model kudos {
   createdAt                             DateTime    @default(now())
   staff_users_kudos_fromIdTostaff_users staff_users @relation("kudos_fromIdTostaff_users", fields: [fromId], references: [id], onDelete: Cascade)
   staff_users_kudos_toIdTostaff_users   staff_users @relation("kudos_toIdTostaff_users", fields: [toId], references: [id], onDelete: Cascade)
-}
-
-model management_users {
-  id                  String               @id
-  authUserId          String               @unique
-  name                String
-  role                ManagementRole       @default(MANAGER)
-  avatar              String?
-  phone               String?
-  department          Department
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime
-  email               String               @unique
-  coverPhoto          String?
-  activity_posts      activity_posts[]
-  company             company[]
-  management_profiles management_profiles?
-  tickets             tickets[]
 }
 
 model management_profiles {
@@ -324,26 +315,24 @@ model management_profiles {
   management_users   management_users @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
 }
 
-model salary_history {
-  id              String   @id
-  userId          String
-  userType        String
-  previousSalary  Decimal  @db.Decimal(10, 2)
-  newSalary       Decimal  @db.Decimal(10, 2)
-  increaseAmount  Decimal  @db.Decimal(10, 2)
-  increasePercent Decimal? @db.Decimal(5, 2)
-  reason          String?
-  notes           String?
-  approvedBy      String?
-  effectiveDate   DateTime
-  createdAt       DateTime @default(now())
-
-  @@index([userId])
-  @@index([effectiveDate])
-  @@index([userId, effectiveDate])
+model management_users {
+  id                  String               @id
+  authUserId          String               @unique
+  name                String
+  role                ManagementRole       @default(MANAGER)
+  avatar              String?
+  phone               String?
+  department          Department
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime
+  email               String               @unique
+  coverPhoto          String?
+  activity_posts      activity_posts[]
+  company             company[]
+  management_profiles management_profiles?
+  tickets             tickets[]
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model notifications {
   id             String           @id @default(dbgenerated("(gen_random_uuid())::text"))
   userId         String
@@ -382,7 +371,7 @@ model performance_metrics {
   tabsSwitched      Int         @default(0)
   productivityScore Int         @default(0)
   createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  updatedAt         DateTime
   applicationsused  Json?       @default("[]")
   visitedurls       Json?       @default("[]")
   screenshoturls    Json?       @default("[]")
@@ -392,6 +381,22 @@ model performance_metrics {
 
   @@index([shiftDate])
   @@index([shiftDayOfWeek])
+}
+
+model reactions {
+  id            String       @id
+  reactableType String
+  reactableId   String
+  authorType    String
+  authorId      String
+  authorName    String
+  authorAvatar  String?
+  type          ReactionType
+  createdAt     DateTime     @default(now())
+
+  @@unique([reactableType, reactableId, authorId])
+  @@index([authorType, authorId])
+  @@index([reactableType, reactableId])
 }
 
 model reviews {
@@ -418,6 +423,70 @@ model reviews {
   reviewedBy         String?
   reviewedDate       DateTime?
   staff_users        staff_users  @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+}
+
+model salary_history {
+  id              String   @id
+  userId          String
+  userType        String
+  previousSalary  Decimal  @db.Decimal(10, 2)
+  newSalary       Decimal  @db.Decimal(10, 2)
+  increaseAmount  Decimal  @db.Decimal(10, 2)
+  increasePercent Decimal? @db.Decimal(5, 2)
+  reason          String?
+  notes           String?
+  approvedBy      String?
+  effectiveDate   DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([effectiveDate])
+  @@index([userId, effectiveDate])
+  @@index([userId])
+}
+
+model shares {
+  id             String   @id
+  shareableType  String
+  shareableId    String
+  sharedByType   String
+  sharedById     String
+  sharedByName   String
+  sharedByAvatar String?
+  sharedWithType String
+  sharedWithId   String?
+  message        String?
+  createdAt      DateTime @default(now())
+
+  @@index([shareableType, shareableId])
+  @@index([sharedByType, sharedById])
+  @@index([sharedWithType, sharedWithId])
+}
+
+model staff_interests {
+  id               String      @id
+  staffUserId      String      @unique
+  name             String
+  favoriteFastFood String
+  favoriteMovie    String?
+  completed        Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime
+  startDate        String
+  additionalInfo   String?
+  client           String
+  dreamDestination String?
+  favoriteBook     String?
+  favoriteColor    String?
+  favoriteGame     String?
+  favoriteMusic    String?
+  favoriteQuote    String?
+  favoriteSeason   String?
+  favoriteSport    String?
+  funFact          String?
+  hobby            String?
+  petName          String?
+  submittedAt      DateTime    @default(now())
+  staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model staff_offboarding {
@@ -608,33 +677,6 @@ model staff_users {
   time_entries                    time_entries[]
 }
 
-model staff_interests {
-  id               String      @id
-  staffUserId      String      @unique
-  name             String
-  favoriteFastFood String
-  favoriteMovie    String?
-  completed        Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime
-  startDate        String
-  additionalInfo   String?
-  client           String
-  dreamDestination String?
-  favoriteBook     String?
-  favoriteColor    String?
-  favoriteGame     String?
-  favoriteMusic    String?
-  favoriteQuote    String?
-  favoriteSeason   String?
-  favoriteSport    String?
-  funFact          String?
-  hobby            String?
-  petName          String?
-  submittedAt      DateTime    @default(now())
-  staff_users      staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-}
-
 model subtasks {
   id          String    @id
   taskId      String
@@ -731,7 +773,7 @@ model time_entries {
   shiftDayOfWeek   String?
   breaks           breaks[]
   staff_users      staff_users     @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
-  work_schedule    work_schedules? @relation(fields: [workScheduleId], references: [id])
+  work_schedules   work_schedules? @relation(fields: [workScheduleId], references: [id])
 
   @@index([shiftDate])
   @@index([shiftDayOfWeek])
@@ -768,61 +810,8 @@ model work_schedules {
   company        company?          @relation(fields: [companyId], references: [id])
   staff_profiles staff_profiles    @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  @@index([profileId])
   @@index([companyId])
-}
-
-model comments {
-  id              String   @id @default(uuid())
-  commentableType String
-  commentableId   String
-  authorType      String
-  authorId        String
-  authorName      String
-  authorAvatar    String?
-  content         String
-  attachments     String[] @default([])
-  parentId        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([commentableType, commentableId])
-  @@index([authorType, authorId])
-  @@index([parentId])
-}
-
-model reactions {
-  id            String       @id @default(uuid())
-  reactableType String
-  reactableId   String
-  authorType    String
-  authorId      String
-  authorName    String
-  authorAvatar  String?
-  type          ReactionType
-  createdAt     DateTime     @default(now())
-
-  @@unique([reactableType, reactableId, authorId])
-  @@index([reactableType, reactableId])
-  @@index([authorType, authorId])
-}
-
-model shares {
-  id             String   @id @default(uuid())
-  shareableType  String
-  shareableId    String
-  sharedByType   String
-  sharedById     String
-  sharedByName   String
-  sharedByAvatar String?
-  sharedWithType String
-  sharedWithId   String?
-  message        String?
-  createdAt      DateTime @default(now())
-
-  @@index([shareableType, shareableId])
-  @@index([sharedByType, sharedById])
-  @@index([sharedWithType, sharedWithId])
+  @@index([profileId])
 }
 
 enum AwayReason {
@@ -867,19 +856,6 @@ enum ClockOutReason {
   INTERNET_ISSUE
   POWER_OUTAGE
   PERSONAL
-  OTHER
-}
-
-enum LateReason {
-  TRAFFIC
-  OVERSLEPT
-  EMERGENCY
-  POWER_OUTAGE
-  INTERNET_ISSUE
-  FAMILY_MATTER
-  HEALTH_ISSUE
-  TRANSPORTATION
-  WEATHER
   OTHER
 }
 
@@ -937,6 +913,19 @@ enum InterviewRequestStatus {
   HIRED
 }
 
+enum LateReason {
+  TRAFFIC
+  OVERSLEPT
+  EMERGENCY
+  POWER_OUTAGE
+  INTERNET_ISSUE
+  FAMILY_MATTER
+  HEALTH_ISSUE
+  TRANSPORTATION
+  WEATHER
+  OTHER
+}
+
 enum ManagementRole {
   ADMIN
   MANAGER
@@ -975,18 +964,25 @@ enum OnboardingStatus {
 }
 
 enum PostAudience {
-  STAFF
-  CLIENT
-  MANAGEMENT
-  ALL
-  ALL_STAFF
-  MY_TEAM
-  MY_CLIENT
-  EVERYONE
-  ALL_CLIENTS
-  ALL_STAFF_MGMT
-  MANAGEMENT_ONLY
-  MY_TEAM_AND_MANAGEMENT
+  // Staff posting options
+  ALL_STAFF        // All staff can see
+  MY_TEAM          // Only my department/team
+  MY_CLIENT        // Only my assigned client + management
+  
+  // Management posting options
+  EVERYONE         // All staff + clients + management
+  ALL_CLIENTS      // All clients + management
+  ALL_STAFF_MGMT   // All staff + management (renamed from ALL_STAFF to avoid conflict)
+  MANAGEMENT_ONLY  // Management team only
+  
+  // Client posting options
+  MY_TEAM_AND_MANAGEMENT  // My team + my account manager
+  
+  // Legacy/fallback
+  ALL              // Everyone (legacy)
+  STAFF            // Legacy
+  CLIENT           // Legacy
+  MANAGEMENT       // Legacy
 }
 
 enum PostType {
@@ -997,7 +993,7 @@ enum PostType {
   CELEBRATION
   UPDATE
   ANNOUNCEMENT
-  RESHARE
+  RESHARE        // For reshared posts
 }
 
 enum ReactionType {
@@ -1025,6 +1021,12 @@ enum ReviewType {
   MONTH_3
   MONTH_5
   RECURRING
+}
+
+enum ShiftType {
+  DAY_SHIFT
+  NIGHT_SHIFT
+  MID_SHIFT
 }
 
 enum StaffRole {
@@ -1095,20 +1097,8 @@ enum TicketStatus {
   CLOSED
 }
 
-enum ShiftType {
-  DAY_SHIFT
-  NIGHT_SHIFT
-  MID_SHIFT
-}
-
 enum WorkLocationType {
   WORK_FROM_HOME
   OFFICE
   HYBRID
-}
-
-enum DocumentStatus {
-  PENDING
-  APPROVED
-  REJECTED
 }

@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { getPriorityConfig, getSourceConfig, formatDeadline } from "@/lib/task-utils"
 import { useToast } from "@/hooks/use-toast"
-import { CommentSection } from "@/components/engagement/comment-section"
 
 interface Task {
   id: string
@@ -33,6 +32,23 @@ interface Task {
   }>
 }
 
+interface TaskResponse {
+  id: string
+  taskId: string
+  content: string
+  createdByType: "STAFF" | "CLIENT" | "ADMIN"
+  createdById: string
+  attachments: string[]
+  createdAt: string
+  user?: {
+    id: string
+    name: string
+    email: string
+    avatar: string | null
+    role?: string
+  }
+}
+
 interface Subtask {
   id: string
   taskId: string
@@ -56,6 +72,14 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
   const priorityConfig = getPriorityConfig(task.priority as any)
   const sourceConfig = getSourceConfig(task.source as any)
   const deadlineInfo = formatDeadline(task.deadline)
+
+  // State for responses
+  const [responses, setResponses] = useState<TaskResponse[]>([])
+  const [newResponseContent, setNewResponseContent] = useState("")
+  const [responseAttachments, setResponseAttachments] = useState<File[]>([])
+  const [loadingResponses, setLoadingResponses] = useState(true)
+  const [submittingResponse, setSubmittingResponse] = useState(false)
+  const [uploadingResponseAttachments, setUploadingResponseAttachments] = useState(false)
 
   // State for subtasks
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
@@ -83,10 +107,25 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
     allAssignedStaff.push(task.staff_users)
   }
 
-  // Fetch subtasks on mount
+  // Fetch responses and subtasks on mount
   useEffect(() => {
+    fetchResponses()
     fetchSubtasks()
   }, [task.id])
+
+  const fetchResponses = async () => {
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/responses`)
+      if (res.ok) {
+        const data = await res.json()
+        setResponses(data.responses || [])
+      }
+    } catch (error) {
+      console.error("Error fetching responses:", error)
+    } finally {
+      setLoadingResponses(false)
+    }
+  }
 
   const fetchSubtasks = async () => {
     try {
@@ -100,6 +139,86 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
       console.error("Error fetching subtasks:", error)
     } finally {
       setLoadingSubtasks(false)
+    }
+  }
+
+  const handleResponseFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files)
+      setResponseAttachments(prev => [...prev, ...newFiles])
+    }
+  }
+
+  const removeResponseAttachment = (index: number) => {
+    setResponseAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const submitResponse = async () => {
+    if (!newResponseContent.trim() && responseAttachments.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add a comment or attach images",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setSubmittingResponse(true)
+
+      // Upload attachments first if any
+      let attachmentUrls: string[] = []
+      if (responseAttachments.length > 0) {
+        setUploadingResponseAttachments(true)
+        const formData = new FormData()
+        responseAttachments.forEach(file => {
+          formData.append("files", file)
+        })
+
+        const uploadRes = await fetch("/api/tasks/attachments", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json()
+          attachmentUrls = uploadData.urls || []
+        }
+        setUploadingResponseAttachments(false)
+      }
+
+      // Submit response
+      const res = await fetch(`/api/tasks/${task.id}/responses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: newResponseContent,
+          attachments: attachmentUrls,
+        }),
+      })
+
+      if (!res.ok) throw new Error("Failed to submit response")
+
+      const data = await res.json()
+      setResponses(prev => [...prev, data.response])
+      setNewResponseContent("")
+      setResponseAttachments([])
+
+      toast({
+        title: "Success",
+        description: "Comment added successfully! 💬",
+      })
+
+      if (onUpdate) onUpdate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add comment. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmittingResponse(false)
+      setUploadingResponseAttachments(false)
     }
   }
 
@@ -1073,17 +1192,205 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
           )}
         </div>
 
-        {/* 🎯 UNIFIED COMMENT SYSTEM - Replaces old task_responses */}
+        {/* 💬 COMMENTS/RESPONSES SECTION */}
         <div className={`rounded-2xl p-6 mb-6 ${
           isDarkTheme 
             ? "bg-slate-800/50 backdrop-blur-xl ring-1 ring-white/10" 
-            : "bg-white border-2 border-slate-200"
+            : "bg-slate-50 border-2 border-slate-200"
         }`}>
-          <CommentSection
-            commentableType="TASK"
-            commentableId={task.id}
-            darkMode={isDarkTheme}
-          />
+          <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${
+            isDarkTheme 
+              ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400" 
+              : "text-slate-900"
+          }`}>
+            <MessageSquare className="h-5 w-5" />
+            💬 Comments
+          </h3>
+
+          {/* Existing Responses */}
+          {loadingResponses ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className={`h-8 w-8 animate-spin ${isDarkTheme ? "text-indigo-400" : "text-blue-600"}`} />
+            </div>
+          ) : responses.length > 0 ? (
+            <div className="space-y-3 mb-4">
+              {responses.map((response) => {
+                const user = response.user
+                const initials = user?.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                
+                const isStaffResp = response.createdByType === "STAFF"
+                const isClientResp = response.createdByType === "CLIENT"
+                const isAdminResp = response.createdByType === "ADMIN"
+
+                const bgColor = isAdminResp
+                  ? (isDarkTheme ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 ring-1 ring-purple-500/30" : "bg-purple-50 border-2 border-purple-200")
+                  : isClientResp
+                  ? (isDarkTheme ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 ring-1 ring-blue-500/30" : "bg-blue-50 border-2 border-blue-200")
+                  : (isDarkTheme ? "bg-gradient-to-r from-emerald-500/20 to-green-500/20 ring-1 ring-emerald-500/30" : "bg-emerald-50 border-2 border-emerald-200")
+
+                const avatarColor = isAdminResp
+                  ? "bg-gradient-to-br from-purple-500 to-pink-600"
+                  : isClientResp
+                  ? "bg-gradient-to-br from-blue-500 to-cyan-600"
+                  : "bg-gradient-to-br from-emerald-500 to-green-600"
+
+                const textColor = isDarkTheme 
+                  ? (isAdminResp ? "text-purple-300" : isClientResp ? "text-blue-300" : "text-emerald-300")
+                  : (isAdminResp ? "text-purple-700" : isClientResp ? "text-blue-700" : "text-emerald-700")
+
+                return (
+                  <div key={response.id} className={`rounded-xl p-4 ${bgColor}`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="h-10 w-10 ring-2 ring-white/20">
+                        <AvatarImage src={user?.avatar || undefined} alt={user?.name} />
+                        <AvatarFallback className={`${avatarColor} text-white font-bold`}>
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-bold ${textColor}`}>
+                            {user?.name}
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            isAdminResp 
+                              ? (isDarkTheme ? "bg-purple-500/30 text-purple-200" : "bg-purple-200 text-purple-700")
+                              : isClientResp
+                              ? (isDarkTheme ? "bg-blue-500/30 text-blue-200" : "bg-blue-200 text-blue-700")
+                              : (isDarkTheme ? "bg-emerald-500/30 text-emerald-200" : "bg-emerald-200 text-emerald-700")
+                          }`}>
+                            {isAdminResp ? "📋 ADMIN" : isClientResp ? "👔 CLIENT" : "👤 STAFF"}
+                          </span>
+                        </div>
+                        <span className={`text-xs ${isDarkTheme ? "text-slate-400" : "text-slate-600"}`}>
+                          {new Date(response.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    {response.content && response.content.trim() && (
+                      <p className={`${isDarkTheme ? "text-slate-200" : "text-slate-700"} leading-relaxed`}>
+                        {response.content}
+                      </p>
+                    )}
+                    
+                    {!response.content?.trim() && response.attachments && response.attachments.length > 0 && (
+                      <p className={`${isDarkTheme ? "text-slate-400 italic" : "text-slate-500 italic"} text-sm mb-2`}>
+                        📸 Shared {response.attachments.length} image{response.attachments.length > 1 ? 's' : ''}
+                      </p>
+                    )}
+
+                    {response.attachments && response.attachments.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {response.attachments.map((url, index) => (
+                          <a
+                            key={index}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`group overflow-hidden rounded-lg transition-all hover:scale-105 ${
+                              isDarkTheme ? "ring-1 ring-white/10" : "border-2 border-slate-200"
+                            }`}
+                          >
+                            <img src={url} alt={`Attachment ${index + 1}`} className="h-20 w-full object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {/* Add Response Form */}
+          <div className={`rounded-xl p-4 ${
+            isDarkTheme 
+              ? "bg-slate-700/50 ring-1 ring-white/10" 
+              : "bg-white border-2 border-slate-300"
+          }`}>
+            <textarea
+              value={newResponseContent}
+              onChange={(e) => setNewResponseContent(e.target.value)}
+              placeholder={responseAttachments.length > 0 ? "Add a comment (optional)... 💬" : "Add a comment... 💬"}
+              rows={3}
+              className={`w-full px-4 py-3 rounded-lg outline-none mb-3 resize-none ${
+                isDarkTheme 
+                  ? "bg-slate-800 text-white placeholder-slate-500 ring-1 ring-white/10 focus:ring-indigo-500" 
+                  : "bg-slate-50 border-2 border-slate-300 focus:border-blue-500"
+              }`}
+            />
+
+            {/* Attachments Preview */}
+            {responseAttachments.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {uploadingResponseAttachments && (
+                  <div className={`flex items-center gap-2 p-2 rounded-lg ${
+                    isDarkTheme ? "bg-blue-500/20 text-blue-300" : "bg-blue-50 text-blue-700"
+                  }`}>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm font-bold">Uploading {responseAttachments.length} image(s)...</span>
+                  </div>
+                )}
+                {responseAttachments.map((file, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-center gap-3 p-2 rounded-lg ${
+                      isDarkTheme ? "bg-slate-800 ring-1 ring-white/10" : "bg-slate-100"
+                    }`}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    <span className="flex-1 text-sm truncate">{file.name}</span>
+                    <span className="text-xs opacity-70">{(file.size / 1024).toFixed(1)} KB</span>
+                    <button
+                      onClick={() => removeResponseAttachment(index)}
+                      disabled={uploadingResponseAttachments || submittingResponse}
+                      className={`p-1 rounded transition-all hover:scale-110 disabled:opacity-50 ${
+                        isDarkTheme ? "text-red-400 hover:bg-red-500/20" : "text-red-600 hover:bg-red-50"
+                      }`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm cursor-pointer transition-all hover:scale-105 ${
+                isDarkTheme 
+                  ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                  : "bg-slate-200 hover:bg-slate-300 text-slate-700"
+              }`}>
+                <Image className="h-4 w-4" />
+                📸 Add Images
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleResponseFileSelect}
+                  className="hidden"
+                  disabled={uploadingResponseAttachments || submittingResponse}
+                />
+              </label>
+              <button
+                onClick={submitResponse}
+                disabled={submittingResponse || uploadingResponseAttachments}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isDarkTheme 
+                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/30" 
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+              >
+                {submittingResponse ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Post Comment
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Close Button */}

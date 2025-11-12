@@ -15,8 +15,8 @@ export async function PATCH(req: Request) {
     console.log("🎨 [UPDATE INTERESTS] Staff user:", userId)
     console.log("🎨 [UPDATE INTERESTS] Data:", body)
 
-    // Update the staff_interests table
-    const updated = await prisma.staff_interests.updateMany({
+    // Update the staff_welcome_forms (mapped to staff_interests table)
+    const updated = await prisma.staff_welcome_forms.updateMany({
       where: {
         staffUserId: userId
       },

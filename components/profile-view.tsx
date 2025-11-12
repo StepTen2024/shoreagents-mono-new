@@ -10,101 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import DocumentViewerModal from "@/components/document-viewer-modal"
 
-// Helper function to convert 24hr time to 12hr format
-function convertTo12Hour(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number)
-  const period = hours >= 12 ? 'PM' : 'AM'
-  const hour12 = hours % 12 || 12
-  return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`
-}
-
-// Helper function to format work schedule times with timezone conversion to PH time
-function formatWorkTimeWithTimezone(time24: string, clientTimezone: string) {
-  try {
-    const [hours, minutes] = time24.split(':').map(Number)
-    
-    // Get timezone abbreviation
-    const tempDate = new Date()
-    const tzAbbrev = tempDate.toLocaleString('en-US', {
-      timeZone: clientTimezone,
-      timeZoneName: 'short'
-    }).split(' ').pop() || clientTimezone
-    
-    // Create a date object representing today at the given time
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = today.getMonth()
-    const day = today.getDate()
-    
-    // Create a UTC date
-    const utcRef = new Date(Date.UTC(year, month, day, hours, minutes))
-    
-    // Format this UTC date in the client's timezone to see what time it shows
-    const clientTestStr = utcRef.toLocaleString('en-US', {
-      timeZone: clientTimezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    })
-    
-    // Parse the result to find the offset
-    const match = clientTestStr.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/)
-    if (!match) {
-      // Fallback: just display the time as-is
-      return {
-        clientTime: convertTo12Hour(time24),
-        clientTimezone: tzAbbrev,
-        phTime: convertTo12Hour(time24),
-        fullDisplay: `${convertTo12Hour(time24)} (${tzAbbrev})`
-      }
-    }
-    
-    const [, testMonth, testDay, testYear, testHour, testMinute] = match.map(Number)
-    
-    // Calculate the difference between what we wanted and what we got
-    const wantedTime = new Date(year, month, day, hours, minutes).getTime()
-    const gotTime = new Date(testYear, testMonth - 1, testDay, testHour, testMinute).getTime()
-    const offsetMs = wantedTime - gotTime
-    
-    // Create the correct UTC date by applying the offset
-    const correctUTC = new Date(utcRef.getTime() + offsetMs)
-    
-    // Format this correct UTC date in Manila timezone
-    const phTimeStr = correctUTC.toLocaleString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Manila'
-    })
-    
-    // Format client time
-    const clientTimeStr = convertTo12Hour(time24)
-    
-    return {
-      clientTime: clientTimeStr,
-      clientTimezone: tzAbbrev,
-      phTime: phTimeStr,
-      fullDisplay: `${clientTimeStr} (${tzAbbrev}) → ${phTimeStr} (PH)`
-    }
-  } catch (error) {
-    console.error('Error formatting work time with timezone:', error)
-    const tempDate = new Date()
-    const tzAbbrev = tempDate.toLocaleString('en-US', {
-      timeZone: clientTimezone,
-      timeZoneName: 'short'
-    }).split(' ').pop() || clientTimezone
-    return {
-      clientTime: convertTo12Hour(time24),
-      clientTimezone: tzAbbrev,
-      phTime: convertTo12Hour(time24),
-      fullDisplay: `${convertTo12Hour(time24)} (${tzAbbrev})`
-    }
-  }
-}
-
 interface ProfileData {
   user: {
     id: string
@@ -117,7 +22,6 @@ interface ProfileData {
   company: {
     name: string
     accountManager: string | null
-    timezone: string
   } | null
   profile: {
     phone: string | null
@@ -675,22 +579,9 @@ export default function ProfileView() {
                 <div className="group cursor-pointer rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 px-6 py-3 ring-1 ring-indigo-400/30 transition-all duration-300 hover:scale-110 hover:ring-2 hover:ring-indigo-400 hover:shadow-lg hover:shadow-indigo-500/50">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-indigo-400 group-hover:animate-pulse" />
-                    <div className="text-xs text-indigo-300">
-                      {profile && profile.daysEmployed >= 0 ? 'Days Employed' : 'Starts In'}
-                    </div>
+                    <div className="text-xs text-indigo-300">Days</div>
                   </div>
-                  {profile && profile.daysEmployed >= 0 ? (
-                    <div className="text-lg font-bold text-indigo-400 group-hover:text-indigo-300">{profile.daysEmployed} days</div>
-                  ) : profile ? (
-                    <div className="text-sm font-bold text-indigo-400 group-hover:text-indigo-300">
-                      {Math.abs(profile.daysEmployed)} days
-                      <div className="text-xs text-indigo-300 mt-1">
-                        {new Date(profile.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-lg font-bold text-indigo-400 group-hover:text-indigo-300">0 days</div>
-                  )}
+                  <div className="text-lg font-bold text-indigo-400 group-hover:text-indigo-300">{profile?.daysEmployed || 0}</div>
                 </div>
               </div>
             </div>
@@ -735,19 +626,8 @@ export default function ProfileView() {
                 <div className="flex items-center gap-3 rounded-xl bg-slate-800/30 p-4 ring-1 ring-white/5 transition-all duration-300 hover:bg-slate-800/50 hover:scale-105 hover:ring-purple-400/50">
                   <Clock className="h-5 w-5 text-purple-400" />
                   <div className="flex-1">
-                    <div className="text-sm text-slate-400">
-                      {profile.daysEmployed >= 0 ? 'Days Employed 💪' : 'Starts In 🚀'}
-                    </div>
-                    {profile.daysEmployed >= 0 ? (
-                      <div className="font-semibold text-white">{profile.daysEmployed} days</div>
-                    ) : (
-                      <div>
-                        <div className="font-semibold text-white">{Math.abs(profile.daysEmployed)} days</div>
-                        <div className="text-xs text-slate-400 mt-0.5">
-                          Start: {new Date(profile.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </div>
-                      </div>
-                    )}
+                    <div className="text-sm text-slate-400">Days Employed 💪</div>
+                    <div className="font-semibold text-white">{profile.daysEmployed} days</div>
                   </div>
                 </div>
               )}
@@ -784,55 +664,34 @@ export default function ProfileView() {
               <span className="group-hover:text-amber-300 transition-colors">Work Schedule 📅</span>
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
-              {workSchedules.map((schedule, index) => {
-                const clientTimezone = company?.timezone || "UTC";
-                let startConverted = null;
-                let endConverted = null;
-                
-                if (schedule.isWorkday && schedule.startTime && schedule.endTime) {
-                  startConverted = formatWorkTimeWithTimezone(schedule.startTime, clientTimezone);
-                  endConverted = formatWorkTimeWithTimezone(schedule.endTime, clientTimezone);
-                }
-                
-                return (
-                  <div
-                    key={schedule.id}
-                    className={`group/day rounded-xl p-4 ring-1 transition-all duration-300 hover:scale-105 hover:z-10 ${
-                      schedule.isWorkday
-                        ? "bg-gradient-to-br from-emerald-500/20 to-green-500/20 ring-emerald-500/30 hover:ring-2 hover:ring-emerald-400 hover:shadow-lg hover:shadow-emerald-500/50"
-                        : "bg-gradient-to-br from-slate-800/50 to-slate-700/50 ring-white/10 hover:ring-2 hover:ring-blue-400 hover:shadow-lg hover:shadow-blue-500/50"
-                    }`}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <div className="text-center space-y-2">
-                      <div className="font-bold text-white text-base group-hover/day:scale-110 transition-transform">{schedule.dayOfWeek}</div>
-                      {schedule.isWorkday && startConverted && endConverted ? (
-                        <div className="space-y-1.5">
-                          <div className="text-emerald-300 font-semibold text-xs leading-tight">
-                            💼 {startConverted.clientTime} - {endConverted.clientTime}
-                          </div>
-                          <div className="text-emerald-400/70 text-[10px]">
-                            ({startConverted.clientTimezone})
-                          </div>
-                          <div className="text-slate-400 text-xs">↓</div>
-                          <div className="text-green-300 font-bold text-xs leading-tight">
-                            {startConverted.phTime} - {endConverted.phTime}
-                          </div>
-                          <div className="text-green-400/70 text-[10px]">
-                            (PH)
-                          </div>
-                        </div>
-                      ) : schedule.isWorkday ? (
-                        <div className="text-emerald-300 font-semibold">💼 Working</div>
-                      ) : (
-                        <div className="text-blue-300 font-semibold text-lg">🎉 Off</div>
-                      )}
-                    </div>
+              {workSchedules.map((schedule, index) => (
+              <div
+                key={schedule.id}
+                className={`group/day rounded-xl p-4 ring-1 transition-all duration-300 hover:scale-110 hover:rotate-2 hover:z-10 ${
+                  schedule.isWorkday
+                    ? "bg-gradient-to-br from-emerald-500/20 to-green-500/20 ring-emerald-500/30 hover:ring-2 hover:ring-emerald-400 hover:shadow-lg hover:shadow-emerald-500/50"
+                    : "bg-gradient-to-br from-slate-800/50 to-slate-700/50 ring-white/10 hover:ring-2 hover:ring-blue-400 hover:shadow-lg hover:shadow-blue-500/50"
+                }`}
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <div className="text-center">
+                  <div className="font-bold text-white text-lg group-hover/day:scale-110 transition-transform">{schedule.dayOfWeek}</div>
+                  <div className="mt-2 text-sm">
+                    {schedule.isWorkday ? (
+                      <>
+                        <div className="text-emerald-300 font-semibold">💼 {schedule.startTime}</div>
+                        <div className="text-slate-400">-</div>
+                        <div className="text-emerald-300 font-semibold">{schedule.endTime}</div>
+                      </>
+                    ) : (
+                      <div className="text-blue-300 font-semibold text-lg">🎉 Off</div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
         )}
 
         {/* Leave Credits & Benefits */}
@@ -908,17 +767,13 @@ export default function ProfileView() {
                   )}
                 </div>
               </div>
-              {profile && (
+              {profile?.totalLeave && (
                 <div className="group/benefit rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 p-4 ring-1 ring-blue-400/30 transition-all duration-300 hover:scale-105 hover:ring-2 hover:ring-blue-400 hover:shadow-lg hover:shadow-blue-500/50">
                   <div className="flex items-center gap-3">
                     <Calendar className="h-6 w-6 text-blue-400 transition-transform group-hover/benefit:rotate-12" />
                     <div className="flex-1">
-                      <div className="font-bold text-white">Annual Leave Credits 🌊</div>
-                      <div className="text-sm text-blue-300 font-semibold">
-                        {profile.totalLeave > 0 
-                          ? `${profile.totalLeave} days per year` 
-                          : 'To be determined'}
-                      </div>
+                      <div className="font-bold text-white">Leave Credits 🌊</div>
+                      <div className="text-sm text-blue-300 font-semibold">{profile.totalLeave} days annual leave</div>
                     </div>
                     <Star className="h-5 w-5 text-yellow-400 animate-spin group-hover/benefit:animate-ping" />
                   </div>

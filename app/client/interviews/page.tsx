@@ -62,24 +62,10 @@ export default function ClientInterviewsPage() {
   const [rescheduleNotes, setRescheduleNotes] = useState('')
   const [additionalNotes, setAdditionalNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [clientTimezone, setClientTimezone] = useState<string>('Australia/Brisbane')
 
   useEffect(() => {
     fetchInterviews()
-    fetchClientTimezone()
   }, [])
-  
-  async function fetchClientTimezone() {
-    try {
-      const response = await fetch('/api/client/profile')
-      const data = await response.json()
-      if (data.profile?.timezone) {
-        setClientTimezone(data.profile.timezone)
-      }
-    } catch (error) {
-      console.error('Failed to fetch client timezone:', error)
-    }
-  }
 
   async function fetchInterviews() {
     try {
@@ -135,113 +121,22 @@ export default function ClientInterviewsPage() {
     )
   }
 
-  function formatDate(dateString: string, timezone?: string) {
-    const date = new Date(dateString)
-    
-    // Format the date/time
-    const formatted = date.toLocaleString('en-US', {
-      timeZone: timezone || undefined,
+  function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+      minute: '2-digit'
     })
-    
-    // Get timezone abbreviation using appropriate locale
-    if (timezone) {
-      const getLocaleForTimezone = (tz: string) => {
-        if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-        if (tz.startsWith('America/')) return 'en-US'
-        if (tz.startsWith('Europe/')) return 'en-GB'
-        if (tz.startsWith('Asia/')) return 'en-SG'
-        return 'en-US'
-      }
-      
-      const locale = getLocaleForTimezone(timezone)
-      const tzAbbr = new Intl.DateTimeFormat(locale, {
-        timeZone: timezone,
-        timeZoneName: 'short'
-      }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || ''
-      
-      return `${formatted} ${tzAbbr}`
-    }
-    
-    return formatted
   }
 
   function formatPreferredTime(time: string | PreferredTime) {
     try {
       // Handle new object format
       if (typeof time === 'object' && time.datetime) {
-        // Parse the datetime string in the context of the stored timezone
-        // The datetime is in format "2025-01-15T14:00" and represents that time in the stored timezone
-        const [datePart, timePart] = time.datetime.split('T')
-        const [year, month, day] = datePart.split('-').map(Number)
-        const [hours, minutes] = timePart.split(':').map(Number)
-        
-        // Create a date object and format it in the client's timezone
-        // We use a reference UTC date and adjust it to show in the client's timezone
-        const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
-        
-        // Get what time it shows in the client's timezone
-        const testStr = utcDate.toLocaleString('en-US', {
-          timeZone: time.timezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        })
-        
-        // Parse to find offset
-        const match = testStr.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/)
-        if (match) {
-          const [, testMonth, testDay, testYear, testHour, testMinute] = match.map(Number)
-          
-          // Calculate offset
-          const wantedTime = new Date(year, month - 1, day, hours, minutes).getTime()
-          const gotTime = new Date(testYear, testMonth - 1, testDay, testHour, testMinute).getTime()
-          const offsetMs = wantedTime - gotTime
-          
-          // Apply offset to get correct UTC
-          const correctDate = new Date(utcDate.getTime() + offsetMs)
-          
-          // Now format in the client's timezone
-          const formatted = correctDate.toLocaleString('en-US', {
-            timeZone: time.timezone,
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })
-          
-          // Get timezone abbreviation using the appropriate locale for better abbreviations
-          // Use locale matching the timezone region to get proper abbreviations (e.g., AEDT instead of GMT+10)
-          const getLocaleForTimezone = (tz: string) => {
-            if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-            if (tz.startsWith('America/')) return 'en-US'
-            if (tz.startsWith('Europe/')) return 'en-GB'
-            if (tz.startsWith('Asia/')) return 'en-SG'
-            return 'en-US'
-          }
-          
-          const locale = getLocaleForTimezone(time.timezone)
-          const tzAbbr = new Intl.DateTimeFormat(locale, {
-            timeZone: time.timezone,
-            timeZoneName: 'short'
-          }).formatToParts(correctDate).find(part => part.type === 'timeZoneName')?.value || ''
-          
-          return `${formatted} (${tzAbbr})`
-        }
-        
-        // Fallback: just display the time as-is
-        const fallbackDate = new Date(`${time.datetime}:00`)
-        return fallbackDate.toLocaleString('en-US', {
+        const date = new Date(time.datetime)
+        const formatted = date.toLocaleDateString('en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -249,6 +144,7 @@ export default function ClientInterviewsPage() {
           minute: '2-digit',
           hour12: true
         })
+        return `${formatted} (${time.timezoneDisplay})`
       }
       
       // Handle old string format
@@ -403,7 +299,7 @@ export default function ClientInterviewsPage() {
                             {interview.candidateFirstName}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            Requested on {formatDate(interview.createdAt, clientTimezone)}
+                            Requested on {formatDate(interview.createdAt)}
                           </p>
                         </div>
                       </div>
@@ -449,7 +345,7 @@ export default function ClientInterviewsPage() {
                               Interview Scheduled
                             </h3>
                             <p className="text-sm text-blue-800 mb-3">
-                              <span className="font-semibold">Time:</span> {formatDate(interview.scheduledTime, clientTimezone)}
+                              <span className="font-semibold">Time:</span> {formatDate(interview.scheduledTime)}
                             </p>
                             {interview.meetingLink && (
                               <a 

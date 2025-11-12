@@ -166,6 +166,12 @@ contextBridge.exposeInMainWorld('electron', {
   
   // Utility to check if running in Electron
   isElectron: true,
+  
+  // Debug/Admin API
+  debug: {
+    // Clear all cookies (for fixing auth issues)
+    clearCookies: () => ipcRenderer.invoke('clear-cookies'),
+  },
 })
 
 console.log('[Preload] Electron APIs exposed to renderer')

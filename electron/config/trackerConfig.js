@@ -16,7 +16,25 @@ module.exports = {
   MOUSE_MOVEMENT_THROTTLE: 100, // Throttle mouse movement tracking to every 100ms
   
   // API configuration
-  API_BASE_URL: 'http://localhost:3000',
+  // 🚀 PRODUCTION: Use Railway URL (set via environment variable)
+  // 🧪 DEVELOPMENT: Use localhost
+  API_BASE_URL: (() => {
+    // If explicitly set via environment variable (for production builds)
+    if (process.env.API_BASE_URL) {
+      return process.env.API_BASE_URL
+    }
+    
+    // Check if running in development mode
+    const isDev = process.env.NODE_ENV === 'development'
+    
+    if (isDev) {
+      console.log('[TrackerConfig] 🧪 Development mode detected - using localhost:3000')
+      return 'http://localhost:3000'
+    } else {
+      console.log('[TrackerConfig] 🚀 Production mode detected - using Railway URL')
+      return 'https://shoreagents-mono-new-production.up.railway.app'
+    }
+  })(),
   API_PERFORMANCE_ENDPOINT: '/api/analytics',
   
   // Privacy settings

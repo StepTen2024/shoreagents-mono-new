@@ -3,7 +3,7 @@ import { getStaffUser } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import { BreakType, AwayReason } from "@prisma/client"
 import { logBreakStarted } from "@/lib/activity-generator"
-import crypto from "crypto"
+import { randomUUID } from "crypto"
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,11 +30,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
-    // Find active time entry
+    // ✅ Find active time entry with shift info
     const activeTimeEntry = await prisma.time_entries.findFirst({
       where: {
         staffUserId: staffUser.id,
         clockOut: null
+      },
+      select: {
+        id: true,
+        shiftDate: true,         // ✅ Get shift date
+        shiftDayOfWeek: true     // ✅ Get shift day of week
       }
     })
     
@@ -51,14 +56,23 @@ export async function POST(request: NextRequest) {
     if (type && !breakId) {
       breakRecord = await prisma.breaks.create({
         data: {
-          id: crypto.randomUUID(),
+          id: randomUUID(),
           staffUserId: staffUser.id,
           timeEntryId: activeTimeEntry.id,
           type: type as BreakType,
           actualStart: now,
           awayReason: type === "AWAY" ? (awayReason as AwayReason) : null,
+          shiftDate: activeTimeEntry.shiftDate,          // ✅ Inherit from time entry
+          shiftDayOfWeek: activeTimeEntry.shiftDayOfWeek, // ✅ Inherit from time entry
+          createdAt: now,
           updatedAt: now
         }
+      })
+      
+      console.log(`☕ Manual break started for shift:`, {
+        type,
+        shiftDate: activeTimeEntry.shiftDate,
+        shiftDayOfWeek: activeTimeEntry.shiftDayOfWeek
       })
       
       // ✨ Auto-generate activity post (skip AWAY breaks - too noisy)

@@ -16,6 +16,7 @@ class SyncService {
     this.retryCount = 0
     this.lastSyncTime = null
     this.syncEnabled = true
+    this.lastSyncedMetrics = null // 🔧 Track last synced values for delta calculation
   }
 
   /**
@@ -65,6 +66,40 @@ class SyncService {
   }
 
   /**
+   * Calculate delta (difference) between current and last synced metrics
+   * This prevents sending cumulative totals that get added repeatedly
+   */
+  calculateDelta(previousMetrics, currentMetrics) {
+    // First sync - send all metrics as-is
+    if (!previousMetrics) {
+      console.log('🔢 [SyncService] First sync - sending all metrics')
+      return currentMetrics
+    }
+    
+    const delta = {}
+    
+    for (const key in currentMetrics) {
+      const currentValue = currentMetrics[key]
+      const previousValue = previousMetrics[key]
+      
+      if (typeof currentValue === 'number') {
+        // Calculate difference for numeric values
+        delta[key] = currentValue - (previousValue || 0)
+      } else {
+        // Non-numeric fields (arrays, etc.) send as-is
+        delta[key] = currentValue
+      }
+    }
+    
+    console.log('🔢 [SyncService] Delta calculation:')
+    console.log(`   🖱️  Mouse movements: ${previousMetrics.mouseMovements || 0} → ${currentMetrics.mouseMovements} (delta: +${delta.mouseMovements})`)
+    console.log(`   🖱️  Mouse clicks: ${previousMetrics.mouseClicks || 0} → ${currentMetrics.mouseClicks} (delta: +${delta.mouseClicks})`)
+    console.log(`   ⌨️  Keystrokes: ${previousMetrics.keystrokes || 0} → ${currentMetrics.keystrokes} (delta: +${delta.keystrokes})`)
+    
+    return delta
+  }
+
+  /**
    * Sync metrics to API
    */
   async sync() {
@@ -76,17 +111,22 @@ class SyncService {
     this.log('Starting sync...')
 
     try {
-      // Get metrics from tracker
+      // Get current cumulative metrics from tracker
       const performanceTracker = require('./performanceTracker')
-      const metrics = performanceTracker.getMetricsForAPI()
+      const currentMetrics = performanceTracker.getMetricsForAPI()
 
-      // Send to API (will automatically get session cookie)
-      const success = await this.sendMetrics(metrics)
+      // 🔧 Calculate delta (difference since last sync)
+      const delta = this.calculateDelta(this.lastSyncedMetrics, currentMetrics)
+
+      // Send ONLY the delta to API (will be added to existing DB values)
+      const success = await this.sendMetrics(delta)
       
       if (success) {
+        // 🔧 Store current metrics for next delta calculation
+        this.lastSyncedMetrics = { ...currentMetrics }
         this.lastSyncTime = Date.now()
         this.retryCount = 0
-        this.log('Sync successful')
+        console.log('✅ [SyncService] Sync successful - snapshot saved for next delta')
       } else {
         this.handleSyncFailure()
       }
@@ -141,14 +181,25 @@ class SyncService {
     return new Promise(async (resolve) => {
       const url = `${config.API_BASE_URL}${config.API_PERFORMANCE_ENDPOINT}`
       
-      this.log(`Sending metrics to ${url}`)
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log('🚀 [SyncService] SENDING METRICS TO API')
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log(`📍 URL: ${url}`)
+      console.log(`📊 Metrics Summary:`)
+      console.log(`   🖱️  Mouse: ${metrics.mouseMovements} movements, ${metrics.mouseClicks} clicks`)
+      console.log(`   ⌨️  Keystrokes: ${metrics.keystrokes}`)
+      console.log(`   ✅ Active Time: ${metrics.activeTime} min`)
+      console.log(`   🖥️  Screen Time: ${metrics.screenTime} min`)
+      console.log(`   🌐 URLs: ${metrics.urlsVisited} count, ${metrics.visitedUrls?.length || 0} array items`)
+      console.log(`   📱 Apps: ${metrics.applicationsUsed?.length || 0} apps`)
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
       
       // Check if session cookie exists (for logging purposes)
       const sessionToken = await this.getSessionCookie()
       if (!sessionToken) {
-        this.log('Warning: No session cookie found, request may fail with 401')
+        console.log('⚠️  [SyncService] Warning: No session cookie found, request may fail with 401')
       } else {
-        this.log(`Session cookie found, proceeding with sync`)
+        console.log('✅ [SyncService] Session cookie found, proceeding with sync')
       }
       
       // Create request
@@ -165,7 +216,12 @@ class SyncService {
         // Try to find the exact cookie name that was found
         const { session } = require('electron')
         const cookies = await session.defaultSession.cookies.get({ url: config.API_BASE_URL })
-        const sessionCookie = cookies.find(c => c.name === 'authjs.session-token' || c.name === 'next-auth.session-token')
+        const sessionCookie = cookies.find(c => 
+          c.name === 'authjs.session-token' || 
+          c.name === 'next-auth.session-token' ||
+          c.name === '__Secure-authjs.session-token' || 
+          c.name === '__Secure-next-auth.session-token'
+        )
         
         if (sessionCookie) {
           request.setHeader('Cookie', `${sessionCookie.name}=${sessionCookie.value}`)
@@ -183,10 +239,22 @@ class SyncService {
 
         response.on('end', () => {
           if (response.statusCode >= 200 && response.statusCode < 300) {
-            this.log(`Metrics sent successfully: ${response.statusCode}`)
+            console.log(`✅ [SyncService] Metrics sent successfully! Status: ${response.statusCode}`)
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.metric) {
+                console.log(`📊 [SyncService] Server confirmed update:`)
+                console.log(`   🖱️  Mouse: ${parsed.metric.mouseMovements} movements, ${parsed.metric.mouseClicks} clicks`)
+                console.log(`   ⌨️  Keystrokes: ${parsed.metric.keystrokes}`)
+                console.log(`   🌐 URLs: ${parsed.metric.urlsVisited}`)
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
             resolve(true)
           } else {
-            this.log(`API returned error: ${response.statusCode} - ${data}`)
+            console.error(`❌ [SyncService] API returned error: ${response.statusCode}`)
+            console.error(`Response body: ${data}`)
             resolve(false)
           }
         })

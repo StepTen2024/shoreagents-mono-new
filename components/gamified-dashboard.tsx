@@ -146,7 +146,7 @@ export default function GamifiedDashboard() {
     { href: "/tasks", icon: CheckSquare, label: "Manage Tasks" },
     { href: "/breaks", icon: Coffee, label: "Track Breaks" },
     { href: "/performance-reviews", icon: Star, label: "View Reviews" },
-    { href: "/staff/tickets", icon: Headphones, label: "Support Tickets" },
+    { href: "/tickets", icon: Headphones, label: "Support Tickets" },
   ]
 
   const todaysTasks = data.tasks.filter(t => t.status !== "COMPLETED").slice(0, 5)
@@ -415,7 +415,7 @@ export default function GamifiedDashboard() {
             <div className="space-y-4 rounded-2xl bg-slate-900/50 backdrop-blur-xl ring-1 ring-white/10 p-6 shadow-xl transition-all duration-500 hover:ring-white/20 hover:shadow-indigo-500/30">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white">Support Tickets</h2>
-                <Link href="/staff/tickets" className="text-sm text-blue-400 hover:underline">View All →</Link>
+                <Link href="/tickets" className="text-sm text-blue-400 hover:underline">View All →</Link>
               </div>
               {openTickets.length === 0 ? (
                 <p className="text-slate-400">No open tickets</p>

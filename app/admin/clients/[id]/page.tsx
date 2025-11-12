@@ -9,7 +9,6 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { AccountManagerSelector } from "@/components/account-manager-selector"
 
 async function getCompanyDetails(id: string) {
   try {
@@ -193,16 +192,28 @@ export default async function CompanyDetailPage({ params }: PageProps) {
           </Card>
 
           {/* Account Manager */}
-          <AccountManagerSelector 
-            companyId={company.id}
-            currentManager={company.management_users ? {
-              id: company.management_users.id,
-              name: company.management_users.name,
-              email: company.management_users.email,
-              department: company.management_users.department,
-              avatar: company.management_users.avatar
-            } : null}
-          />
+          {company.management_users && (
+            <Card className="p-6 border-border bg-card">
+              <h2 className="text-lg font-semibold text-foreground mb-4">Account Manager</h2>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={company.management_users.avatar || undefined} />
+                  <AvatarFallback>
+                    {company.management_users.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">{company.management_users.name}</div>
+                  <div className="text-xs text-muted-foreground">{company.management_users.department}</div>
+                  {company.management_users.email && (
+                    <a href={`mailto:${company.management_users.email}`} className="text-xs text-blue-400 hover:underline">
+                      {company.management_users.email}
+                    </a>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Statistics */}
           <Card className="p-6 border-border bg-card">

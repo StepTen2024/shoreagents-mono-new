@@ -2,8 +2,10 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { ProfileHeader } from "@/components/admin/profile-header"
+import { EditProfileModal } from "@/components/admin/edit-profile-modal"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { formatDepartment } from "@/lib/format-department"
 
 export default async function AdminProfilePage() {
   const session = await auth()
@@ -66,7 +68,7 @@ export default async function AdminProfilePage() {
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Department</label>
-              <p className="text-foreground font-medium">{user.department}</p>
+              <p className="text-foreground font-medium">{formatDepartment(user.department)}</p>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">Member Since</label>
@@ -84,147 +86,84 @@ export default async function AdminProfilePage() {
 
       {/* Profile Data - Show if profile exists */}
       {profile ? (
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Employment Info */}
+        <div className="space-y-6">
+          {/* Position Information */}
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Employment Information</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm text-muted-foreground">Current Role</label>
-                <p className="text-foreground font-medium">{profile.currentRole}</p>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground">Start Date</label>
-                <p className="text-foreground font-medium">
-                  {new Date(profile.startDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground">Days Employed</label>
-                <p className="text-foreground font-medium">{profile.daysEmployed} days</p>
-              </div>
-              {profile.salary && (
-                <div>
-                  <label className="text-sm text-muted-foreground">Salary</label>
-                  <p className="text-foreground font-medium">₱{Number(profile.salary).toLocaleString()}</p>
-                </div>
-              )}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Position Information</h3>
+              <EditProfileModal profile={profile} />
             </div>
-          </Card>
-
-          {/* Work Info & Timezone */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Work Information</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm text-muted-foreground">Timezone</label>
-                <p className="text-foreground font-medium">{profile.timezone || "Not set"} 🌍</p>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground">HMO</label>
-                <Badge variant={profile.hmo ? "default" : "secondary"}>
-                  {profile.hmo ? "✅ Enrolled" : "Not Enrolled"}
-                </Badge>
-              </div>
-            </div>
-          </Card>
-
-          {/* Bio & Responsibilities */}
-          <Card className="p-6 md:col-span-2">
-            <h3 className="text-lg font-semibold mb-4">About & Responsibilities</h3>
             <div className="space-y-4">
-              {profile.bio && (
-                <div>
-                  <label className="text-sm text-muted-foreground">Bio</label>
-                  <p className="text-foreground mt-1">{profile.bio}</p>
-                </div>
-              )}
-              {profile.responsibilities && (
-                <div>
-                  <label className="text-sm text-muted-foreground">Responsibilities</label>
-                  <p className="text-foreground mt-1">{profile.responsibilities}</p>
-                </div>
-              )}
-              {!profile.bio && !profile.responsibilities && (
-                <p className="text-sm text-muted-foreground italic">No bio or responsibilities added yet</p>
-              )}
-            </div>
-          </Card>
-
-          {/* Leave Tracking */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Leave Balance</h3>
-            <div className="space-y-3">
               <div>
-                <label className="text-sm text-muted-foreground">Total Leave Days</label>
-                <p className="text-foreground font-medium">{profile.totalLeave} days/year</p>
+                <label className="text-sm font-medium text-muted-foreground">Job Title</label>
+                <p className="text-foreground text-lg font-semibold mt-1">{profile.currentRole}</p>
               </div>
-              <div>
-                <label className="text-sm text-muted-foreground">Used Leave</label>
-                <p className="text-foreground font-medium">{profile.usedLeave} days</p>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground">Available</label>
-                <p className="text-foreground font-medium text-green-600">
-                  {profile.totalLeave - profile.usedLeave} days remaining
-                </p>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Vacation Used:</span>
-                  <span className="font-medium">{profile.vacationUsed} days</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Sick Leave Used:</span>
-                  <span className="font-medium">{profile.sickUsed} days</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Personal Info */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
-            <div className="space-y-3">
-              {profile.civilStatus && (
-                <div>
-                  <label className="text-sm text-muted-foreground">Civil Status</label>
-                  <p className="text-foreground font-medium">{profile.civilStatus}</p>
+              
+              {profile.roleDescription && (
+                <div className="pt-3 border-t">
+                  <label className="text-sm font-medium text-muted-foreground">What I Do</label>
+                  <p className="text-foreground mt-2 leading-relaxed">{profile.roleDescription}</p>
                 </div>
               )}
-              {profile.dateOfBirth && (
+              
+              <div className="grid grid-cols-2 gap-4 pt-3 border-t">
                 <div>
-                  <label className="text-sm text-muted-foreground">Date of Birth</label>
-                  <p className="text-foreground font-medium">
-                    {new Date(profile.dateOfBirth).toLocaleDateString('en-US', {
+                  <label className="text-sm font-medium text-muted-foreground">Start Date</label>
+                  <p className="text-foreground font-medium mt-1">
+                    {new Date(profile.startDate).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
                     })}
                   </p>
                 </div>
-              )}
-              {profile.gender && (
                 <div>
-                  <label className="text-sm text-muted-foreground">Gender</label>
-                  <p className="text-foreground font-medium">{profile.gender}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Days with Company</label>
+                  <p className="text-foreground font-medium mt-1">
+                    {profile.daysEmployed} days
+                  </p>
                 </div>
-              )}
-              {!profile.civilStatus && !profile.dateOfBirth && !profile.gender && (
-                <p className="text-sm text-muted-foreground italic">No personal information added yet</p>
-              )}
+              </div>
             </div>
           </Card>
+
+          {/* Bio & Responsibilities */}
+          {(profile.bio || profile.responsibilities) && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">About Me</h3>
+              <div className="space-y-4">
+                {profile.bio && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Bio</label>
+                    <p className="text-foreground mt-2 leading-relaxed">{profile.bio}</p>
+                  </div>
+                )}
+                {profile.responsibilities && (
+                  <div className={profile.bio ? "pt-4 border-t" : ""}>
+                    <label className="text-sm font-medium text-muted-foreground">Key Responsibilities</label>
+                    <p className="text-foreground mt-2 leading-relaxed whitespace-pre-wrap">{profile.responsibilities}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
       ) : (
         <Card className="p-6">
-          <p className="text-center text-muted-foreground">
-            Profile not set up yet. Please contact HR to complete your profile.
-          </p>
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              No profile found. Let's set one up!
+            </p>
+            <EditProfileModal 
+              profile={{
+                currentRole: user.department === 'CEO_EXECUTIVE' ? 'CEO' : 'Manager',
+                roleDescription: null,
+                bio: null,
+                responsibilities: null,
+                startDate: new Date()
+              }} 
+            />
+          </div>
         </Card>
       )}
     </div>

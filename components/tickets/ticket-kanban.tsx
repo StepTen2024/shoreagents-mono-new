@@ -16,7 +16,7 @@ import {
   closestCenter,
 } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import TicketCard from "./ticket-card"
+import AdminTicketCard from "./admin-ticket-card"
 import { Ticket, TicketStatus } from "@/types/ticket"
 
 interface TicketKanbanProps {
@@ -71,21 +71,22 @@ export default function TicketKanban({
   const [overId, setOverId] = useState<string | null>(null)
   const [updatingTickets, setUpdatingTickets] = useState<Set<string>>(() => new Set())
 
+  // ADMIN DRAG AND DROP - Super smooth and easy
   const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3, // Very small distance for instant response
+      },
+    }),
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 5, // Reduced for quicker response
+        distance: 3,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150, // Slight delay to distinguish from scrolling
-        tolerance: 5,
-      },
-    }),
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
+        delay: 100,
+        tolerance: 3,
       },
     })
   )
@@ -172,12 +173,12 @@ export default function TicketKanban({
               >
                 <DroppableColumn id={column.id} isActive={overId === column.id}>
                   {columnTickets.map((ticket) => (
-                    <TicketCard 
-                      key={ticket.id}
-                      ticket={ticket} 
-                      isDragging={activeId === ticket.id}
-                      onClick={() => onTicketClick(ticket)}
-                    />
+              <AdminTicketCard
+                key={ticket.id}
+                ticket={ticket}
+                isDragging={activeId === ticket.id}
+                onClick={() => onTicketClick(ticket)}
+              />
                   ))}
 
                   {columnTickets.length === 0 && (
@@ -205,8 +206,8 @@ export default function TicketKanban({
         easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
       }}>
         {activeTicket ? (
-          <div className="rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-indigo-500/50 transition-transform">
-            <TicketCard ticket={activeTicket} isDragging />
+          <div className="rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-blue-500/50 transition-transform">
+            <AdminTicketCard ticket={activeTicket} isDragging />
           </div>
         ) : null}
       </DragOverlay>

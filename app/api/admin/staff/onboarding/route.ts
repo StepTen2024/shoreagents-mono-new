@@ -10,13 +10,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/management (allow both ADMIN and MANAGER)
+    // Check if user is admin/management
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id }
     })
 
-    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
-      return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
+    if (!managementUser || managementUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { searchParams } = new URL(req.url)
@@ -82,44 +82,13 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Transform and calculate admin-specific progress
-    const transformedStaff = staffList.map(staff => {
-      let adminProgress = 0
-      
-      if (staff.staff_onboarding) {
-        const sections = [
-          staff.staff_onboarding.personalInfoStatus,
-          staff.staff_onboarding.resumeStatus,
-          staff.staff_onboarding.govIdStatus,
-          staff.staff_onboarding.documentsStatus,
-          staff.staff_onboarding.educationStatus,
-          staff.staff_onboarding.medicalStatus,
-          staff.staff_onboarding.dataPrivacyStatus,
-          staff.staff_onboarding.signatureStatus,
-          staff.staff_onboarding.emergencyContactStatus
-        ]
-
-        // Admin progress: Only count APPROVED sections (11.11% each for 9 sections)
-        sections.forEach(status => {
-          if (status === "APPROVED") {
-            adminProgress += 11.11
-          }
-        })
-        
-        // Round to nearest whole number
-        adminProgress = Math.round(adminProgress)
-      }
-
-      return {
-        id: staff.id,
-        name: staff.name,
-        email: staff.email,
-        onboarding: staff.staff_onboarding ? {
-          ...staff.staff_onboarding,
-          completionPercent: adminProgress // Override with admin-specific progress
-        } : null
-      }
-    })
+    // Transform to match frontend expectations (camelCase)
+    const transformedStaff = staffList.map(staff => ({
+      id: staff.id,
+      name: staff.name,
+      email: staff.email,
+      onboarding: staff.staff_onboarding // Transform snake_case to camelCase
+    }))
 
     return NextResponse.json({ staff: transformedStaff })
 

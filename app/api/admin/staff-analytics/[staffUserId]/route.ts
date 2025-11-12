@@ -13,13 +13,13 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin/manager (allow both ADMIN and MANAGER)
+    // Check if user is admin
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id },
     })
 
-    if (!managementUser || (managementUser.role !== "ADMIN" && managementUser.role !== "MANAGER")) {
-      return NextResponse.json({ error: "Forbidden. Admin or Manager role required." }, { status: 403 })
+    if (!managementUser || managementUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     const params = await context.params
@@ -56,13 +56,13 @@ export async function GET(
         },
         performance_metrics: {
           where: {
-            date: {
+            shiftDate: {
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            date: "desc",
+            shiftDate: "desc",
           },
         },
         time_entries: {
@@ -112,11 +112,11 @@ export async function GET(
     // Collect all visited URLs with timestamps
     const allVisitedUrls: any[] = []
     metrics.forEach((metric) => {
-      if (metric.visitedUrls && Array.isArray(metric.visitedUrls)) {
+      if (metric.visitedurls && Array.isArray(metric.visitedurls)) {
         allVisitedUrls.push(
-          ...metric.visitedUrls.map((urlData: any) => ({
+          ...metric.visitedurls.map((urlData: any) => ({
             ...urlData,
-            date: metric.date,
+            date: metric.shiftDate,
           }))
         )
       }
@@ -152,11 +152,11 @@ export async function GET(
     // Collect all applications used
     const allApplications: any[] = []
     metrics.forEach((metric) => {
-      if (metric.applicationsUsed && Array.isArray(metric.applicationsUsed)) {
+      if (metric.applicationsused && Array.isArray(metric.applicationsused)) {
         allApplications.push(
-          ...metric.applicationsUsed.map((appData: any) => ({
+          ...metric.applicationsused.map((appData: any) => ({
             ...appData,
-            date: metric.date,
+            date: metric.shiftDate,
           }))
         )
       }
@@ -196,7 +196,7 @@ export async function GET(
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
 
-      const dayMetrics = metrics.filter((m) => m.date >= date && m.date <= dayEnd)
+      const dayMetrics = metrics.filter((m) => m.shiftDate >= date && m.shiftDate <= dayEnd)
       const dayEntries = timeEntries.filter((e) => e.clockIn >= date && e.clockIn <= dayEnd)
 
       const dayStats = {
@@ -222,7 +222,7 @@ export async function GET(
         allScreenshots.push(
           ...metric.screenshotUrls.map((screenshotData: any) => ({
             ...screenshotData,
-            date: metric.date,
+            date: metric.shiftDate,
           }))
         )
       }

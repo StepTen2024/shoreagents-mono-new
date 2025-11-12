@@ -53,27 +53,23 @@ export async function PATCH(
       return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
     }
 
-    // Append admin notes with timestamp (always add a note)
-    const timestamp = new Date().toLocaleString('en-US', { 
-      year: 'numeric', 
-      month: 'numeric', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit', 
-      hour12: true 
-    })
-    const trimmedNotes = adminNotes ? adminNotes.trim() : ''
-    const existingAdminNotes = existing.adminNotes?.trim() || ''
-    
-    // Create schedule note with default message if no notes provided
-    const scheduleNote = trimmedNotes
-      ? `(Scheduled) ${timestamp} - ${trimmedNotes}`
-      : `(Scheduled) ${timestamp} - Interview scheduled by admin`
-    
-    const updatedAdminNotes = existingAdminNotes 
-      ? `${existingAdminNotes}\n\n${scheduleNote}` 
-      : scheduleNote
+    // Append admin notes with timestamp if provided
+    let updatedAdminNotes = existing.adminNotes
+    if (adminNotes && adminNotes.trim()) {
+      const timestamp = new Date().toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: 'numeric', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: true 
+      })
+      const trimmedNotes = adminNotes.trim()
+      const existingAdminNotes = existing.adminNotes?.trim() || ''
+      const newNote = existingAdminNotes ? `\n\n(Scheduled) ${timestamp} - ${trimmedNotes}` : `(Scheduled) ${timestamp} - ${trimmedNotes}`
+      updatedAdminNotes = existingAdminNotes + newNote
+    }
 
     // Update interview request
     const updatedInterview = await prisma.interview_requests.update({

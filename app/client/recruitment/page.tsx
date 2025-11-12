@@ -1810,112 +1810,22 @@ function InterviewsTab({
     )
   }
 
-  function formatDate(dateString: string, timezone?: string) {
-    const date = new Date(dateString)
-    const formatted = date.toLocaleString('en-US', {
-      timeZone: timezone || undefined,
+  function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+      minute: '2-digit'
     })
-    
-    // Add timezone in parentheses
-    if (timezone) {
-      // Use the appropriate locale for better timezone abbreviations
-      const getLocaleForTimezone = (tz: string) => {
-        if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-        if (tz.startsWith('America/')) return 'en-US'
-        if (tz.startsWith('Europe/')) return 'en-GB'
-        if (tz.startsWith('Asia/')) return 'en-SG'
-        return 'en-US'
-      }
-      
-      const locale = getLocaleForTimezone(timezone)
-      const tzName = new Intl.DateTimeFormat(locale, {
-        timeZone: timezone,
-        timeZoneName: 'short'
-      }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || timezone
-      
-      return `${formatted} (${tzName})`
-    }
-    
-    return formatted
   }
 
   function formatPreferredTime(time: string | PreferredTime) {
     try {
       // Handle new object format
       if (typeof time === 'object' && time.datetime) {
-        // Parse the datetime string in the context of the stored timezone
-        // The datetime is in format "2025-01-15T14:00" and represents that time in the stored timezone
-        const [datePart, timePart] = time.datetime.split('T')
-        const [year, month, day] = datePart.split('-').map(Number)
-        const [hours, minutes] = timePart.split(':').map(Number)
-        
-        // Create a date object and format it in the client's timezone
-        // We use a reference UTC date and adjust it to show in the client's timezone
-        const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
-        
-        // Get what time it shows in the client's timezone
-        const testStr = utcDate.toLocaleString('en-US', {
-          timeZone: time.timezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        })
-        
-        // Parse to find offset
-        const match = testStr.match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/)
-        if (match) {
-          const [, testMonth, testDay, testYear, testHour, testMinute] = match.map(Number)
-          
-          // Calculate offset
-          const wantedTime = new Date(year, month - 1, day, hours, minutes).getTime()
-          const gotTime = new Date(testYear, testMonth - 1, testDay, testHour, testMinute).getTime()
-          const offsetMs = wantedTime - gotTime
-          
-          // Apply offset to get correct UTC
-          const correctDate = new Date(utcDate.getTime() + offsetMs)
-          
-          // Now format in the client's timezone
-          const formatted = correctDate.toLocaleString('en-US', {
-            timeZone: time.timezone,
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })
-          
-          // Get timezone abbreviation using the appropriate locale for better abbreviations
-          // Use locale matching the timezone region to get proper abbreviations (e.g., AEDT instead of GMT+10)
-          const getLocaleForTimezone = (tz: string) => {
-            if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-            if (tz.startsWith('America/')) return 'en-US'
-            if (tz.startsWith('Europe/')) return 'en-GB'
-            if (tz.startsWith('Asia/')) return 'en-SG'
-            return 'en-US'
-          }
-          
-          const locale = getLocaleForTimezone(time.timezone)
-          const tzAbbr = new Intl.DateTimeFormat(locale, {
-            timeZone: time.timezone,
-            timeZoneName: 'short'
-          }).formatToParts(correctDate).find(part => part.type === 'timeZoneName')?.value || ''
-          
-          return `${formatted} (${tzAbbr})`
-        }
-        
-        // Fallback: just display the time as-is
-        const fallbackDate = new Date(`${time.datetime}:00`)
-        return fallbackDate.toLocaleString('en-US', {
+        const date = new Date(time.datetime)
+        const formatted = date.toLocaleDateString('en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -1923,11 +1833,12 @@ function InterviewsTab({
           minute: '2-digit',
           hour12: true
         })
+        return `${formatted} (${time.timezoneDisplay})`
       }
       
       // Handle old string format
       const date = new Date(time as string)
-      const formatted = date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
@@ -1935,8 +1846,6 @@ function InterviewsTab({
         minute: '2-digit',
         hour12: true
       })
-      
-      return formatted
     } catch (error) {
       // Fallback
       return typeof time === 'string' ? time : time.datetime
@@ -2004,24 +1913,13 @@ function InterviewsTab({
 
   if (interviews.length === 0) {
     return (
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border border-gray-200 shadow-sm">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-purple-200/30 to-pink-200/30 rounded-full blur-3xl" />
-        
-        <div className="relative py-16 px-8 text-center">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 mb-6">
-            <Calendar className="h-12 w-12 text-blue-600" />
-          </div>
-          
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-purple-700 bg-clip-text text-transparent mb-3">
-            No Interview Requests Yet
-          </h3>
-          
-          <p className="text-slate-600 text-base max-w-md mx-auto leading-relaxed">
-            Start your recruitment journey by requesting interviews with candidates from the talent pool.
-          </p>
-        </div>
-      </div>
+      <Card className="p-12 text-center">
+        <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Interview Requests Yet</h3>
+        <p className="text-gray-600">
+          When you request interviews with candidates, they will appear here
+        </p>
+      </Card>
     )
   }
 
@@ -2135,7 +2033,7 @@ function InterviewsTab({
                       )}
                     </div>
                     <p className="text-sm text-gray-500">
-                      Requested on {formatDate(interview.createdAt, clientTimezone)}
+                      Requested on {formatDate(interview.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -2189,7 +2087,7 @@ function InterviewsTab({
                           Interview Scheduled
                         </h3>
                         <p className="text-sm text-blue-800">
-                          <span className="font-semibold">Time:</span> {formatDate(interview.scheduledTime, clientTimezone)}
+                          <span className="font-semibold">Time:</span> {formatDate(interview.scheduledTime)}
                         </p>
                       </div>
                     </div>
@@ -2379,14 +2277,19 @@ function InterviewsTab({
                 )}
               </div>
 
-              {/* Your Preferred Times - Show only for pending and reschedule-requested */}
-              {(interview.status === 'PENDING' || interview.status === 'RESCHEDULE_REQUESTED') && (
+              {/* Your Preferred Times - Hide for completed, hire requested, hired, offer sent, and offer declined */}
+              {interview.status !== 'COMPLETED' && 
+               interview.status !== 'HIRE_REQUESTED' && 
+               interview.status !== 'HIRE-REQUESTED' && 
+               interview.status !== 'HIRED' && 
+               interview.status !== 'OFFER_SENT' && 
+               interview.status !== 'OFFER-SENT' && 
+               interview.status !== 'OFFER_DECLINED' && 
+               interview.status !== 'OFFER-DECLINED' && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">
-                      Your Preferred Times{interview.status === 'RESCHEDULE_REQUESTED' ? ' (Rescheduled)' : ''}:
-                    </span>
+                    <span className="text-sm font-medium text-gray-700">Your Preferred Times:</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {interview.preferredTimes.map((time, idx) => (
@@ -2431,94 +2334,38 @@ function InterviewsTab({
                   </div>
                   {interview.workSchedule.hasCustomHours && interview.workSchedule.customHours ? (
                     <div>
-                      <div className="grid grid-cols-7 gap-2">
-                        {(() => {
-                          const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                          
-                          return dayOrder.map((fullDay, index) => {
-                            const time = interview.workSchedule?.customHours?.[fullDay];
-                            if (!time) return <div key={fullDay} className="flex flex-col items-center text-sm bg-gray-200/80 px-3 py-2.5 rounded border-2 border-gray-300/70">
-                              <span className="text-gray-600 font-bold mb-1">{fullDay}</span>
-                              <span className="text-gray-500 text-xs font-semibold">Day Off</span>
-                            </div>; // Empty/disabled cell
-                            
-                            const [hours, minutes] = time.split(':').map(Number);
-                            const endHour = (hours + 9) % 24;
-                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                            
-                            // Get timezone abbreviation using appropriate locale
-                            let tzName = '';
-                            if (clientTimezone) {
-                              const getLocaleForTimezone = (tz: string) => {
-                                if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-                                if (tz.startsWith('America/')) return 'en-US'
-                                if (tz.startsWith('Europe/')) return 'en-GB'
-                                if (tz.startsWith('Asia/')) return 'en-SG'
-                                return 'en-US'
-                              }
-                              const locale = getLocaleForTimezone(clientTimezone)
-                              tzName = new Intl.DateTimeFormat(locale, {
-                                timeZone: clientTimezone,
-                                timeZoneName: 'short'
-                              }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || ''
-                            }
-                            
-                            return (
-                              <div key={fullDay} className="flex flex-col items-center text-sm bg-white px-3 py-2.5 rounded border border-purple-200">
-                                <span className="text-gray-900 font-medium mb-1.5">{fullDay}</span>
-                                <span className="text-gray-600 text-xs">{convertTo12Hour(time)} - {convertTo12Hour(endTime24)} {tzName && `(${tzName})`}</span>
-                              </div>
-                            );
-                          });
-                        })()}
+                      <div className="grid grid-cols-3 gap-2">
+                        {Object.entries(interview.workSchedule.customHours).map(([day, time]) => {
+                          const [hours, minutes] = time.split(':').map(Number)
+                          const endHour = (hours + 9) % 24
+                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          return (
+                            <div key={day} className="flex flex-col items-center text-sm bg-white px-3 py-2.5 rounded border border-purple-200">
+                              <span className="text-gray-900 font-medium mb-1.5">{day}</span>
+                              <span className="text-gray-600 text-xs">{convertTo12Hour(time)} - {convertTo12Hour(endTime24)}</span>
+                            </div>
+                          )
+                        })}
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 text-center">(9 hours per day, including break time)</p>
+                      <p className="text-xs text-gray-500 mt-2">(9 hours per day, including break time)</p>
                     </div>
                   ) : interview.workSchedule.workStartTime && interview.workSchedule.workDays ? (
                     <div>
-                      <div className="grid grid-cols-7 gap-2">
-                        {(() => {
-                          const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-                          const workDays = interview.workSchedule?.workDays || [];
-                          const workStartTime = interview.workSchedule?.workStartTime || '09:00';
-                          
-                          return dayOrder.map((fullDay) => {
-                            if (!workDays.includes(fullDay)) return <div key={fullDay} className="flex flex-col items-center text-sm bg-gray-200/80 px-3 py-2.5 rounded border-2 border-gray-300/70">
-                              <span className="text-gray-600 font-bold mb-1">{fullDay}</span>
-                              <span className="text-gray-500 text-xs font-semibold">Day Off</span>
-                            </div>; // Empty/disabled cell
-                            
-                            const [hours, minutes] = workStartTime.split(':').map(Number);
-                            const endHour = (hours + 9) % 24;
-                            const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-                            
-                            // Get timezone abbreviation using appropriate locale
-                            let tzName = '';
-                            if (clientTimezone) {
-                              const getLocaleForTimezone = (tz: string) => {
-                                if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-                                if (tz.startsWith('America/')) return 'en-US'
-                                if (tz.startsWith('Europe/')) return 'en-GB'
-                                if (tz.startsWith('Asia/')) return 'en-SG'
-                                return 'en-US'
-                              }
-                              const locale = getLocaleForTimezone(clientTimezone)
-                              tzName = new Intl.DateTimeFormat(locale, {
-                                timeZone: clientTimezone,
-                                timeZoneName: 'short'
-                              }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || ''
-                            }
-                            
-                            return (
-                              <div key={fullDay} className="flex flex-col items-center text-sm bg-white px-3 py-2.5 rounded border border-purple-200">
-                                <span className="text-gray-900 font-medium mb-1.5">{fullDay}</span>
-                                <span className="text-gray-600 text-xs">{convertTo12Hour(workStartTime)} - {convertTo12Hour(endTime24)} {tzName && `(${tzName})`}</span>
-                              </div>
-                            );
-                          });
-                        })()}
+                      <div className="grid grid-cols-3 gap-2">
+                        {interview.workSchedule.workDays.map((day: string) => {
+                          const workStartTime = interview.workSchedule?.workStartTime || '09:00'
+                          const [hours, minutes] = workStartTime.split(':').map(Number)
+                          const endHour = (hours + 9) % 24
+                          const endTime24 = `${String(endHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                          return (
+                            <div key={day} className="flex flex-col items-center text-sm bg-white px-3 py-2.5 rounded border border-purple-200">
+                              <span className="text-gray-900 font-medium mb-1.5">{day}</span>
+                              <span className="text-gray-600 text-xs">{convertTo12Hour(workStartTime)} - {convertTo12Hour(endTime24)}</span>
+                            </div>
+                          )
+                        })}
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 text-center">(9 hours per day, including break time)</p>
+                      <p className="text-xs text-gray-500 mt-2">(9 hours per day, including break time)</p>
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500">Not specified</p>
@@ -2662,53 +2509,7 @@ function InterviewsTab({
                               {entry.type === 'client' ? 'Client' : 'Admin'}
                             </Badge>
                             {entry.timestamp && (
-                              <span className="text-xs text-gray-500">
-                                {(() => {
-                                  // Extract the raw timestamp from the formatted string
-                                  const statusLabelMatch = entry.timestamp.match(/^\(([^\)]+)\)\s+(.+)$/) || 
-                                                          entry.timestamp.match(/^\[([^\]]+)\]\s+(.+)$/);
-                                  const rawTimestamp = statusLabelMatch ? statusLabelMatch[2] : entry.timestamp;
-                                  const statusLabel = statusLabelMatch ? statusLabelMatch[1] : null;
-                                  
-                                  try {
-                                    const date = new Date(rawTimestamp);
-                                    if (!isNaN(date.getTime())) {
-                                      const formatted = date.toLocaleString('en-US', {
-                                        timeZone: clientTimezone || undefined,
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: true
-                                      });
-                                      
-                                      // Add timezone abbreviation
-                                      let withTimezone = formatted;
-                                      if (clientTimezone) {
-                                        const getLocaleForTimezone = (tz: string) => {
-                                          if (tz.startsWith('Australia/') || tz.startsWith('Pacific/Auckland')) return 'en-AU'
-                                          if (tz.startsWith('America/')) return 'en-US'
-                                          if (tz.startsWith('Europe/')) return 'en-GB'
-                                          if (tz.startsWith('Asia/')) return 'en-SG'
-                                          return 'en-US'
-                                        }
-                                        const locale = getLocaleForTimezone(clientTimezone)
-                                        const tzName = new Intl.DateTimeFormat(locale, {
-                                          timeZone: clientTimezone,
-                                          timeZoneName: 'short'
-                                        }).formatToParts(date).find(part => part.type === 'timeZoneName')?.value || '';
-                                        withTimezone = `${formatted} (${tzName})`;
-                                      }
-                                      
-                                      return statusLabel ? `(${statusLabel}) ${withTimezone}` : withTimezone;
-                                    }
-                                  } catch {
-                                    // Fall back to original timestamp if parsing fails
-                                  }
-                                  return entry.timestamp;
-                                })()}
-                              </span>
+                              <span className="text-xs text-gray-500">{entry.timestamp}</span>
                             )}
                           </div>
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{entry.content}</p>

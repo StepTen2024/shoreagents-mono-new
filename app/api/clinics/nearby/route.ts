@@ -39,15 +39,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid coordinates' }, { status: 400 })
     }
 
-    // TODO: Fetch all active partner clinics when table is created
-    // For now, return empty array so onboarding doesn't break
-    const clinics: any[] = []
-    
-    // NOTE: Uncomment this when partnerClinic table exists:
-    // const clinics = await prisma.partnerClinic.findMany({
-    //   where: { isActive: true },
-    //   orderBy: { name: 'asc' }
-    // })
+    // Fetch all active partner clinics
+    const clinics = await prisma.partnerClinic.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' }
+    })
 
     // Calculate distance for each clinic
     const clinicsWithDistance = clinics.map(clinic => {
@@ -71,7 +67,7 @@ export async function GET(request: NextRequest) {
       .filter(clinic => clinic.distance <= 50)
       .sort((a, b) => a.distance - b.distance)
 
-    console.log(`✅ [CLINICS] Found ${nearbyClinics.length} nearby clinics for location: ${userLat}, ${userLng} (feature disabled - no clinic data)`)
+    console.log(`✅ [CLINICS] Found ${nearbyClinics.length} nearby clinics for location: ${userLat}, ${userLng}`)
 
     return NextResponse.json({
       success: true,

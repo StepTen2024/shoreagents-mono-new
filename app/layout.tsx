@@ -7,7 +7,7 @@ import LayoutWrapper from "./layout-wrapper"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Shore Agents - Staff Management Platform",
+  title: "ShoreAgentsAI",
   description: "Gamified staff monitoring and management dashboard",
 }
 

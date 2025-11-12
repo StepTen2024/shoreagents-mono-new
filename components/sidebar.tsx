@@ -37,11 +37,11 @@ const navItems = [
   { href: "/team", icon: Users, label: "Staff" },
   { href: "/time-tracking", icon: Clock, label: "Time Tracking" },
   { href: "/analytics", icon: Activity, label: "Analytics" },
-  { href: "/staff/tickets", icon: Headphones, label: "Tickets" },
+  { href: "/tickets", icon: Headphones, label: "Tickets" },
   { href: "/performance-reviews", icon: Star, label: "Performance Reviews" },
   { href: "/tasks", icon: CheckSquare, label: "Tasks" },
   { href: "/ai-assistant", icon: MessageSquare, label: "AI Assistant" },
-  { href: "/activity", icon: FileText, label: "The Feed" },
+  { href: "/posts", icon: FileText, label: "The Feed" },
   { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/offboarding", icon: UserMinus, label: "Offboarding" },
   { href: "/settings", icon: Settings, label: "Settings" },
@@ -122,7 +122,7 @@ export default function Sidebar() {
       }
     }
     
-    await signOut({ callbackUrl: '/login', redirect: true })
+    await signOut({ callbackUrl: '/login/staff', redirect: true })
   }
 
   // Get user initials
