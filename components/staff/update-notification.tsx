@@ -288,7 +288,7 @@ export function UpdateNotification() {
       <CardHeader>
         <CardTitle className="text-slate-300">Software Updates</CardTitle>
         <CardDescription>
-          Keep your app up to date with the latest features
+          Check for the latest version and improvements
         </CardDescription>
       </CardHeader>
       <CardContent>
