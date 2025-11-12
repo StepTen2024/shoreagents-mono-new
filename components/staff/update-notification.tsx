@@ -32,35 +32,53 @@ export function UpdateNotification() {
   const [updateInfo, setUpdateInfo] = useState<any>(null)
   const [downloadProgress, setDownloadProgress] = useState<number>(0)
   const [checking, setChecking] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Check if running in Electron
-    if (typeof window !== 'undefined' && window.electron?.isElectron) {
+    // Mark as mounted (client-side)
+    setMounted(true)
+    
+    // Check if running in Electron AND updater API is available
+    if (typeof window !== 'undefined' && window.electron?.isElectron && window.electron?.updater) {
       setIsElectron(true)
 
       // Listen for update status changes
-      const unsubscribe = window.electron.updater.onUpdateStatus((data: UpdateStatus) => {
-        console.log('[UpdateNotification] Update status:', data)
-        
-        setUpdateStatus(data.status)
-        
-        if (data.status === 'update-available') {
-          setUpdateInfo(data.data)
-        } else if (data.status === 'download-progress') {
-          setDownloadProgress(data.data?.percent || 0)
-        } else if (data.status === 'update-downloaded') {
-          setUpdateInfo(data.data)
-        }
-      })
+      try {
+        const unsubscribe = window.electron.updater.onUpdateStatus((data: UpdateStatus) => {
+          console.log('[UpdateNotification] Update status:', data)
+          
+          setUpdateStatus(data.status)
+          
+          if (data.status === 'update-available') {
+            setUpdateInfo(data.data)
+          } else if (data.status === 'download-progress') {
+            setDownloadProgress(data.data?.percent || 0)
+          } else if (data.status === 'update-downloaded') {
+            setUpdateInfo(data.data)
+          }
+        })
 
-      return () => {
-        unsubscribe()
+        return () => {
+          unsubscribe()
+        }
+      } catch (error) {
+        console.error('[UpdateNotification] Error setting up update listener:', error)
       }
+    } else if (typeof window !== 'undefined') {
+      // Debug logging
+      console.log('[UpdateNotification] Electron detection:', {
+        hasElectron: !!window.electron,
+        isElectron: window.electron?.isElectron,
+        hasUpdater: !!window.electron?.updater
+      })
     }
   }, [])
 
   const handleCheckForUpdates = async () => {
-    if (!window.electron) return
+    if (typeof window === 'undefined' || !window.electron?.updater) {
+      console.warn('[UpdateNotification] Updater API not available')
+      return
+    }
     
     setChecking(true)
     try {
@@ -73,7 +91,10 @@ export function UpdateNotification() {
   }
 
   const handleDownloadUpdate = async () => {
-    if (!window.electron) return
+    if (typeof window === 'undefined' || !window.electron?.updater) {
+      console.warn('[UpdateNotification] Updater API not available')
+      return
+    }
     
     try {
       await window.electron.updater.downloadUpdate()
@@ -83,13 +104,21 @@ export function UpdateNotification() {
   }
 
   const handleInstallUpdate = async () => {
-    if (!window.electron) return
+    if (typeof window === 'undefined' || !window.electron?.updater) {
+      console.warn('[UpdateNotification] Updater API not available')
+      return
+    }
     
     try {
       await window.electron.updater.quitAndInstall()
     } catch (error) {
       console.error('[UpdateNotification] Error installing update:', error)
     }
+  }
+
+  // Don't render until mounted (avoid SSR issues)
+  if (!mounted) {
+    return null
   }
 
   // Don't render if not in Electron
