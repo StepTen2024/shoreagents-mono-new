@@ -33,9 +33,6 @@ export async function GET(request: NextRequest) {
     const staffUser = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id },
       include: {
-        staff_profiles: {
-          select: { departmentId: true }
-        },
         company: {
           select: { id: true }
         }
@@ -53,10 +50,10 @@ export async function GET(request: NextRequest) {
 
     const managementUser = await prisma.management_users.findUnique({
       where: { authUserId: session.user.id },
-      include: {
-        department: {
-          select: { id: true }
-        }
+      select: {
+        id: true,
+        authUserId: true,
+        department: true  // Just select the enum field
       }
     })
 
@@ -69,18 +66,19 @@ export async function GET(request: NextRequest) {
 
     // 👨‍💼 STAFF USER FILTERING
     if (staffUser) {
-      const departmentId = staffUser.staff_profiles?.[0]?.departmentId
       const companyId = staffUser.company?.id
 
       if (filterType === 'all_staff') {
         whereClause.audience = { in: ['ALL_STAFF', 'ALL', 'EVERYONE'] }
-      } else if (filterType === 'my_team' && departmentId) {
-        // Posts from same department OR targeted to my team
+      } else if (filterType === 'my_team' && companyId) {
+        // Posts from same company/team (staff assigned to same client)
+        const teamStaffIds = await prisma.staff_users.findMany({
+          where: { companyId: companyId },
+          select: { id: true }
+        }).then(users => users.map(u => u.id))
+        
         whereClause.OR = [
-          { audience: 'MY_TEAM', staffUserId: { in: await prisma.staff_users.findMany({
-            where: { staff_profiles: { some: { departmentId } } },
-            select: { id: true }
-          }).then(users => users.map(u => u.id)) } },
+          { audience: 'MY_TEAM', staffUserId: { in: teamStaffIds } },
           { audience: 'ALL_STAFF' },
           { audience: 'EVERYONE' }
         ]
