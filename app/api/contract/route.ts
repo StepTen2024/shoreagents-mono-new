@@ -88,8 +88,19 @@ export async function GET(req: NextRequest) {
         workSchedule = "Monday-Friday";
       }
       
-      // Add work hours from workStartTime and workEndTime
-      if (jobAcceptance.workStartTime && jobAcceptance.workEndTime) {
+      // Add work hours - check for custom hours first
+      if (jobAcceptance.hasCustomHours && jobAcceptance.customHours) {
+        // Display custom hours for each day
+        const customHoursObj = jobAcceptance.customHours as Record<string, string>;
+        const customHoursText = Object.entries(customHoursObj).map(([day, time]) => {
+          const [hours, minutes] = time.split(':').map(Number);
+          const endHour = (hours + 9) % 24;
+          const endTime = `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          return `${day}: ${time}-${endTime}`;
+        }).join(', ');
+        workSchedule += `, ${customHoursText}`;
+      } else if (jobAcceptance.workStartTime && jobAcceptance.workEndTime) {
+        // Use uniform start/end times
         workSchedule += `, ${jobAcceptance.workStartTime} - ${jobAcceptance.workEndTime}`;
       } else if (jobAcceptance.workHours) {
         workSchedule += `, ${jobAcceptance.workHours}`;

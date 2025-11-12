@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import crypto from "crypto"
 
 // GET /api/breaks - Get breaks for a specific date
 export async function GET(request: NextRequest) {
@@ -106,13 +107,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const now = new Date()
     const breakRecord = await prisma.breaks.create({
       data: {
+        id: crypto.randomUUID(),
         staffUserId: staffUser.id,
         type,
         awayReason: reason || null,
-        actualStart: new Date(),
+        actualStart: now,
         notes: notes || null,
+        updatedAt: now,
       },
     })
 

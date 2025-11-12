@@ -365,7 +365,7 @@ export default function ClientProfilePage() {
         {/* Profile Header Card Skeleton */}
         <div className="overflow-hidden border-blue-200 rounded-lg">
           {/* Cover Photo Skeleton */}
-          <div className="h-80 bg-gray-200 animate-pulse"></div>
+          <div className="h-48 bg-gray-200 animate-pulse"></div>
           
           {/* Profile Content Skeleton */}
           <div className="p-6 bg-white">
@@ -584,7 +584,7 @@ export default function ClientProfilePage() {
       {/* Profile Header Card with Cover Photo and Avatar */}
       <Card className="overflow-hidden border-blue-200 bg-white py-0 gap-0">
         {/* Cover Photo Banner */}
-        <div className="relative h-80 bg-gradient-to-br from-blue-500 to-cyan-500 group">
+        <div className="relative h-52 bg-gradient-to-br from-blue-500 to-cyan-500 group">
           {clientUser.coverPhoto ? (
             <img src={clientUser.coverPhoto} alt="Cover" className="w-full h-full object-cover" />
           ) : (

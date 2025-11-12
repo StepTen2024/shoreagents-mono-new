@@ -270,8 +270,17 @@ model job_acceptances {
   clientTimezone       String                @default("UTC")
   isDefaultSchedule    Boolean               @default(true)
   workDays             String[]              @default(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
-  workEndTime          String                @default("18:00")
-  workStartTime        String                @default("09:00")
+  workEndTime          String?               @default("18:00")
+  workStartTime        String?               @default("09:00")
+  hasCustomHours       Boolean               @default(false)
+  customHours          Json?
+  salary               Decimal?
+  shiftType            String?
+  workLocation         String?
+  hmoIncluded          Boolean               @default(false)
+  leaveCredits         Int                   @default(12)
+  workHours            String?
+  preferredStartDate   DateTime?
   employment_contracts employment_contracts?
   company              company               @relation(fields: [companyId], references: [id])
   interview_requests   interview_requests    @relation(fields: [interviewRequestId], references: [id], onDelete: Cascade)

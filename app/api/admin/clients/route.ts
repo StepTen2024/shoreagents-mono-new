@@ -54,17 +54,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`✅ [ADMIN] Found ${companies.length} companies`)
-    companies.forEach(company => {
-      console.log(`   📦 ${company.companyName}:`)
-      console.log(`      - Client Users: ${company.client_users.length}`)
-      console.log(`      - Staff Users: ${company.staff_users.length}`)
-      console.log(`      - Management: ${company.management_users ? 'Yes' : 'No'}`)
-      company.client_users.forEach(user => {
-        console.log(`         👤 ${user.name} (${user.email}) - ${user.role}`)
-      })
-    })
-
     return NextResponse.json({ companies })
   } catch (error) {
     console.error("Error fetching companies:", error)

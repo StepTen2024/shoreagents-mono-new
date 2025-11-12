@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getStaffUser } from "@/lib/auth-helpers"
 import { logClockedOut } from "@/lib/activity-generator"
-import { getStaffLocalTime, parseTimeString } from "@/lib/timezone-helpers"
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +26,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         breaks: true,
-        work_schedule: {
+        work_schedule: {  // ← FETCH THE SCHEDULE to know shift end time!
           select: {
             startTime: true,
             endTime: true
@@ -52,9 +51,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // ✅ Use staff timezone for clock-out
-    const staffTimezone = staffUser.staff_profiles?.timezone || 'Asia/Manila'
-    const clockOut = getStaffLocalTime(staffTimezone)
+    const clockOut = new Date()
     const totalHours = (clockOut.getTime() - activeEntry.clockIn.getTime()) / (1000 * 60 * 60)
     
     // Calculate break time from the breaks we already fetched
@@ -62,35 +59,45 @@ export async function POST(request: NextRequest) {
     const totalBreakTime = breaks.reduce((sum, b) => sum + (b.duration || 0), 0) / 60
     const netWorkHours = totalHours - totalBreakTime
 
-    // ✅ Check if user is clocking out EARLY (using shift date and staff timezone)
+    // Check if user is clocking out EARLY
     let wasEarlyClockOut = false
     let earlyClockOutBy = 0
-    let expectedClockOut: Date | null = null
+    let expectedClockOut = null
     
     if (activeEntry.work_schedule && activeEntry.work_schedule.endTime && activeEntry.work_schedule.endTime.trim() !== '') {
       try {
-        // Parse shift end time using helper function
-        const { hour, minute } = parseTimeString(activeEntry.work_schedule.endTime)
+        // Parse shift end time - supports both "05:00 PM" and "17:00" (24-hour)
+        const timeStr = activeEntry.work_schedule.endTime.trim()
+        const parts = timeStr.split(' ')
         
-        // ✅ Use shift date for expected clock-out (handles night shifts crossing midnight)
-        const shiftDate = activeEntry.shiftDate || activeEntry.clockIn
-        expectedClockOut = new Date(shiftDate)
-        expectedClockOut.setHours(hour, minute, 0, 0)
+        let hour: number
+        let minute: number
         
-        // For night shifts, if end time is earlier than start time (e.g., 8 AM < 11 PM),
-        // the shift ends the next day
-        if (activeEntry.work_schedule.startTime) {
-          const startTime = parseTimeString(activeEntry.work_schedule.startTime)
-          if (hour < startTime.hour) {
-            // End time is next day (e.g., shift ends at 8 AM but started at 11 PM)
-            expectedClockOut.setDate(expectedClockOut.getDate() + 1)
+        if (parts.length >= 2) {
+          // Format: "05:00 PM" or "5:00 PM"
+          const time = parts[0]
+          const period = parts[1].toUpperCase()
+          const [hours, minutes] = time.split(':')
+          
+          hour = parseInt(hours)
+          minute = parseInt(minutes || '0')
+          
+          // Convert to 24-hour format
+          if (period === 'PM' && hour !== 12) {
+            hour += 12
+          } else if (period === 'AM' && hour === 12) {
+            hour = 0
           }
+        } else {
+          // Format: "17:00" or "12:00" (24-hour format)
+          const [hours, minutes] = timeStr.split(':')
+          hour = parseInt(hours)
+          minute = parseInt(minutes || '0')
         }
         
-        console.log(`⏰ Clock-out check:`, {
-          expectedClockOut: expectedClockOut.toISOString(),
-          actualClockOut: clockOut.toISOString()
-        })
+        // Create expected clock-out time
+        expectedClockOut = new Date(clockOut)
+        expectedClockOut.setHours(hour, minute, 0, 0)
         
         // Check if user is clocking out EARLY
         const diffMs = expectedClockOut.getTime() - clockOut.getTime()
@@ -100,13 +107,12 @@ export async function POST(request: NextRequest) {
           // Clocking out BEFORE shift end = EARLY
           wasEarlyClockOut = true
           earlyClockOutBy = diffMinutes
-          console.log(`⏰ EARLY CLOCK-OUT by ${diffMinutes} minutes`)
-        } else {
-          console.log(`⏰ ON TIME or STAYED LATE (worked full shift)`)
         }
+        // If diffMs <= 0, they stayed until or past shift end (on-time or late leaving)
         
       } catch (error) {
-        console.error('[Clock-Out] Error calculating early clock-out:', error)
+        console.error('[Clock-Out] Error parsing end time:', activeEntry.work_schedule.endTime, error)
+        // If parsing fails, don't mark as early
         wasEarlyClockOut = false
         earlyClockOutBy = 0
         expectedClockOut = null

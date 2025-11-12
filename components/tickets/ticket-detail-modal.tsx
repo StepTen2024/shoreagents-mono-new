@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   X,
@@ -20,6 +20,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import ImageLightbox from "@/components/ui/image-lightbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import CommentThread from "@/components/universal/comment-thread"
 import StaffUploadPreloader from "@/components/uploads/staff-upload-preloader"
@@ -172,26 +179,30 @@ export default function TicketDetailModal({
     if (selectedStatus === ticket.status) return
 
     try {
-      const response = await fetch(`/api/tickets/${ticket.id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: selectedStatus }),
+      const response = await fetch(`/api/tickets/${ticket.id}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ managementUserId }),
       })
 
-      if (!response.ok) throw new Error("Failed to update status")
+      if (!response.ok) throw new Error('Failed to reassign ticket')
 
       toast({
         title: "Success",
-        description: "Ticket status updated successfully",
+        description: managementUserId 
+          ? "Ticket reassigned successfully" 
+          : "Ticket unassigned successfully",
       })
 
-      onUpdate()
+      onUpdate() // Refresh ticket data
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update status. Please try again.",
+        description: "Failed to reassign ticket. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setAssigningTicket(false)
     }
   }
 
@@ -203,6 +214,13 @@ export default function TicketDetailModal({
 
   // Client gets LIGHT theme, Staff/Management get DARK theme
   const isDark = !isClient  // Light theme for clients, dark for staff/management
+  
+  // Load management users on mount (for management only)
+  useEffect(() => {
+    if (isManagement) {
+      fetchManagementUsers()
+    }
+  }, [isManagement])
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
@@ -405,6 +423,81 @@ export default function TicketDetailModal({
                         .slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
+                </div>
+              )}
+              
+              {/* Reassign Ticket - MANAGEMENT ONLY */}
+              {isManagement && ticket.staff_users && (
+                <div className="mt-6 pt-6 border-t border-slate-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-300 mb-1">
+                        🎯 Reassign Ticket
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Change who handles this ticket
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Select
+                    value={ticket.management_users?.id || "unassigned"}
+                    onValueChange={(value) => {
+                      const managementUserId = value === "unassigned" ? null : value
+                      handleReassignTicket(managementUserId)
+                    }}
+                    disabled={assigningTicket}
+                  >
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue>
+                        {assigningTicket ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Reassigning...
+                          </span>
+                        ) : ticket.management_users ? (
+                          <span className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={ticket.management_users.avatar} />
+                              <AvatarFallback className="text-xs bg-indigo-500">
+                                {ticket.management_users.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            {ticket.management_users.name} ({getDepartmentLabel(ticket.management_users.department as any)})
+                          </span>
+                        ) : (
+                          "Unassigned"
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-600">
+                      <SelectItem value="unassigned" className="text-slate-300 hover:bg-slate-700">
+                        🔄 Unassigned
+                      </SelectItem>
+                      {managementUsers.map((user) => (
+                        <SelectItem 
+                          key={user.id} 
+                          value={user.id}
+                          className="text-slate-300 hover:bg-slate-700"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={user.avatar} />
+                              <AvatarFallback className="text-xs bg-indigo-500">
+                                {user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{user.name}</span>
+                            {user.department && (
+                              <span className="text-xs text-slate-500">
+                                ({getDepartmentLabel(user.department)})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 

@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma"
 import { getStaffUser } from "@/lib/auth-helpers"
 import { logClockedIn } from "@/lib/activity-generator"
 import { randomUUID } from "crypto"
-import { getStaffLocalTime, detectShiftDay, createExpectedClockIn } from "@/lib/timezone-helpers"
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,37 +15,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // ✅ FIX #1: Get staff timezone (default to Asia/Manila for Filipino staff)
-    const staffTimezone = staffUser.staff_profiles?.timezone || 'Asia/Manila'
+    const now = new Date()
     
-    // ✅ FIX #2: Get current time in STAFF timezone (not server time!)
-    const nowInStaffTz = getStaffLocalTime(staffTimezone)
-    
-    console.log(`⏰ Current time in ${staffTimezone}:`, nowInStaffTz.toISOString())
-    
-    // ✅ FIX #3: Detect if this is a night shift from yesterday
-    const { isNightShift, shiftDayOfWeek, shiftDate } = await detectShiftDay(
-      staffUser.id,
-      staffTimezone
-    )
-    
-    console.log(`🕐 Shift detection:`, {
-      isNightShift,
-      shiftDayOfWeek,
-      shiftDate: shiftDate.toISOString()
-    })
+    // Calculate time ranges once
+    const startOfDay = new Date(now)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(now)
+    endOfDay.setHours(23, 59, 59, 999)
+    const today = now.toLocaleDateString('en-US', { weekday: 'long' })
     
     // Get profile ID first (staffUser already includes staff_profiles from getStaffUser)
     const profileId = staffUser.staff_profiles?.id
     
-    // ✅ FIX #4: Check for existing entries for THIS SHIFT DATE (not calendar date)
-    const startOfShiftDate = new Date(shiftDate)
-    startOfShiftDate.setHours(0, 0, 0, 0)
-    const endOfShiftDate = new Date(shiftDate)
-    endOfShiftDate.setHours(23, 59, 59, 999)
-    
     // Run all checks in parallel to speed up the process
-    const [activeEntry, existingShiftEntry, workSchedule] = await Promise.all([
+    const [activeEntry, todaysEntries, workSchedule] = await Promise.all([
       // Check if user is already clocked in
       prisma.time_entries.findFirst({
         where: {
@@ -54,34 +36,32 @@ export async function POST(request: NextRequest) {
           clockOut: null,
         },
       }),
-      // ✅ FIX #5: Check for existing entry for THIS SHIFT (not today's calendar date)
-      prisma.time_entries.findFirst({
+      // Get all today's entries including breaks
+      prisma.time_entries.findMany({
         where: {
           staffUserId: staffUser.id,
-          shiftDate: {
-            gte: startOfShiftDate,
-            lte: endOfShiftDate
+          clockIn: {
+            gte: startOfDay,
+            lte: endOfDay
           }
         },
         select: { 
           id: true,
-          shiftDayOfWeek: true,
           breaks: {
             select: { id: true }
           }
         }
       }),
-      // ✅ FIX #6: Get work schedule for the SHIFT DAY (not current day)
+      // Get today's work schedule (use profileId directly to avoid JOIN) - FULL record including ID!
       profileId ? prisma.work_schedules.findFirst({
         where: {
           profileId: profileId,
-          dayOfWeek: shiftDayOfWeek  // ← Use detected shift day!
+          dayOfWeek: today
         },
         select: {
-          id: true,
+          id: true,           // ← NEED THIS to save relationship!
           startTime: true,
-          endTime: true,
-          shiftType: true
+          endTime: true
         }
       }) : null
     ])
@@ -93,18 +73,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // ✅ FIX #7: Check for existing shift entry (not calendar day entry)
-    if (existingShiftEntry) {
+    if (todaysEntries.length > 0) {
       return NextResponse.json(
-        { error: `You have already clocked in for ${existingShiftEntry.shiftDayOfWeek || shiftDayOfWeek}'s shift. Only one session per shift is allowed.` },
-        { status: 400 }
-      )
-    }
-    
-    // ✅ FIX #8: Validate work schedule exists for this shift
-    if (!workSchedule) {
-      return NextResponse.json(
-        { error: `No work schedule found for ${shiftDayOfWeek}. Please contact admin.` },
+        { error: "You have already clocked in today. Only one session per day is allowed." },
         { status: 400 }
       )
     }
@@ -113,39 +84,62 @@ export async function POST(request: NextRequest) {
     let lateBy = 0
     let wasEarly = false
     let earlyBy = 0
-    let expectedClockIn: Date | null = null
+    let expectedClockIn = null
     
-    // ✅ FIX #9: Calculate expected clock-in time for the SHIFT DATE
-    if (workSchedule.startTime && workSchedule.startTime.trim() !== '') {
+    // Check if work schedule exists and has a valid startTime
+    if (workSchedule && workSchedule.startTime && workSchedule.startTime.trim() !== '') {
       try {
-        // Create expected clock-in time using helper function
-        expectedClockIn = createExpectedClockIn(shiftDate, workSchedule.startTime)
+        // Parse shift start time - supports both "09:00 AM" and "09:00" (24-hour)
+        const timeStr = workSchedule.startTime.trim()
+        const parts = timeStr.split(' ')
         
-        console.log(`⏰ Expected clock-in:`, {
-          expectedTime: expectedClockIn.toISOString(),
-          actualTime: nowInStaffTz.toISOString()
-        })
+        let hour: number
+        let minute: number
         
-        // ✅ FIX #10: Compare against STAFF TIMEZONE time (not server time)
-        const diffMs = nowInStaffTz.getTime() - expectedClockIn.getTime()
+        if (parts.length >= 2) {
+          // Format: "09:00 AM" or "9:00 PM"
+          const time = parts[0]
+          const period = parts[1].toUpperCase()
+          const [hours, minutes] = time.split(':')
+          
+          hour = parseInt(hours)
+          minute = parseInt(minutes || '0')
+          
+          // Convert to 24-hour format
+          if (period === 'PM' && hour !== 12) {
+            hour += 12
+          } else if (period === 'AM' && hour === 12) {
+            hour = 0
+          }
+        } else {
+          // Format: "09:00" or "03:00" (24-hour format)
+          const [hours, minutes] = timeStr.split(':')
+          hour = parseInt(hours)
+          minute = parseInt(minutes || '0')
+        }
+        
+        // Create expected clock-in time
+        expectedClockIn = new Date(now)
+        expectedClockIn.setHours(hour, minute, 0, 0)
+        
+        // Check if user is LATE or EARLY
+        const diffMs = now.getTime() - expectedClockIn.getTime()
         const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
         
         if (diffMs > 0) {
           // Clocked in AFTER shift start = LATE
           wasLate = true
           lateBy = diffMinutes
-          console.log(`⏰ LATE by ${diffMinutes} minutes`)
         } else if (diffMs < 0) {
           // Clocked in BEFORE shift start = EARLY
           wasEarly = true
           earlyBy = diffMinutes
-          console.log(`⏰ EARLY by ${diffMinutes} minutes`)
-        } else {
-          console.log(`⏰ ON TIME!`)
         }
+        // If diffMs === 0, they're exactly on time!
         
       } catch (error) {
-        console.error('[Clock-In] Error calculating late/early:', error)
+        console.error('[Clock-In] Error parsing start time:', workSchedule.startTime, error)
+        // If parsing fails, don't mark as late/early
         wasLate = false
         lateBy = 0
         wasEarly = false
@@ -154,27 +148,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get late reason if provided in request body
-    const body = await request.json().catch(() => ({}))
-    const lateReason = body.lateReason || null
-    
-    // ✅ FIX #11: Create time entry with SHIFT DATE and SHIFT DAY OF WEEK
+    // Create new time entry with shift tracking
     const timeEntry = await prisma.time_entries.create({
       data: {
         id: randomUUID(),
         staffUserId: staffUser.id,
-        workScheduleId: workSchedule.id,
-        clockIn: nowInStaffTz,        // ✅ Use staff timezone time
-        shiftDate: shiftDate,          // ✅ NEW! Shift date (handles night shift crossover)
-        shiftDayOfWeek: shiftDayOfWeek, // ✅ NEW! "Thursday", "Friday", etc.
-        updatedAt: new Date(),
+        workScheduleId: workSchedule?.id || null,  // ← SAVE THE SCHEDULE LINK!
+        clockIn: now,
+        updatedAt: now,
         expectedClockIn,
         wasLate,
         lateBy: wasLate ? lateBy : null,
         wasEarly,
         earlyBy: wasEarly ? earlyBy : null,
-        lateReason: wasLate ? lateReason : null,
-        workedFullShift: false
+        lateReason: null,  // Will be set by UI if user is late
+        workedFullShift: false  // Will be calculated on clock-out
       },
     })
     
@@ -222,30 +210,27 @@ export async function POST(request: NextRequest) {
     // Check if any breaks exist for this shift (we already fetched this data above)
     const existingBreaksThisShift = existingShiftEntry?.breaks && existingShiftEntry.breaks.length > 0
     
-    // Only show break scheduler if no breaks have been scheduled for this shift
-    const shouldShowBreakScheduler = !existingBreaksThisShift
+    // Only show break scheduler if no breaks have been scheduled today at all
+    const shouldShowBreakScheduler = !existingBreaksToday
     
-    console.log(`[Clock-In] Breaks for ${shiftDayOfWeek} shift: ${existingBreaksThisShift ? 'YES' : 'NO'}, Show scheduler: ${shouldShowBreakScheduler}`)
+    console.log(`[Clock-In] Breaks today: ${existingBreaksToday ? 'YES' : 'NO'}, Show scheduler: ${shouldShowBreakScheduler}`)
 
     // ✨ Auto-generate activity post
-    await logClockedIn(staffUser.id, staffUser.name, wasLate, lateBy)
+    await logClockedIn(staffUser.id, staffUser.name)
 
     return NextResponse.json({
       success: true,
       timeEntry: {
         ...timeEntry,
-        breaksScheduled: !!existingBreaksThisShift
+        breaksScheduled: !!existingBreaksToday // Mark as scheduled if breaks exist today
       },
       wasLate,
       lateBy,
       wasEarly,
       earlyBy,
-      isNightShift,                    // ✅ NEW! Let UI know if this is a night shift
-      shiftDayOfWeek,                  // ✅ NEW! Tell UI which day this shift belongs to
       showBreakScheduler: shouldShowBreakScheduler,
-      message: isNightShift
-        ? `Clocked in for ${shiftDayOfWeek}'s night shift` + (wasLate ? ` (${lateBy} min late)` : '')
-        : wasLate 
+      // Message for logging, popup will be handled by UI based on wasLate/wasEarly flags
+      message: wasLate 
         ? `Clocked in ${lateBy} minutes late`
         : wasEarly
         ? `Clocked in ${earlyBy} minutes early`

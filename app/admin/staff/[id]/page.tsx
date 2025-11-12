@@ -256,115 +256,115 @@ export default async function StaffDetailPage({
           )}
 
           {/* Welcome Form Responses */}
-          {staff.staff_welcome_forms && (
+          {staff.staff_interests && (
             <Card className="p-6 border-border bg-card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Welcome Form Responses</h3>
-                <Badge variant={staff.staff_welcome_forms.completed ? "default" : "secondary"}>
-                  {staff.staff_welcome_forms.completed ? "Completed" : "Incomplete"}
+                <Badge variant={staff.staff_interests.completed ? "default" : "secondary"}>
+                  {staff.staff_interests.completed ? "Completed" : "Incomplete"}
                 </Badge>
               </div>
               
-              {staff.staff_welcome_forms.completed ? (
+              {staff.staff_interests.completed ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-3">
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Name</div>
-                      <div className="text-sm font-medium text-foreground">{staff.staff_welcome_forms.name}</div>
+                      <div className="text-sm font-medium text-foreground">{staff.staff_interests.name}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Client</div>
-                      <div className="text-sm text-foreground">{staff.staff_welcome_forms.client}</div>
+                      <div className="text-sm text-foreground">{staff.staff_interests.client}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Start Date</div>
-                      <div className="text-sm text-foreground">{staff.staff_welcome_forms.startDate}</div>
+                      <div className="text-sm text-foreground">{staff.staff_interests.startDate}</div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground mb-1">Submitted At</div>
                       <div className="text-sm text-foreground">
-                        {staff.staff_welcome_forms.submittedAt ? new Date(staff.staff_welcome_forms.submittedAt).toLocaleString() : 'N/A'}
+                        {staff.staff_interests.submittedAt ? new Date(staff.staff_interests.submittedAt).toLocaleString() : 'N/A'}
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-3">
-                    {staff.staff_welcome_forms.favoriteFastFood && (
+                    {staff.staff_interests.favoriteFastFood && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Fast Food</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteFastFood}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteFastFood}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteColor && (
+                    {staff.staff_interests.favoriteColor && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Color</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteColor}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteColor}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteMovie && (
+                    {staff.staff_interests.favoriteMovie && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Movie</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteMovie}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteMovie}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteBook && (
+                    {staff.staff_interests.favoriteBook && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Book</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteBook}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteBook}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.hobby && (
+                    {staff.staff_interests.hobby && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Hobby</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.hobby}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.hobby}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.dreamDestination && (
+                    {staff.staff_interests.dreamDestination && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Dream Destination</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.dreamDestination}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.dreamDestination}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteSeason && (
+                    {staff.staff_interests.favoriteSeason && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Season</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteSeason}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteSeason}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.petName && (
+                    {staff.staff_interests.petName && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Pet Name</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.petName}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.petName}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteSport && (
+                    {staff.staff_interests.favoriteSport && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Sport</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteSport}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteSport}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteGame && (
+                    {staff.staff_interests.favoriteGame && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Game</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteGame}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteGame}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.favoriteQuote && (
+                    {staff.staff_interests.favoriteQuote && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Favorite Quote</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.favoriteQuote}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.favoriteQuote}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.funFact && (
+                    {staff.staff_interests.funFact && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Fun Fact</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.funFact}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.funFact}</div>
                       </div>
                     )}
-                    {staff.staff_welcome_forms.additionalInfo && (
+                    {staff.staff_interests.additionalInfo && (
                       <div>
                         <div className="text-xs text-muted-foreground mb-1">Additional Info</div>
-                        <div className="text-sm text-foreground">{staff.staff_welcome_forms.additionalInfo}</div>
+                        <div className="text-sm text-foreground">{staff.staff_interests.additionalInfo}</div>
                       </div>
                     )}
                   </div>
