@@ -1,138 +1,78 @@
 "use client"
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 
-export default function StaffLoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        setError("Invalid credentials")
-        setLoading(false)
-        return
-      }
-
-      // Success - redirect to staff portal
-      router.push("/")
-      router.refresh()
-    } catch (err) {
-      setError("Login failed")
-      setLoading(false)
-    }
-  }
-
+export default function LoginSelectorPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900">
-      <Card className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur border-slate-700">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 mb-4">
-            <span className="text-2xl font-bold text-white">SP</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Staff Portal</h1>
-          <p className="text-slate-400">Offshore Staff Dashboard</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+      <div className="w-full max-w-4xl">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-white mb-4">ShoreAgentsAI</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Email
-            </label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="staff@shoreagents.com"
-              className="bg-slate-900/50 border-slate-600 text-white"
-              required
-            />
-          </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* System Admin */}
+          <Link href="/login/admin">
+            <Card className="h-80 p-8 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur border-indigo-500/30 hover:border-indigo-400 transition-all cursor-pointer group hover:scale-105">
+              <div className="text-center h-full flex flex-col justify-center items-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 mb-6 transition-shadow">
+                  <span className="text-3xl font-bold text-white">SA</span>
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">System Admin</h2>
+                <p className="text-slate-300 mb-4">
+                  Shore Agents Management
+                </p>
+                <div className="text-sm text-slate-400">
+                  Manage staff, clients, and reviews
+                </div>
+              </div>
+            </Card>
+          </Link>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Password
-            </label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="bg-slate-900/50 border-slate-600 text-white"
-              required
-            />
-          </div>
+          {/* Staff Portal */}
+          <Link href="/login/staff">
+            <Card className="h-80 p-8 bg-gradient-to-br from-purple-600/20 to-indigo-600/20 backdrop-blur border-purple-500/30 hover:border-purple-400 transition-all cursor-pointer group hover:scale-105">
+              <div className="text-center h-full flex flex-col justify-center items-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 mb-6 transition-shadow">
+                  <span className="text-3xl font-bold text-white">SP</span>
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Staff Portal</h2>
+                <p className="text-slate-300 mb-4">
+                  Offshore Staff Dashboard
+                </p>
+                <div className="text-sm text-slate-400">
+                  Track tasks, time, and performance
+                </div>
+              </div>
+            </Card>
+          </Link>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-2 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
+          {/* Client Portal */}
+          <Link href="/login/client">
+            <Card className="h-80 p-8 bg-gradient-to-br from-blue-600/20 to-cyan-600/20 backdrop-blur border-blue-500/30 hover:border-blue-400 transition-all cursor-pointer group hover:scale-105">
+              <div className="text-center h-full flex flex-col justify-center items-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 mb-6 transition-shadow">
+                  <span className="text-3xl font-bold text-white">CP</span>
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Client Portal</h2>
+                <p className="text-slate-300 mb-4">
+                  Client Organization
+                </p>
+                <div className="text-sm text-slate-400">
+                  Manage your offshore team
+                </div>
+              </div>
+            </Card>
+          </Link>
+        </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-          >
-            {loading ? "Signing in..." : "Sign In to Staff Portal"}
-          </Button>
-        </form>
-
-        <div className="mt-6 pt-6 border-t border-slate-700 text-center">
-          <p className="text-sm text-slate-400">
-            Don't have an account?{" "}
-            <a
-              href="/login/staff/signup"
-              className="text-purple-400 hover:text-purple-300 font-semibold"
-            >
-              Sign Up
-            </a>
+        <div className="mt-12 text-center">
+          <p className="text-slate-400 text-sm">
+            Don't know which portal to use? Contact your administrator.
           </p>
         </div>
-
-        <div className="mt-6 pt-6 border-t border-slate-700">
-          <p className="text-sm text-slate-400 text-center mb-4">Other Portals:</p>
-          <div className="space-y-2">
-            <a
-              href="/login/admin"
-              className="block text-center text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              → System Admin Login
-            </a>
-            <a
-              href="/login/client"
-              className="block text-center text-sm text-slate-400 hover:text-white transition-colors"
-            >
-              → Client Portal Login
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-          <p className="text-xs text-blue-400 font-semibold mb-1">Demo Credentials:</p>
-          <p className="text-xs text-blue-300 font-mono">staff@shoreagents.com</p>
-          <p className="text-xs text-blue-300 font-mono">staff123</p>
-        </div>
-      </Card>
+      </div>
     </div>
   )
 }
-
