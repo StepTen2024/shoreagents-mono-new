@@ -54,6 +54,10 @@ interface Document {
   views: number
   isStaffUpload: boolean
   source: 'ADMIN' | 'STAFF' | 'CLIENT'
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED'
+  approvedBy?: string
+  approvedAt?: string
+  rejectionNote?: string
 }
 
 export default function KnowledgeBasePage() {
@@ -127,6 +131,68 @@ export default function KnowledgeBasePage() {
       }
     } catch (error) {
       console.error("Error fetching assigned staff:", error)
+    }
+  }
+
+  const handleApproveDocument = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/documents/${documentId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'APPROVED' })
+      })
+      
+      if (!response.ok) throw new Error('Failed to approve document')
+      
+      const data = await response.json()
+      
+      toast({
+        title: "Document Approved!",
+        description: data.message || "The staff member can now use this document.",
+      })
+      
+      // Refresh documents
+      fetchDocuments()
+    } catch (error) {
+      console.error("Error approving document:", error)
+      toast({
+        title: "Error",
+        description: "Failed to approve document. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRejectDocument = async (documentId: string) => {
+    const note = prompt("Why is this document being rejected? (This note will be shown to the staff member)")
+    if (!note) return // User cancelled
+    
+    try {
+      const response = await fetch(`/api/documents/${documentId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'REJECTED', rejectionNote: note })
+      })
+      
+      if (!response.ok) throw new Error('Failed to reject document')
+      
+      const data = await response.json()
+      
+      toast({
+        title: "Document Rejected",
+        description: data.message || "The staff member will need to revise this document.",
+        variant: "destructive",
+      })
+      
+      // Refresh documents
+      fetchDocuments()
+    } catch (error) {
+      console.error("Error rejecting document:", error)
+      toast({
+        title: "Error",
+        description: "Failed to reject document. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -396,9 +462,32 @@ export default function KnowledgeBasePage() {
                           <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <h3 className="text-lg font-semibold text-gray-900">{doc.title}</h3>
                             <DocumentSourceBadgeLight source={doc.source} />
+                            
+                            {/* Approval Status Badge */}
+                            {doc.status === 'PENDING' && (
+                              <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                ⏳ PENDING APPROVAL
+                              </Badge>
+                            )}
+                            {doc.status === 'APPROVED' && (
+                              <Badge className="bg-green-100 text-green-800 border-green-300">
+                                ✅ APPROVED
+                              </Badge>
+                            )}
+                            {doc.status === 'REJECTED' && (
+                              <Badge className="bg-red-100 text-red-800 border-red-300">
+                                ❌ REJECTED
+                              </Badge>
+                            )}
+                            
                             {doc.source === 'ADMIN' && (
                               <span className="text-xs text-red-600 font-medium px-2 py-1 bg-red-50 rounded border border-red-200">
-                                Shared by Admin
+                                📋 Company Policy
+                              </span>
+                            )}
+                            {doc.source === 'CLIENT' && (
+                              <span className="text-xs text-blue-600 font-medium px-2 py-1 bg-blue-50 rounded border border-blue-200">
+                                📄 Client Procedure
                               </span>
                             )}
                             <Badge className="bg-gray-100 text-gray-800 border-gray-300">
@@ -434,6 +523,33 @@ export default function KnowledgeBasePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Approval buttons for STAFF uploads with PENDING status */}
+                        {doc.source === 'STAFF' && doc.status === 'PENDING' && (
+                          <>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleApproveDocument(doc.id)
+                              }}
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              ✓ Approve
+                            </Button>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRejectDocument(doc.id)
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="border-red-600 text-red-600 hover:bg-red-50"
+                            >
+                              ✗ Reject
+                            </Button>
+                          </>
+                        )}
+                        
                         <Link
                           href={`/client/knowledge-base/${doc.id}`}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

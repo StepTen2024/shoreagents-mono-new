@@ -345,7 +345,9 @@ export default function AIChatAssistant() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ [AI CHAT] API Error:', response.status, errorData)
+        throw new Error(errorData.details || errorData.error || `Failed to get AI response (${response.status})`)
       }
 
       const data = await response.json()

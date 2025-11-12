@@ -95,7 +95,9 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
         })
 
         if (!response.ok) {
-          throw new Error(`Failed to upload document`)
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Upload failed:', response.status, errorData)
+          throw new Error(errorData.error || errorData.details || `Failed to upload document (${response.status})`)
         }
         
         successCount++

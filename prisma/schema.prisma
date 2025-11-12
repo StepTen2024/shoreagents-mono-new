@@ -157,20 +157,25 @@ model company {
 }
 
 model documents {
-  id            String           @id
-  title         String
-  category      DocumentCategory
-  uploadedBy    String
-  size          String
-  fileUrl       String?
-  content       String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime
-  staffUserId   String
-  source        DocumentSource   @default(STAFF)
-  sharedWithAll Boolean          @default(false)
-  sharedWith    String[]         @default([])
-  staff_users   staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  id             String           @id
+  title          String
+  category       DocumentCategory
+  uploadedBy     String
+  uploadedByRole DocumentSource   @default(STAFF) // Who uploaded: STAFF, CLIENT, ADMIN
+  size           String
+  fileUrl        String?
+  content        String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  staffUserId    String
+  source         DocumentSource   @default(STAFF) // Legacy field
+  sharedWithAll  Boolean          @default(false)
+  sharedWith     String[]         @default([])
+  status         DocumentStatus   @default(PENDING) // PENDING, APPROVED, REJECTED
+  approvedBy     String? // Email of approver
+  approvedAt     DateTime? // When approved/rejected
+  rejectionNote  String? // Why rejected (optional)
+  staff_users    staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model employment_contracts {
@@ -890,6 +895,12 @@ enum DocumentSource {
   STAFF
   CLIENT
   ADMIN
+}
+
+enum DocumentStatus {
+  PENDING   // Waiting for approval
+  APPROVED  // Approved by client/admin
+  REJECTED  // Rejected, needs revision
 }
 
 enum EmploymentStatus {

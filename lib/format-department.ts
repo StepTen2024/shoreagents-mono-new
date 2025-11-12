@@ -14,3 +14,4 @@ export function formatDepartment(dept: string): string {
   return departmentMap[dept] || dept
 }
 
+
