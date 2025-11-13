@@ -4,11 +4,11 @@ import { Download, Monitor, CheckCircle, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function DesktopAppDownload() {
-  const appVersion = "1.0.1"
+  const appVersion = "1.0.2"
   const fileSize = "~250 MB"
   // Installer hosted on GitHub Releases
   // Use version tags (v1.0.0, v1.0.1, etc.) for auto-updates to work
-  const downloadUrl = "https://github.com/StepTen2024/shoreagents-mono-new/releases/download/v1.0.1/ShoreAgentsAI-Setup-1.0.1.exe"
+  const downloadUrl = "https://github.com/StepTen2024/shoreagents-mono-new/releases/download/v1.0.2/ShoreAgentsAI-Setup-1.0.2.exe"
 
   const handleDownload = () => {
     if (typeof window !== 'undefined') {
