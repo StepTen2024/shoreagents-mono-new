@@ -58,7 +58,7 @@ nsis:
 # Set these when building for production
 extraMetadata:
   name: shore-agents-desktop
-  version: 1.0.2
+  version: 1.0.0
 
 # Build resources (icons, etc.)
 # Place icon.ico in /build folder
