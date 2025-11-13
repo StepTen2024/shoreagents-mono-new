@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Stop sync service
     stop: () => ipcRenderer.invoke('stop-sync-service'),
+    
+    // Reset metrics and sync state (call on clock-in)
+    reset: () => ipcRenderer.invoke('reset-metrics'),
   },
   
   // Break Handler API

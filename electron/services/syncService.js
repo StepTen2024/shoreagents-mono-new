@@ -323,6 +323,15 @@ class SyncService {
     this.log('Queue cleared')
   }
 
+  /**
+   * Reset sync state (called on clock-in to start fresh)
+   */
+  reset() {
+    this.lastSyncedMetrics = null
+    this.retryCount = 0
+    console.log('🔄 [SyncService] Sync state reset - starting fresh tracking session')
+  }
+
   log(message) {
     if (config.DEBUG) {
       console.log(`[SyncService] ${message}`)

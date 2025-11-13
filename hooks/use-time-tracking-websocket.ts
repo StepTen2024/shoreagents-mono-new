@@ -63,6 +63,16 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (data.success) {
+        // 🔄 Reset local metrics in Electron (start fresh tracking)
+        if (typeof window !== 'undefined' && window.electron?.sync?.reset) {
+          try {
+            await window.electron.sync.reset()
+            console.log('✅ [Clock-In] Local metrics and sync state reset')
+          } catch (resetError) {
+            console.error('⚠️ [Clock-In] Failed to reset local metrics:', resetError)
+          }
+        }
+        
         // Emit WebSocket event for real-time updates
         emit('time:clockin', data)
       } else {

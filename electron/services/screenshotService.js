@@ -1,6 +1,8 @@
 /**
  * Screenshot Service
- * Automatically captures screenshots from all displays every 10 seconds
+ * Automatically captures screenshots:
+ * - Every 1 minute (scheduled)
+ * - When user is inactive for 30+ seconds
  */
 
 const { screen, desktopCapturer } = require('electron')
@@ -13,6 +15,7 @@ class ScreenshotService {
     this.screenshotCount = 0
     this.captureInterval = null
     this.isProcessing = false
+    this.captureIntervalMs = 60000 // 1 minute
   }
 
   /**
@@ -25,7 +28,7 @@ class ScreenshotService {
   }
 
   /**
-   * Start screenshot capture on inactivity detection
+   * Start screenshot capture (scheduled + inactivity-based)
    */
   async start(sessionToken) {
     if (this.isEnabled) {
@@ -33,12 +36,26 @@ class ScreenshotService {
       return
     }
 
-    console.log('[ScreenshotService] Starting inactivity-based screenshot capture')
+    console.log('[ScreenshotService] Starting screenshot capture service')
     this.isEnabled = true
     this.sessionToken = sessionToken
     this.screenshotCount = 0
 
-    console.log('[ScreenshotService] Screenshot capture enabled - will capture when user is inactive (30+ seconds)')
+    // Capture immediately on start
+    console.log('[ScreenshotService] 📸 Capturing initial screenshot...')
+    await this.captureAllScreens('initial')
+
+    // Set up scheduled capture every 1 minute
+    this.captureInterval = setInterval(async () => {
+      if (this.isEnabled) {
+        console.log('[ScreenshotService] ⏰ Scheduled capture triggered (1 minute interval)')
+        await this.captureAllScreens('scheduled')
+      }
+    }, this.captureIntervalMs)
+
+    console.log('[ScreenshotService] ✅ Screenshot capture enabled:')
+    console.log('   📅 Scheduled: Every 1 minute')
+    console.log('   ⚠️  Inactivity: When idle for 30+ seconds')
   }
 
   /**
@@ -50,14 +67,15 @@ class ScreenshotService {
       return
     }
 
-    console.log('[ScreenshotService] Inactivity detected - capturing screenshots')
-    await this.captureAllScreens()
+    console.log('[ScreenshotService] ⚠️  Inactivity detected - capturing screenshots')
+    await this.captureAllScreens('inactivity')
   }
 
   /**
    * Capture screenshots from all displays
+   * @param {string} captureType - Type of capture: 'scheduled', 'inactivity', or 'initial'
    */
-  async captureAllScreens() {
+  async captureAllScreens(captureType = 'manual') {
     if (this.isProcessing) {
       console.log('[ScreenshotService] Still processing previous capture, skipping...')
       return
@@ -67,7 +85,8 @@ class ScreenshotService {
 
     try {
       const displays = screen.getAllDisplays()
-      console.log(`[ScreenshotService] Capturing ${displays.length} display(s)`)
+      const typeEmoji = captureType === 'scheduled' ? '⏰' : captureType === 'inactivity' ? '⚠️' : '📸'
+      console.log(`[ScreenshotService] ${typeEmoji} Capturing ${displays.length} display(s) (${captureType})`)
       
       // Capture each display
       const capturePromises = displays.map((display, index) => 
@@ -76,7 +95,7 @@ class ScreenshotService {
       
       await Promise.all(capturePromises)
       
-      console.log(`[ScreenshotService] Capture cycle complete (total screenshots: ${this.screenshotCount})`)
+      console.log(`[ScreenshotService] ✅ Capture cycle complete (total screenshots: ${this.screenshotCount})`)
     } catch (err) {
       console.error('[ScreenshotService] Error capturing screens:', err)
     } finally {
@@ -189,7 +208,7 @@ class ScreenshotService {
    * Manually trigger capture now
    */
   async captureNow() {
-    await this.captureAllScreens()
+    await this.captureAllScreens('manual')
     return { 
       success: true, 
       message: 'Screenshot capture triggered',
@@ -203,7 +222,9 @@ class ScreenshotService {
   getStatus() {
     return {
       isEnabled: this.isEnabled,
-      mode: 'inactivity', // Triggers on 30+ seconds of inactivity
+      mode: 'hybrid', // Scheduled (1 min) + Inactivity (30+ sec)
+      scheduledInterval: `${this.captureIntervalMs / 1000} seconds`,
+      inactivityTrigger: '30+ seconds',
       screenshotCount: this.screenshotCount,
       hasSessionToken: !!this.sessionToken,
       isMonitoring: this.isEnabled,
@@ -217,6 +238,13 @@ class ScreenshotService {
   stop() {
     console.log('[ScreenshotService] Stopping screenshot capture')
     this.isEnabled = false
+    
+    // Clear scheduled capture interval
+    if (this.captureInterval) {
+      clearInterval(this.captureInterval)
+      this.captureInterval = null
+      console.log('[ScreenshotService] Scheduled capture interval cleared')
+    }
   }
 
   /**

@@ -599,6 +599,14 @@ function setupIPC() {
     return { success: true }
   })
   
+  // Reset metrics and sync state (called on clock-in)
+  ipcMain.handle('reset-metrics', () => {
+    console.log('🔄 [Main] Resetting metrics and sync state (clock-in detected)')
+    performanceTracker.resetMetrics()
+    syncService.reset()
+    return { success: true }
+  })
+  
   // Clear all cookies (for debugging auth issues)
   ipcMain.handle('clear-cookies', async () => {
     try {
