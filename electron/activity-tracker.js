@@ -142,11 +142,11 @@ class ActivityTracker {
       })
       console.log('   ✅ Mouse movement listener registered')
       
-      // Mouse clicks
-      uIOhook.on('mousedown', (event) => this.onActivity('mousedown', event))
-      uIOhook.on('mouseup', (event) => this.onActivity('mouseup', event))
-      uIOhook.on('click', (event) => this.onActivity('click', event))
-      console.log('   ✅ Mouse click listeners registered')
+      // Mouse clicks (only count mousedown to avoid triple-counting)
+      // Note: uIOhook fires mousedown, mouseup, and click for each click
+      // We only need to track mousedown to count clicks accurately
+      uIOhook.on('mousedown', (event) => this.onActivity('click', event))
+      console.log('   ✅ Mouse click listener registered (mousedown only)')
       
       // Mouse wheel
       uIOhook.on('wheel', (event) => this.onActivity('wheel', event))
@@ -356,7 +356,7 @@ class ActivityTracker {
           break
         
         case 'click':
-          // Only count 'click' events, not mousedown/mouseup to avoid double counting
+          // Count each mousedown as one click (converted from mousedown event)
           metrics.mouseClicks++
           console.log(`🖱️  [ActivityTracker] Mouse click detected! Total: ${metrics.mouseClicks} ✅`)
           break
