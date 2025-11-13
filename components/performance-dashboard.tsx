@@ -34,6 +34,7 @@ export default function PerformanceDashboard() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [debugEvents, setDebugEvents] = useState<any[]>([])
   const [showDebug, setShowDebug] = useState(false)
+  const [hasLoadedBaseline, setHasLoadedBaseline] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -42,12 +43,12 @@ export default function PerformanceDashboard() {
     const inElectron = typeof window !== 'undefined' && window.electron?.isElectron
     setIsElectron(!!inElectron)
     
-    // Fetch API metrics
-    fetchMetrics()
+    // Fetch API metrics (and load baseline into Electron on first load)
+    fetchMetrics(true) // true = first load
     
     // Auto-refresh metrics every 10 seconds to pick up new screenshots
     const refreshInterval = setInterval(() => {
-      fetchMetrics()
+      fetchMetrics(false) // false = don't reload baseline
     }, 10000) // 10 seconds
     
     // If in Electron, also get live metrics
@@ -86,7 +87,7 @@ export default function PerformanceDashboard() {
     }
   }, [])
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (shouldLoadBaseline = false) => {
     try {
       const response = await fetch("/api/analytics")
       if (!response.ok) throw new Error("Failed to fetch performance metrics")
@@ -94,6 +95,25 @@ export default function PerformanceDashboard() {
       setMetrics(data.metrics)
       setTodayMetrics(data.today || null)
       setTotalScreenshots(data.totalScreenshots || 0)
+      
+      // ONLY load database into Electron on FIRST page load (not every 10 seconds)
+      // This initializes Electron with database baseline so it continues from there
+      if (shouldLoadBaseline && !hasLoadedBaseline && data.today) {
+        const electronSync = (window as any).electron?.sync
+        if (electronSync && typeof electronSync.loadFromDatabase === 'function') {
+          try {
+            console.log('[Dashboard] 📥 First load: Loading database metrics into Electron for live tracking baseline')
+            await electronSync.loadFromDatabase(data.today)
+            setHasLoadedBaseline(true)
+            console.log('[Dashboard] ✅ Electron metrics initialized with database values')
+            console.log('[Dashboard] 🔄 Electron will now accumulate NEW activity on top of this baseline')
+          } catch (loadError) {
+            console.error('[Dashboard] Failed to load metrics into Electron:', loadError)
+          }
+        }
+      } else if (hasLoadedBaseline) {
+        console.log('[Dashboard] 🔄 Refresh: Skipping baseline reload (already loaded)')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load performance data")
     } finally {
@@ -176,11 +196,13 @@ export default function PerformanceDashboard() {
     )
   }
 
-  // Use live metrics if available in Electron, otherwise use todayMetrics
-  // BUT always use todayMetrics for screenshotCount (managed by screenshot service, not Electron)
+  // Use live metrics if available (now properly initialized with database baseline)
+  // Otherwise fallback to database metrics
+  // Live metrics = database baseline + current session activity (real-time!)
   const displayMetrics = (isElectron && liveMetrics) 
     ? { ...liveMetrics, screenshotCount: todayMetrics?.screenshotCount || 0 }
     : todayMetrics
+  
   const productivity = displayMetrics ? calculateProductivityScore(displayMetrics) : 0
 
   return (

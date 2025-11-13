@@ -63,6 +63,27 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (data.success) {
+        console.log('✅ [Clock-In] Clock-in successful, now resetting Electron tracking...')
+        
+        // 🔄 Reset local metrics in Electron (start fresh tracking)
+        if (typeof window !== 'undefined' && window.electron?.sync?.reset) {
+          try {
+            console.log('🔄 [Clock-In] Calling window.electron.sync.reset()...')
+            const resetResult = await window.electron.sync.reset()
+            console.log('✅ [Clock-In] Electron metrics reset result:', resetResult)
+            console.log('✅ [Clock-In] Local metrics and sync state reset successfully')
+            console.log('🎯 [Clock-In] Activity tracking will now count from zero')
+          } catch (resetError) {
+            console.error('⚠️ [Clock-In] Failed to reset local metrics:', resetError)
+            console.error('⚠️ [Clock-In] This may cause tracking to not work properly')
+            console.error('⚠️ [Clock-In] You may need to restart the app')
+          }
+        } else {
+          console.warn('⚠️ [Clock-In] Electron sync reset not available')
+          console.warn('⚠️ [Clock-In] Running in browser or Electron API not exposed')
+          console.warn('⚠️ [Clock-In] window.electron:', typeof window !== 'undefined' ? window.electron : 'undefined')
+        }
+        
         // Emit WebSocket event for real-time updates
         emit('time:clockin', data)
       } else {

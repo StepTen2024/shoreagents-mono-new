@@ -142,11 +142,11 @@ class ActivityTracker {
       })
       console.log('   ✅ Mouse movement listener registered')
       
-      // Mouse clicks
-      uIOhook.on('mousedown', (event) => this.onActivity('mousedown', event))
-      uIOhook.on('mouseup', (event) => this.onActivity('mouseup', event))
-      uIOhook.on('click', (event) => this.onActivity('click', event))
-      console.log('   ✅ Mouse click listeners registered')
+      // Mouse clicks (only count mousedown to avoid triple-counting)
+      // Note: uIOhook fires mousedown, mouseup, and click for each click
+      // We only need to track mousedown to count clicks accurately
+      uIOhook.on('mousedown', (event) => this.onActivity('click', event))
+      console.log('   ✅ Mouse click listener registered (mousedown only)')
       
       // Mouse wheel
       uIOhook.on('wheel', (event) => this.onActivity('wheel', event))
@@ -356,7 +356,7 @@ class ActivityTracker {
           break
         
         case 'click':
-          // Only count 'click' events, not mousedown/mouseup to avoid double counting
+          // Count each mousedown as one click (converted from mousedown event)
           metrics.mouseClicks++
           console.log(`🖱️  [ActivityTracker] Mouse click detected! Total: ${metrics.mouseClicks} ✅`)
           break
@@ -704,6 +704,34 @@ class ActivityTracker {
     
     // Reset activity timer
     this.onActivity()
+  }
+
+  /**
+   * Reset activity tracking state (called on clock-in)
+   */
+  reset() {
+    console.log('🔄 [ActivityTracker] ========================================')
+    console.log('🔄 [ActivityTracker] RESETTING ACTIVITY TRACKER STATE')
+    console.log('🔄 [ActivityTracker] ========================================')
+    
+    // Reset activity timestamp to now
+    this.lastActivityTime = Date.now()
+    
+    // Reset mouse tracking throttle
+    this.lastMouseTrack = 0
+    
+    // Clear any inactivity state
+    this.dialogShown = false
+    this.inactivityStartTime = null
+    
+    // Close inactivity dialog if open
+    if (this.inactivityDialog && !this.inactivityDialog.isDestroyed()) {
+      this.inactivityDialog.close()
+      this.inactivityDialog = null
+    }
+    
+    console.log('🔄 [ActivityTracker] Activity tracker reset complete')
+    console.log('🔄 [ActivityTracker] Ready to track fresh session activity')
   }
 
   /**

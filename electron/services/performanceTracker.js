@@ -568,13 +568,85 @@ class PerformanceTracker {
   }
 
   /**
-   * Reset metrics (usually at midnight)
+   * Load metrics from database (called when dashboard opens after logout/login)
+   * This allows live metrics to continue from database values instead of starting from 0
+   */
+  async loadFromDatabase(databaseMetrics) {
+    console.log('📥 [PerformanceTracker] ========================================')
+    console.log('📥 [PerformanceTracker] LOADING METRICS FROM DATABASE')
+    console.log('📥 [PerformanceTracker] ========================================')
+    
+    if (!databaseMetrics) {
+      console.log('📥 [PerformanceTracker] No database metrics provided, keeping current values')
+      return
+    }
+    
+    // Load database values into local metrics
+    // Note: Database stores times in MINUTES, we need SECONDS
+    this.metrics.mouseMovements = databaseMetrics.mouseMovements || 0
+    this.metrics.mouseClicks = databaseMetrics.mouseClicks || 0
+    this.metrics.keystrokes = databaseMetrics.keystrokes || 0
+    this.metrics.activeTime = (databaseMetrics.activeTime || 0) // Already in seconds from API
+    this.metrics.idleTime = (databaseMetrics.idleTime || 0) // Already in seconds from API
+    this.metrics.screenTime = (databaseMetrics.screenTime || 0) // Already in seconds from API
+    this.metrics.downloads = databaseMetrics.downloads || 0
+    this.metrics.uploads = databaseMetrics.uploads || 0
+    this.metrics.bandwidth = databaseMetrics.bandwidth || 0
+    this.metrics.clipboardActions = databaseMetrics.clipboardActions || 0
+    this.metrics.filesAccessed = databaseMetrics.filesAccessed || 0
+    this.metrics.urlsVisited = databaseMetrics.urlsVisited || 0
+    this.metrics.tabsSwitched = databaseMetrics.tabsSwitched || 0
+    this.metrics.productivityScore = databaseMetrics.productivityScore || 0
+    
+    // Load arrays
+    if (databaseMetrics.applicationsUsed && Array.isArray(databaseMetrics.applicationsUsed)) {
+      this.activeApps = new Set(databaseMetrics.applicationsUsed)
+      this.metrics.applicationsUsed = databaseMetrics.applicationsUsed
+    }
+    
+    if (databaseMetrics.visitedUrls && Array.isArray(databaseMetrics.visitedUrls)) {
+      this.visitedUrls = new Set(databaseMetrics.visitedUrls)
+    }
+    
+    this.metrics.lastUpdated = Date.now()
+    
+    console.log('📥 [PerformanceTracker] Loaded from database:')
+    console.log(`   🖱️  Mouse: ${this.metrics.mouseMovements} movements, ${this.metrics.mouseClicks} clicks`)
+    console.log(`   ⌨️  Keystrokes: ${this.metrics.keystrokes}`)
+    console.log(`   ⏱️  Active Time: ${Math.floor(this.metrics.activeTime / 60)} minutes`)
+    console.log('📥 [PerformanceTracker] ========================================')
+    console.log('📥 [PerformanceTracker] Local metrics now initialized with database baseline')
+    console.log('📥 [PerformanceTracker] New activity will be added on top of these values')
+    console.log('📥 [PerformanceTracker] ========================================')
+  }
+
+  /**
+   * Reset metrics (called on clock-in or at midnight)
    */
   resetMetrics() {
-    this.log('Resetting daily metrics')
+    console.log('🔄 [PerformanceTracker] ========================================')
+    console.log('🔄 [PerformanceTracker] RESETTING PERFORMANCE METRICS')
+    console.log('🔄 [PerformanceTracker] ========================================')
+    
+    // Completely reinitialize metrics to zero
     this.metrics = this.initializeMetrics()
+    
+    // Clear tracked state
     this.activeApps.clear()
+    this.visitedUrls.clear()
+    
+    // Reset timestamps
     this.sessionStartTime = Date.now()
+    this.lastActivityTime = Date.now()
+    this.lastIdleCheck = Date.now()
+    
+    // Reset current state
+    this.currentApp = null
+    this.currentUrl = null
+    this.lastClipboardContent = ''
+    
+    console.log('🔄 [PerformanceTracker] Metrics reset complete - all counters at zero')
+    console.log('🔄 [PerformanceTracker] Activity Tracker will now populate fresh metrics')
   }
 
   /**

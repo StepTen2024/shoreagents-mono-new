@@ -57,6 +57,12 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Stop sync service
     stop: () => ipcRenderer.invoke('stop-sync-service'),
+    
+    // Reset metrics and sync state (call on clock-in)
+    reset: () => ipcRenderer.invoke('reset-metrics'),
+    
+    // Load metrics from database (call when dashboard opens after logout/login)
+    loadFromDatabase: (databaseMetrics) => ipcRenderer.invoke('load-metrics-from-database', databaseMetrics),
   },
   
   // Break Handler API
@@ -162,10 +168,41 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Manually capture screenshot from clipboard
     captureNow: () => ipcRenderer.invoke('screenshot:capture-now'),
+    
+    // Run screenshot diagnostic
+    runDiagnostic: () => ipcRenderer.invoke('screenshot:run-diagnostic'),
+  },
+  
+  // Auto-Updater API
+  updater: {
+    // Check for updates
+    checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+    
+    // Download update
+    downloadUpdate: () => ipcRenderer.invoke('updater:download-update'),
+    
+    // Quit and install update
+    quitAndInstall: () => ipcRenderer.invoke('updater:quit-and-install'),
+    
+    // Listen for update status changes
+    onUpdateStatus: (callback) => {
+      const subscription = (event, data) => callback(data)
+      ipcRenderer.on('update-status', subscription)
+      
+      return () => {
+        ipcRenderer.removeListener('update-status', subscription)
+      }
+    },
   },
   
   // Utility to check if running in Electron
   isElectron: true,
+  
+  // Debug/Admin API
+  debug: {
+    // Clear all cookies (for fixing auth issues)
+    clearCookies: () => ipcRenderer.invoke('clear-cookies'),
+  },
 })
 
 console.log('[Preload] Electron APIs exposed to renderer')

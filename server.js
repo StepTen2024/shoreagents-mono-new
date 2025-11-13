@@ -57,9 +57,14 @@ app.prepare().then(() => {
     path: '/api/socketio',
     addTrailingSlash: false,
     cors: {
-      origin: dev ? ['http://localhost:3000'] : false,
-      methods: ['GET', 'POST']
+      origin: dev 
+        ? ['http://localhost:3000']
+        : ['https://shoreagents-mono-new-production.up.railway.app', 'https://shoreagents.ai'],
+      methods: ['GET', 'POST'],
+      credentials: true
     },
+    transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
+    allowEIO3: true
   })
 
   // Make socket server globally accessible

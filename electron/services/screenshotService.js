@@ -1,9 +1,12 @@
 /**
  * Screenshot Service
- * Automatically captures screenshots from all displays every 10 seconds
+ * Automatically captures screenshots:
+ * - Every 1 minute (scheduled)
+ * - When user is inactive for 30+ seconds
  */
 
-const { screen, desktopCapturer } = require('electron')
+const { screen, desktopCapturer, net } = require('electron')
+const FormData = require('form-data') // Node.js FormData (not browser FormData)
 
 class ScreenshotService {
   constructor() {
@@ -13,6 +16,7 @@ class ScreenshotService {
     this.screenshotCount = 0
     this.captureInterval = null
     this.isProcessing = false
+    this.captureIntervalMs = 60000 // 1 minute
   }
 
   /**
@@ -25,7 +29,7 @@ class ScreenshotService {
   }
 
   /**
-   * Start screenshot capture on inactivity detection
+   * Start screenshot capture (scheduled + inactivity-based)
    */
   async start(sessionToken) {
     if (this.isEnabled) {
@@ -33,12 +37,26 @@ class ScreenshotService {
       return
     }
 
-    console.log('[ScreenshotService] Starting inactivity-based screenshot capture')
+    console.log('[ScreenshotService] Starting screenshot capture service')
     this.isEnabled = true
     this.sessionToken = sessionToken
     this.screenshotCount = 0
 
-    console.log('[ScreenshotService] Screenshot capture enabled - will capture when user is inactive (30+ seconds)')
+    // Capture immediately on start
+    console.log('[ScreenshotService] 📸 Capturing initial screenshot...')
+    await this.captureAllScreens('initial')
+
+    // Set up scheduled capture every 1 minute
+    this.captureInterval = setInterval(async () => {
+      if (this.isEnabled) {
+        console.log('[ScreenshotService] ⏰ Scheduled capture triggered (1 minute interval)')
+        await this.captureAllScreens('scheduled')
+      }
+    }, this.captureIntervalMs)
+
+    console.log('[ScreenshotService] ✅ Screenshot capture enabled:')
+    console.log('   📅 Scheduled: Every 1 minute')
+    console.log('   ⚠️  Inactivity: When idle for 30+ seconds')
   }
 
   /**
@@ -50,14 +68,15 @@ class ScreenshotService {
       return
     }
 
-    console.log('[ScreenshotService] Inactivity detected - capturing screenshots')
-    await this.captureAllScreens()
+    console.log('[ScreenshotService] ⚠️  Inactivity detected - capturing screenshots')
+    await this.captureAllScreens('inactivity')
   }
 
   /**
    * Capture screenshots from all displays
+   * @param {string} captureType - Type of capture: 'scheduled', 'inactivity', or 'initial'
    */
-  async captureAllScreens() {
+  async captureAllScreens(captureType = 'manual') {
     if (this.isProcessing) {
       console.log('[ScreenshotService] Still processing previous capture, skipping...')
       return
@@ -67,7 +86,8 @@ class ScreenshotService {
 
     try {
       const displays = screen.getAllDisplays()
-      console.log(`[ScreenshotService] Capturing ${displays.length} display(s)`)
+      const typeEmoji = captureType === 'scheduled' ? '⏰' : captureType === 'inactivity' ? '⚠️' : '📸'
+      console.log(`[ScreenshotService] ${typeEmoji} Capturing ${displays.length} display(s) (${captureType})`)
       
       // Capture each display
       const capturePromises = displays.map((display, index) => 
@@ -76,7 +96,7 @@ class ScreenshotService {
       
       await Promise.all(capturePromises)
       
-      console.log(`[ScreenshotService] Capture cycle complete (total screenshots: ${this.screenshotCount})`)
+      console.log(`[ScreenshotService] ✅ Capture cycle complete (total screenshots: ${this.screenshotCount})`)
     } catch (err) {
       console.error('[ScreenshotService] Error capturing screens:', err)
     } finally {
@@ -148,48 +168,94 @@ class ScreenshotService {
   }
 
   /**
-   * Upload screenshot to server
+   * Upload screenshot to server using Electron's net module (Node.js compatible)
    */
   async uploadScreenshot(imageBuffer, filename, timestamp) {
-    try {
-      // Create FormData with the image
-      const formData = new FormData()
-      const mimeType = filename.endsWith('.jpg') ? 'image/jpeg' : 'image/png'
-      const blob = new Blob([imageBuffer], { type: mimeType })
-      formData.append('screenshot', blob, filename)
-      formData.append('timestamp', timestamp.toString())
+    return new Promise((resolve, reject) => {
+      try {
+        const sizeKB = (imageBuffer.length / 1024).toFixed(1)
+        console.log(`[Screenshots API] Uploading screenshot: ${filename} (${sizeKB} KB)`)
+        
+        // Create Node.js FormData
+        const formData = new FormData()
+        const mimeType = filename.endsWith('.jpg') ? 'image/jpeg' : 'image/png'
+        
+        // Append the buffer directly (Node.js FormData can handle buffers)
+        formData.append('screenshot', imageBuffer, {
+          filename: filename,
+          contentType: mimeType
+        })
+        formData.append('timestamp', timestamp.toString())
 
-      const sizeKB = (imageBuffer.length / 1024).toFixed(1)
-      console.log(`[Screenshots API] Uploading screenshot: ${filename} (${sizeKB} KB)`)
+        // Use Electron's net module for HTTP request
+        const request = net.request({
+          method: 'POST',
+          url: `${this.apiUrl}/api/screenshots`
+        })
 
-      const response = await fetch(`${this.apiUrl}/api/screenshots`, {
-        method: 'POST',
-        headers: {
-          'Cookie': this.sessionToken ? `authjs.session-token=${this.sessionToken}` : ''
-        },
-        body: formData
-      })
+        // Set cookie header if we have a session token
+        if (this.sessionToken) {
+          request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
+        }
 
-      if (!response.ok) {
-        const error = await response.text()
-        throw new Error(`Upload failed: ${response.status} - ${error}`)
+        // Set form-data headers (including boundary)
+        const headers = formData.getHeaders()
+        Object.keys(headers).forEach(key => {
+          request.setHeader(key, headers[key])
+        })
+
+        let responseData = ''
+
+        request.on('response', (response) => {
+          console.log(`[Screenshots API] Response status: ${response.statusCode}`)
+
+          response.on('data', (chunk) => {
+            responseData += chunk.toString()
+          })
+
+          response.on('end', () => {
+            if (response.statusCode >= 200 && response.statusCode < 300) {
+              try {
+                const result = JSON.parse(responseData)
+                console.log(`[Screenshots API] ✅ Upload successful: ${filename} (saved ${sizeKB} KB)`)
+                resolve(result)
+              } catch (parseError) {
+                console.error('[Screenshots API] Error parsing response:', parseError)
+                resolve({ success: true }) // Still consider it success if upload worked
+              }
+            } else {
+              console.error(`[Screenshots API] ❌ Upload failed: ${response.statusCode}`)
+              console.error(`[Screenshots API] Error response: ${responseData}`)
+              reject(new Error(`Upload failed: ${response.statusCode} - ${responseData}`))
+            }
+          })
+
+          response.on('error', (error) => {
+            console.error('[Screenshots API] Response error:', error)
+            reject(error)
+          })
+        })
+
+        request.on('error', (error) => {
+          console.error('[Screenshots API] Request error:', error)
+          reject(error)
+        })
+
+        // Write the form data to the request
+        formData.pipe(request)
+
+      } catch (error) {
+        console.error('[ScreenshotService] Upload error:', error)
+        reject(error)
       }
-
-      const result = await response.json()
-      console.log(`[Screenshots API] Upload successful: ${filename} (saved ${sizeKB} KB)`)
-      
-      return result
-    } catch (error) {
-      console.error('[ScreenshotService] Upload error:', error)
-      throw error
-    }
+    })
   }
 
   /**
    * Manually trigger capture now
    */
   async captureNow() {
-    await this.captureAllScreens()
+    await this.captureAllScreens('manual')
     return { 
       success: true, 
       message: 'Screenshot capture triggered',
@@ -203,7 +269,9 @@ class ScreenshotService {
   getStatus() {
     return {
       isEnabled: this.isEnabled,
-      mode: 'inactivity', // Triggers on 30+ seconds of inactivity
+      mode: 'hybrid', // Scheduled (1 min) + Inactivity (30+ sec)
+      scheduledInterval: `${this.captureIntervalMs / 1000} seconds`,
+      inactivityTrigger: '30+ seconds',
       screenshotCount: this.screenshotCount,
       hasSessionToken: !!this.sessionToken,
       isMonitoring: this.isEnabled,
@@ -217,6 +285,13 @@ class ScreenshotService {
   stop() {
     console.log('[ScreenshotService] Stopping screenshot capture')
     this.isEnabled = false
+    
+    // Clear scheduled capture interval
+    if (this.captureInterval) {
+      clearInterval(this.captureInterval)
+      this.captureInterval = null
+      console.log('[ScreenshotService] Scheduled capture interval cleared')
+    }
   }
 
   /**

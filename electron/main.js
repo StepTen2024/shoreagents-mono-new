@@ -9,14 +9,19 @@ const activityTracker = require('./activity-tracker')
 const screenshotService = require('./services/screenshotService')
 const permissions = require('./utils/permissions')
 const config = require('./config/trackerConfig')
+const autoUpdater = require('./services/autoUpdater')
 
 let mainWindow = null
 let tray = null
 
 function createWindow() {
+  // Set window icon
+  const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -33,8 +38,22 @@ function createWindow() {
     mainWindow.loadURL("http://localhost:3000") // Next.js dev server
     mainWindow.webContents.openDevTools()
   } else {
-    console.log('[Main] Loading from production build')
-    mainWindow.loadFile(path.join(__dirname, "../out/index.html"))
+    // Production: Load from Railway server
+    const productionUrl = config.API_BASE_URL
+    console.log('[Main] ========================================')
+    console.log('[Main] LOADING PRODUCTION APP')
+    console.log('[Main] Production URL:', productionUrl)
+    console.log('[Main] API_BASE_URL from config:', productionUrl)
+    console.log('[Main] process.env.API_BASE_URL:', process.env.API_BASE_URL)
+    console.log('[Main] ========================================')
+    
+    // Load with proper user agent
+    mainWindow.loadURL(productionUrl, {
+      userAgent: 'ShoreAgentsAI-Desktop/1.0.0 (Electron)'
+    })
+    
+    // Open dev tools in production to debug
+    mainWindow.webContents.openDevTools()
   }
 
   // Prevent window from closing, hide instead
@@ -46,11 +65,71 @@ function createWindow() {
   })
 
   // Window ready
-  mainWindow.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-finish-load', async () => {
     console.log('[Main] Window loaded successfully')
     
     // Send tracking status to renderer
     mainWindow.webContents.send('tracking-status', performanceTracker.getStatus())
+    
+    // Check for session cookie after page load (in case user just logged in)
+    setTimeout(async () => {
+      try {
+        const cookies = await mainWindow.webContents.session.cookies.get({
+          url: config.API_BASE_URL
+        })
+        
+        const sessionCookie = cookies.find(c => 
+          c.name === 'authjs.session-token' || 
+          c.name === 'next-auth.session-token' ||
+          c.name === '__Secure-authjs.session-token' ||
+          c.name === '__Secure-next-auth.session-token'
+        )
+        
+        if (sessionCookie) {
+          console.log('[Main] 🔄 Updating session token in sync service')
+          syncService.setSessionToken(sessionCookie.value)
+        }
+      } catch (err) {
+        console.error('[Main] Error updating session cookie:', err)
+      }
+    }, 2000) // Wait 2 seconds for cookies to be set
+  })
+  
+  // Handle loading errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('[Main] Failed to load:', errorDescription)
+    console.error('[Main] Error code:', errorCode)
+    console.error('[Main] URL:', validatedURL)
+    
+    // If loading failed, try to reload after a delay
+    if (errorCode !== -3) { // -3 is ERR_ABORTED which is normal for navigation
+      console.log('[Main] Retrying in 3 seconds...')
+      setTimeout(() => {
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.reload()
+        }
+      }, 3000)
+    }
+  })
+  
+  // Log console messages from the renderer
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer Console] ${message}`)
+  })
+  
+  // Check what content is being loaded
+  mainWindow.webContents.on('dom-ready', () => {
+    console.log('[Main] DOM is ready')
+    console.log('[Main] Current URL:', mainWindow.webContents.getURL())
+    
+    // Check if page shows error
+    mainWindow.webContents.executeJavaScript(`
+      document.body.innerText.substring(0, 200)
+    `).then(text => {
+      console.log('[Main] Page content preview:', text)
+    }).catch(err => {
+      console.error('[Main] Could not read page content:', err)
+    })
   })
   
   // Listen for URL changes to detect user type changes
@@ -109,8 +188,9 @@ function createWindow() {
 }
 
 function createTray() {
-  // Create a simple icon (1x1 transparent pixel as fallback)
-  const icon = nativeImage.createEmpty()
+  // Use the app icon for system tray
+  const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon)
   
   const contextMenu = Menu.buildFromTemplate([
@@ -118,8 +198,18 @@ function createTray() {
       label: 'Show Dashboard',
       click: () => {
         if (mainWindow) {
+          // Restore if minimized
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
           mainWindow.show()
           mainWindow.focus()
+          
+          // Bring to front on Windows
+          if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(true)
+            mainWindow.setAlwaysOnTop(false)
+          }
         }
       }
     },
@@ -173,14 +263,31 @@ function createTray() {
   tray.setToolTip('Staff Monitor')
   tray.setContextMenu(contextMenu)
   
-  // Click to show window
+  // Click to toggle window visibility
   tray.on('click', () => {
     if (mainWindow) {
-      if (mainWindow.isVisible()) {
+      if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
+        // Window is visible and not minimized - hide it
+        console.log('[Main] Tray clicked - hiding window')
         mainWindow.hide()
       } else {
+        // Window is hidden or minimized - restore and show it
+        console.log('[Main] Tray clicked - showing window')
+        
+        // Restore if minimized
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore()
+        }
+        
+        // Show and focus
         mainWindow.show()
         mainWindow.focus()
+        
+        // Bring to front on Windows
+        if (process.platform === 'win32') {
+          mainWindow.setAlwaysOnTop(true)
+          mainWindow.setAlwaysOnTop(false)
+        }
       }
     }
   })
@@ -199,8 +306,18 @@ function updateTrayMenu() {
       label: 'Show Dashboard',
       click: () => {
         if (mainWindow) {
+          // Restore if minimized
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
           mainWindow.show()
           mainWindow.focus()
+          
+          // Bring to front on Windows
+          if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(true)
+            mainWindow.setAlwaysOnTop(false)
+          }
         }
       }
     },
@@ -311,8 +428,18 @@ function updateTrayMenuForClient() {
       label: 'Show Dashboard',
       click: () => {
         if (mainWindow) {
+          // Restore if minimized
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
           mainWindow.show()
           mainWindow.focus()
+          
+          // Bring to front on Windows
+          if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(true)
+            mainWindow.setAlwaysOnTop(false)
+          }
         }
       }
     },
@@ -399,42 +526,68 @@ async function initializeTracking() {
   activityTracker.startTracking()
   console.log('[Main] Activity tracking started (integrated with performance tracker and screenshot service)')
   
-  // Start sync service (it will automatically get session cookie from Electron's cookie store)
-  syncService.start()
-  console.log('[Main] Sync service started')
-  
-  // Initialize screenshot service (detection mode)
-  await screenshotService.initialize({
-    apiUrl: 'http://localhost:3000'
-  })
-  console.log('[Main] Screenshot service initialized (detection mode)')
-  
-  // Start screenshot capture (will try to get session token from cookies)
+  // Get session cookie for sync service and screenshot service
   try {
-    const cookies = await mainWindow.webContents.session.cookies.get({})
+    const cookies = await mainWindow.webContents.session.cookies.get({
+      url: config.API_BASE_URL
+    })
+    
+    console.log('[Main] 🔍 Looking for session cookie...')
+    console.log('[Main] Available cookies:', cookies.map(c => c.name).join(', '))
+    
     const sessionCookie = cookies.find(c => 
       c.name === 'authjs.session-token' || 
-      c.name === 'next-auth.session-token'
+      c.name === 'next-auth.session-token' ||
+      c.name === '__Secure-authjs.session-token' ||
+      c.name === '__Secure-next-auth.session-token'
     )
+    
     if (sessionCookie) {
+      console.log(`[Main] ✅ Found session cookie: ${sessionCookie.name}`)
+      
+      // Start sync service with session token
+      syncService.start(sessionCookie.value)
+      console.log('[Main] Sync service started with authentication')
+      
+      // Initialize and start screenshot service
+      await screenshotService.initialize({
+        apiUrl: config.API_BASE_URL
+      })
       await screenshotService.start(sessionCookie.value)
-      console.log('[Main] Screenshot service started')
+      console.log('[Main] Screenshot service started with authentication')
+    } else {
+      console.warn('[Main] ⚠️  No session cookie found - services will start but may fail authentication')
+      console.warn('[Main] User needs to login first')
+      
+      // Start services anyway - they'll get the cookie after login
+      syncService.start()
+      console.log('[Main] Sync service started (waiting for authentication)')
+      
+      await screenshotService.initialize({
+        apiUrl: config.API_BASE_URL
+      })
+      console.log('[Main] Screenshot service initialized (waiting for authentication)')
     }
   } catch (err) {
-    console.error('[Main] Error starting screenshot service:', err)
+    console.error('[Main] Error starting services:', err)
+    // Start services anyway
+    syncService.start()
+    await screenshotService.initialize({
+      apiUrl: config.API_BASE_URL
+    })
   }
   
   // Update tray menu with current status
   updateTrayMenu()
   
-  // Send metrics to renderer every 5 seconds
+  // Send metrics to renderer every 1 second (for real-time active time display)
   setInterval(() => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const metrics = performanceTracker.getMetrics()
       const status = performanceTracker.getStatus()
       mainWindow.webContents.send('metrics-update', { metrics, status })
     }
-  }, 5000)
+  }, 1000) // 1 second for smooth active time updates
 }
 
 // Setup IPC handlers
@@ -476,8 +629,15 @@ function setupIPC() {
   
   // Force sync
   ipcMain.handle('force-sync', async () => {
-    await syncService.forcSync()
+    await syncService.forceSync()
     return syncService.getStatus()
+  })
+  
+  // Load metrics from database (for baseline after logout/login)
+  ipcMain.handle('load-metrics-from-database', async (event, databaseMetrics) => {
+    console.log('[Main] Loading metrics from database into performance tracker')
+    await performanceTracker.loadFromDatabase(databaseMetrics)
+    return { success: true }
   })
   
   // Start sync service with session token
@@ -491,6 +651,49 @@ function setupIPC() {
   ipcMain.handle('stop-sync-service', () => {
     syncService.stop()
     return { success: true }
+  })
+  
+  // Reset metrics and sync state (called on clock-in)
+  ipcMain.handle('reset-metrics', () => {
+    console.log('🔄 [Main] ============================================================')
+    console.log('🔄 [Main] CLOCK-IN DETECTED - RESETTING ALL TRACKING SYSTEMS')
+    console.log('🔄 [Main] ============================================================')
+    
+    // Reset performance tracker (sets all metrics to zero)
+    performanceTracker.resetMetrics()
+    
+    // Reset sync service (clears last synced snapshot, forces fresh baseline)
+    syncService.reset()
+    
+    // Reset activity tracker (clears activity timestamps and state)
+    activityTracker.reset()
+    
+    console.log('🔄 [Main] ============================================================')
+    console.log('🔄 [Main] ALL SYSTEMS RESET - READY FOR NEW SESSION')
+    console.log('🔄 [Main] ============================================================')
+    
+    return { success: true, message: 'All tracking systems reset successfully' }
+  })
+  
+  // Clear all cookies (for debugging auth issues)
+  ipcMain.handle('clear-cookies', async () => {
+    try {
+      const { session } = require('electron')
+      const cookies = await session.defaultSession.cookies.get({})
+      console.log(`[Main] Clearing ${cookies.length} cookies...`)
+      
+      for (const cookie of cookies) {
+        const url = `${cookie.secure ? 'https' : 'http'}://${cookie.domain}${cookie.path}`
+        await session.defaultSession.cookies.remove(url, cookie.name)
+        console.log(`[Main] ❌ Removed cookie: ${cookie.name} from ${cookie.domain}`)
+      }
+      
+      console.log('[Main] ✅ All cookies cleared!')
+      return { success: true, cleared: cookies.length }
+    } catch (error) {
+      console.error('[Main] Error clearing cookies:', error)
+      return { success: false, error: error.message }
+    }
   })
   
   // Get break status
@@ -578,7 +781,111 @@ function setupIPC() {
     return await screenshotService.captureNow()
   })
   
+  // Screenshot diagnostic
+  ipcMain.handle('screenshot:run-diagnostic', async () => {
+    const { runDiagnostic } = require('./utils/screenshotDiagnostic')
+    return await runDiagnostic()
+  })
+  
+  // Auto-updater handlers
+  ipcMain.handle('updater:check-for-updates', async () => {
+    return await autoUpdater.checkForUpdates()
+  })
+  
+  ipcMain.handle('updater:download-update', async () => {
+    return await autoUpdater.downloadUpdate()
+  })
+  
+  ipcMain.handle('updater:quit-and-install', () => {
+    console.log('[Main] Preparing to quit and install update...')
+    
+    // Set quitting flag
+    app.isQuitting = true
+    
+    // Stop all services
+    console.log('[Main] Stopping all services...')
+    try {
+      performanceTracker.stop()
+      syncService.stop()
+      activityTracker.destroy()
+      screenshotService.destroy()
+      autoUpdater.destroy()
+    } catch (error) {
+      console.error('[Main] Error stopping services:', error)
+    }
+    
+    // Destroy system tray
+    if (tray) {
+      try {
+        tray.destroy()
+        tray = null
+        console.log('[Main] System tray destroyed')
+      } catch (error) {
+        console.error('[Main] Error destroying tray:', error)
+      }
+    }
+    
+    // Close all windows
+    BrowserWindow.getAllWindows().forEach(win => {
+      try {
+        win.destroy()
+      } catch (error) {
+        console.error('[Main] Error closing window:', error)
+      }
+    })
+    
+    // Give time for cleanup, then install
+    setTimeout(() => {
+      console.log('[Main] Installing update...')
+      autoUpdater.quitAndInstall()
+    }, 500)
+    
+    return { success: true }
+  })
+  
   console.log('[Main] IPC handlers registered')
+}
+
+// ============================================================================
+// SINGLE INSTANCE LOCK - Prevent multiple app instances
+// ============================================================================
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // Another instance is already running, quit this one
+  console.log('[Main] Another instance is already running. Quitting...')
+  app.quit()
+} else {
+  // This is the first instance
+  // Handle attempts to create a second instance
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    console.log('[Main] ============================================================')
+    console.log('[Main] Second instance detected - restoring existing window')
+    console.log('[Main] ============================================================')
+    
+    // Someone tried to run a second instance, restore our window instead
+    if (mainWindow) {
+      // If window is minimized, restore it
+      if (mainWindow.isMinimized()) {
+        console.log('[Main] Restoring minimized window')
+        mainWindow.restore()
+      }
+      
+      // Show and focus the window
+      console.log('[Main] Showing and focusing window')
+      mainWindow.show()
+      mainWindow.focus()
+      
+      // Bring to front on Windows
+      if (process.platform === 'win32') {
+        mainWindow.setAlwaysOnTop(true)
+        mainWindow.setAlwaysOnTop(false)
+      }
+    } else {
+      console.log('[Main] Main window not available, creating new window')
+      createWindow()
+    }
+  })
 }
 
 // App lifecycle
@@ -593,6 +900,9 @@ app.whenReady().then(async () => {
   
   // Create system tray
   createTray()
+  
+  // Initialize auto-updater (works in both staff and client modes)
+  autoUpdater.initialize(mainWindow)
   
   // Initialize tracking services
   await initializeTracking()
@@ -624,6 +934,7 @@ app.on('before-quit', () => {
   syncService.stop()
   activityTracker.destroy()
   screenshotService.destroy()
+  autoUpdater.destroy()
 })
 
 // Handle crashes and errors
