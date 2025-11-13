@@ -629,8 +629,15 @@ function setupIPC() {
   
   // Force sync
   ipcMain.handle('force-sync', async () => {
-    await syncService.forcSync()
+    await syncService.forceSync()
     return syncService.getStatus()
+  })
+  
+  // Load metrics from database (for baseline after logout/login)
+  ipcMain.handle('load-metrics-from-database', async (event, databaseMetrics) => {
+    console.log('[Main] Loading metrics from database into performance tracker')
+    await performanceTracker.loadFromDatabase(databaseMetrics)
+    return { success: true }
   })
   
   // Start sync service with session token

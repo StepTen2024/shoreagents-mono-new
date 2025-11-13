@@ -94,6 +94,18 @@ export default function PerformanceDashboard() {
       setMetrics(data.metrics)
       setTodayMetrics(data.today || null)
       setTotalScreenshots(data.totalScreenshots || 0)
+      
+      // If in Electron and we have today's metrics, load them into Electron's local tracker
+      // This initializes Electron with database baseline so it continues from there instead of 0
+      if (window.electron?.sync?.loadFromDatabase && data.today) {
+        try {
+          console.log('[Dashboard] Loading database metrics into Electron for live tracking baseline')
+          await window.electron.sync.loadFromDatabase(data.today)
+          console.log('[Dashboard] ✅ Electron metrics initialized with database values')
+        } catch (loadError) {
+          console.error('[Dashboard] Failed to load metrics into Electron:', loadError)
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load performance data")
     } finally {
@@ -176,11 +188,13 @@ export default function PerformanceDashboard() {
     )
   }
 
-  // Use live metrics if available in Electron, otherwise use todayMetrics
-  // BUT always use todayMetrics for screenshotCount (managed by screenshot service, not Electron)
+  // Use live metrics if available (now properly initialized with database baseline)
+  // Otherwise fallback to database metrics
+  // Live metrics = database baseline + current session activity (real-time!)
   const displayMetrics = (isElectron && liveMetrics) 
     ? { ...liveMetrics, screenshotCount: todayMetrics?.screenshotCount || 0 }
     : todayMetrics
+  
   const productivity = displayMetrics ? calculateProductivityScore(displayMetrics) : 0
 
   return (

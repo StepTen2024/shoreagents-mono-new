@@ -60,6 +60,9 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Reset metrics and sync state (call on clock-in)
     reset: () => ipcRenderer.invoke('reset-metrics'),
+    
+    // Load metrics from database (call when dashboard opens after logout/login)
+    loadFromDatabase: (databaseMetrics) => ipcRenderer.invoke('load-metrics-from-database', databaseMetrics),
   },
   
   // Break Handler API
