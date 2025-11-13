@@ -18,22 +18,12 @@ directories:
   output: dist
 
 # Files to include in build
-# Only include Electron files and essential node_modules
-# Since app loads from Railway, we don't need Next.js dependencies
 files:
   - "electron/**/*"
+  - "node_modules/**/*"
+  - "!node_modules/.cache"
   - "package.json"
   - "build/**/*"
-  # Only include Electron-specific dependencies
-  - "node_modules/electron-updater/**/*"
-  - "node_modules/electron-log/**/*"
-  - "node_modules/uiohook-napi/**/*"
-  - "node_modules/@paulcbetts/**/*"
-  - "node_modules/active-win/**/*"
-  - "node_modules/clipboardy/**/*"
-  # Include required runtime dependencies
-  - "node_modules/builder-util-runtime/**/*"
-  - "!node_modules/.cache"
 
 # Exclude files (reduce bundle size)
 # Don't include Next.js files - Electron connects to Railway
@@ -52,9 +42,6 @@ win:
   icon: build/shoreagents-icon.png
   artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   
-# Compression settings (reduce file size significantly)
-compression: maximum
-
 # Windows installer configuration (NSIS)
 nsis:
   oneClick: false
@@ -66,8 +53,6 @@ nsis:
   # license: LICENSE  # Commented out if LICENSE file doesn't exist
   artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   deleteAppDataOnUninstall: false
-  # Differential updates for faster incremental updates
-  differentialPackage: true
 
 # Environment variables to embed in build
 # Set these when building for production
