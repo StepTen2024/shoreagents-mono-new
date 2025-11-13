@@ -181,14 +181,13 @@ class AutoUpdaterService {
   
   /**
    * Quit and install the update
+   * Note: Cleanup is handled in main.js IPC handler
    */
   quitAndInstall() {
-    console.log('[AutoUpdater] Quitting and installing update...')
-    
-    // Set a flag to prevent the window close handler from interfering
-    app.isQuitting = true
+    console.log('[AutoUpdater] Installing update...')
     
     // Install the update (will quit and restart the app)
+    // false = don't restart immediately, true = force run after install
     autoUpdater.quitAndInstall(false, true)
   }
   

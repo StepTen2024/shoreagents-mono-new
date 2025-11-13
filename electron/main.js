@@ -715,7 +715,49 @@ function setupIPC() {
   })
   
   ipcMain.handle('updater:quit-and-install', () => {
-    autoUpdater.quitAndInstall()
+    console.log('[Main] Preparing to quit and install update...')
+    
+    // Set quitting flag
+    app.isQuitting = true
+    
+    // Stop all services
+    console.log('[Main] Stopping all services...')
+    try {
+      performanceTracker.stop()
+      syncService.stop()
+      activityTracker.destroy()
+      screenshotService.destroy()
+      autoUpdater.destroy()
+    } catch (error) {
+      console.error('[Main] Error stopping services:', error)
+    }
+    
+    // Destroy system tray
+    if (tray) {
+      try {
+        tray.destroy()
+        tray = null
+        console.log('[Main] System tray destroyed')
+      } catch (error) {
+        console.error('[Main] Error destroying tray:', error)
+      }
+    }
+    
+    // Close all windows
+    BrowserWindow.getAllWindows().forEach(win => {
+      try {
+        win.destroy()
+      } catch (error) {
+        console.error('[Main] Error closing window:', error)
+      }
+    })
+    
+    // Give time for cleanup, then install
+    setTimeout(() => {
+      console.log('[Main] Installing update...')
+      autoUpdater.quitAndInstall()
+    }, 500)
+    
     return { success: true }
   })
   
