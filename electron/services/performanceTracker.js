@@ -618,10 +618,17 @@ class PerformanceTracker {
     console.log('📥 [PerformanceTracker] Local metrics now initialized with database baseline')
     console.log('📥 [PerformanceTracker] New activity will be added on top of these values')
     console.log('📥 [PerformanceTracker] ========================================')
+    
+    // 🔧 CRITICAL: Also reset sync service to prevent negative deltas!
+    // When we load a new baseline, the sync service must forget old values
+    const syncService = require('./syncService')
+    syncService.reset()
+    console.log('📥 [PerformanceTracker] ✅ Sync service reset to match new baseline')
   }
 
   /**
-   * Reset metrics (called on clock-in or at midnight)
+   * Reset metrics (called ONLY on clock-in)
+   * Note: NO automatic midnight reset - supports night shifts that cross midnight!
    */
   resetMetrics() {
     console.log('🔄 [PerformanceTracker] ========================================')
@@ -647,16 +654,6 @@ class PerformanceTracker {
     
     console.log('🔄 [PerformanceTracker] Metrics reset complete - all counters at zero')
     console.log('🔄 [PerformanceTracker] Activity Tracker will now populate fresh metrics')
-  }
-
-  /**
-   * Check if it's time to reset (midnight)
-   */
-  shouldResetMetrics() {
-    const now = new Date()
-    const lastUpdate = new Date(this.metrics.lastUpdated)
-    
-    return now.getDate() !== lastUpdate.getDate()
   }
 
   /**
