@@ -288,7 +288,7 @@ export function UpdateNotification() {
       <CardHeader>
         <CardTitle className="text-slate-300">Software Updates</CardTitle>
         <CardDescription>
-          Stay up to date with bug fixes and new features
+          Click below to check now for the latest features, performance improvements, and security patches.
         </CardDescription>
       </CardHeader>
       <CardContent>
