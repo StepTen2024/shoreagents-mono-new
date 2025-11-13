@@ -774,6 +774,12 @@ function setupIPC() {
     return await screenshotService.captureNow()
   })
   
+  // Screenshot diagnostic
+  ipcMain.handle('screenshot:run-diagnostic', async () => {
+    const { runDiagnostic } = require('./utils/screenshotDiagnostic')
+    return await runDiagnostic()
+  })
+  
   // Auto-updater handlers
   ipcMain.handle('updater:check-for-updates', async () => {
     return await autoUpdater.checkForUpdates()
