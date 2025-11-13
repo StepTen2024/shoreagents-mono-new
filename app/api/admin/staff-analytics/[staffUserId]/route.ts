@@ -218,10 +218,12 @@ export async function GET(
     // Get screenshots
     const allScreenshots: any[] = []
     metrics.forEach((metric) => {
-      if (metric.screenshotUrls && Array.isArray(metric.screenshotUrls)) {
+      // Database column is lowercase: screenshoturls
+      const screenshots = (metric as any).screenshoturls
+      if (screenshots && Array.isArray(screenshots)) {
         allScreenshots.push(
-          ...metric.screenshotUrls.map((screenshotData: any) => ({
-            ...screenshotData,
+          ...screenshots.map((url: string) => ({
+            url: url,
             date: metric.shiftDate,
           }))
         )
