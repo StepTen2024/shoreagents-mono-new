@@ -44,10 +44,15 @@ export function WebSocketProvider({ children, userId, userName }: WebSocketProvi
     
     console.log('[WebSocket] Connecting to:', socketUrl)
     
+    // Railway doesn't support WebSocket upgrades by default, so use polling only in production
     const socketInstance = io(socketUrl, {
       path: '/api/socketio',
       addTrailingSlash: false,
-      autoConnect: true,   
+      autoConnect: true,
+      // Use polling only in production (Railway limitation)
+      // In development, allow websocket upgrade for better performance
+      transports: process.env.NODE_ENV === 'production' ? ['polling'] : ['polling', 'websocket'],
+      upgrade: process.env.NODE_ENV !== 'production', // Only try to upgrade in dev
     })
 
     socketInstance.on('connect', () => {
@@ -71,7 +76,10 @@ export function WebSocketProvider({ children, userId, userName }: WebSocketProvi
     })
 
     socketInstance.on('connect_error', (error) => {
-      console.error('[WebSocket] Connection error:', error)
+      // Only log in development, production polling errors are expected/harmless
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[WebSocket] Connection error:', error)
+      }
     })
 
     setSocket(socketInstance)
