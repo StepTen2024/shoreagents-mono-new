@@ -165,6 +165,9 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Manually capture screenshot from clipboard
     captureNow: () => ipcRenderer.invoke('screenshot:capture-now'),
+    
+    // Run screenshot diagnostic
+    runDiagnostic: () => ipcRenderer.invoke('screenshot:run-diagnostic'),
   },
   
   // Auto-Updater API
