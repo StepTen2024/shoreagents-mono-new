@@ -6,7 +6,7 @@
 
 module.exports = {
   // Tracking intervals (in milliseconds)
-  TRACKING_INTERVAL: 5000, // Collect metrics every 5 seconds
+  TRACKING_INTERVAL: 1000, // Collect metrics every 1 second (for real-time active time)
   SYNC_INTERVAL: 10000, // Sync to API every 10 seconds (real-time)
   
   // Idle detection

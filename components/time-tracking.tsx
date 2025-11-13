@@ -113,9 +113,11 @@ export default function TimeTracking() {
       if (!alreadySeen) {
         setLateMinutes(activeEntry.lateBy)
         setShowLateModal(true)
+        // Mark as seen immediately to prevent re-showing
+        localStorage.setItem(seenKey, 'true')
       }
     }
-  }, [isClockedIn, activeEntry?.wasLate || false, activeEntry?.lateBy || 0, activeEntry?.id])
+  }, [isClockedIn, activeEntry?.wasLate, activeEntry?.lateBy, activeEntry?.id])
 
   // Check for early clock-in and show modal
   useEffect(() => {
@@ -127,9 +129,11 @@ export default function TimeTracking() {
       if (!alreadySeen) {
         setEarlyMinutes(activeEntry.earlyBy)
         setShowEarlyModal(true)
+        // Mark as seen immediately to prevent re-showing
+        localStorage.setItem(seenKey, 'true')
       }
     }
-  }, [isClockedIn, activeEntry?.wasEarly || false, activeEntry?.earlyBy || 0, activeEntry?.id])
+  }, [isClockedIn, activeEntry?.wasEarly, activeEntry?.earlyBy, activeEntry?.id])
   
   // Auto clock-out effect - runs when clocked in
   useEffect(() => {
@@ -949,6 +953,11 @@ export default function TimeTracking() {
   }
 
   const formatHoursToHMS = (decimalHours: number) => {
+    // Handle negative or invalid values
+    if (!decimalHours || decimalHours < 0) {
+      return '0h 0m 0s'
+    }
+    
     const hours = Math.floor(decimalHours)
     const minutes = Math.floor((decimalHours - hours) * 60)
     const seconds = Math.floor(((decimalHours - hours) * 60 - minutes) * 60)
@@ -1593,7 +1602,7 @@ export default function TimeTracking() {
               </div>
             </div>
             <div className="text-3xl font-black text-white tabular-nums group-hover:scale-110 transition-transform">
-              {formatHoursToHMS(stats.today)}
+              {formatHoursToHMS(Math.max(0, stats.today || 0))}
             </div>
             <p className="text-xs text-indigo-300/70 mt-1">
               Hours worked today ⏰
@@ -1609,7 +1618,7 @@ export default function TimeTracking() {
               </div>
             </div>
             <div className="text-3xl font-black text-white tabular-nums group-hover:scale-110 transition-transform">
-              {formatHoursToHMS(stats.week)}
+              {formatHoursToHMS(Math.max(0, stats.week || 0))}
             </div>
             <p className="text-xs text-emerald-300/70 mt-1">
               Mon - Sun 📈
@@ -1625,7 +1634,7 @@ export default function TimeTracking() {
               </div>
             </div>
             <div className="text-3xl font-black text-white tabular-nums group-hover:scale-110 transition-transform">
-              {formatHoursToHMS(stats.month)}
+              {formatHoursToHMS(Math.max(0, stats.month || 0))}
             </div>
             <p className="text-xs text-purple-300/70 mt-1">
               Calendar month 🗓️
@@ -1770,7 +1779,10 @@ export default function TimeTracking() {
                           ) : (
                             <div className="text-right">
                               <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 animate-pulse group-hover/card:scale-110 transition-transform">
-                                {activeEntry?.clockIn ? formatHoursToHMS((new Date().getTime() - new Date(activeEntry.clockIn).getTime()) / (1000 * 60 * 60)) : '0.00h'}
+                                {activeEntry?.clockIn ? (() => {
+                                  const timeDiff = (new Date().getTime() - new Date(activeEntry.clockIn).getTime()) / (1000 * 60 * 60)
+                                  return formatHoursToHMS(Math.max(0, timeDiff))
+                                })() : '0h 0m 0s'}
                               </div>
                               <div className="text-xs text-emerald-300 font-bold animate-pulse">and counting... 🚀</div>
                             </div>
@@ -1907,7 +1919,7 @@ export default function TimeTracking() {
                   </div>
                 </div>
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 tabular-nums group-hover:scale-110 transition-transform">
-                  {formatHoursToHMS(stats.week)}
+                  {formatHoursToHMS(Math.max(0, stats.week || 0))}
                 </div>
                 <p className="text-xs text-emerald-300/70 mt-2 font-medium">Mon - Sun 📈</p>
               </div>
@@ -1920,7 +1932,7 @@ export default function TimeTracking() {
                   </div>
                 </div>
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tabular-nums group-hover:scale-110 transition-transform">
-                  {formatHoursToHMS(stats.month)}
+                  {formatHoursToHMS(Math.max(0, stats.month || 0))}
                 </div>
                 <p className="text-xs text-purple-300/70 mt-2 font-medium">Calendar month 🗓️</p>
               </div>
@@ -1964,10 +1976,6 @@ export default function TimeTracking() {
               console.error('Failed to save late reason:', error)
             }
           }
-          // Mark as seen in localStorage
-          if (activeEntry?.id) {
-            localStorage.setItem(`late-modal-seen-${activeEntry.id}`, 'true')
-          }
           setShowLateModal(false)
           // Break scheduler will be shown automatically via WebSocket state
         }}
@@ -1979,10 +1987,6 @@ export default function TimeTracking() {
         type="early-clock-in"
         data={{ earlyBy: earlyMinutes, expectedTime: activeEntry?.expectedClockIn }}
         onAction={() => {
-          // Mark as seen in localStorage
-          if (activeEntry?.id) {
-            localStorage.setItem(`early-modal-seen-${activeEntry.id}`, 'true')
-          }
           setShowEarlyModal(false)
           // Break scheduler will be shown automatically via WebSocket state
         }}

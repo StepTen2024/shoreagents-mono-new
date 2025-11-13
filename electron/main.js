@@ -580,14 +580,14 @@ async function initializeTracking() {
   // Update tray menu with current status
   updateTrayMenu()
   
-  // Send metrics to renderer every 5 seconds
+  // Send metrics to renderer every 1 second (for real-time active time display)
   setInterval(() => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const metrics = performanceTracker.getMetrics()
       const status = performanceTracker.getStatus()
       mainWindow.webContents.send('metrics-update', { metrics, status })
     }
-  }, 5000)
+  }, 1000) // 1 second for smooth active time updates
 }
 
 // Setup IPC handlers
