@@ -786,6 +786,8 @@ export function getAllQuestions(template: ReviewTemplate): ReviewQuestion[] {
 
 /**
  * Get review due date based on start date and type
+ * For RECURRING reviews, this returns the FIRST recurring review date (day 330)
+ * Subsequent recurring reviews should be calculated by adding 180 days to the previous review
  */
 export function getReviewDueDate(startDate: Date, type: ReviewType): Date {
   const dueDate = new Date(startDate)
@@ -801,7 +803,8 @@ export function getReviewDueDate(startDate: Date, type: ReviewType): Date {
       dueDate.setDate(dueDate.getDate() + 150)
       break
     case "RECURRING":
-      dueDate.setDate(dueDate.getDate() + 180)
+      // First recurring review: 150 (regularisation) + 180 = day 330
+      dueDate.setDate(dueDate.getDate() + 330)
       break
   }
   
