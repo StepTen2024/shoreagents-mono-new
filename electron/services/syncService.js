@@ -327,9 +327,27 @@ class SyncService {
    * Reset sync state (called on clock-in to start fresh)
    */
   reset() {
+    console.log('🔄 [SyncService] ========================================')
+    console.log('🔄 [SyncService] RESETTING SYNC STATE (CLOCK-IN DETECTED)')
+    console.log('🔄 [SyncService] ========================================')
+    
+    // Clear the last synced metrics snapshot
+    // This forces the next sync to be treated as a "first sync"
+    // and send all metrics as-is (not as deltas)
     this.lastSyncedMetrics = null
     this.retryCount = 0
-    console.log('🔄 [SyncService] Sync state reset - starting fresh tracking session')
+    this.lastSyncTime = null
+    
+    // Force an immediate sync after reset to establish new baseline
+    console.log('🔄 [SyncService] Scheduling immediate sync in 2 seconds...')
+    setTimeout(() => {
+      if (this.syncEnabled) {
+        console.log('🔄 [SyncService] Running post-clock-in sync...')
+        this.sync()
+      }
+    }, 2000) // Wait 2 seconds for clock-in API to complete
+    
+    console.log('🔄 [SyncService] Sync state reset complete - starting fresh tracking session')
   }
 
   log(message) {

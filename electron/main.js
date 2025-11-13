@@ -198,8 +198,18 @@ function createTray() {
       label: 'Show Dashboard',
       click: () => {
         if (mainWindow) {
+          // Restore if minimized
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
           mainWindow.show()
           mainWindow.focus()
+          
+          // Bring to front on Windows
+          if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(true)
+            mainWindow.setAlwaysOnTop(false)
+          }
         }
       }
     },
@@ -253,14 +263,31 @@ function createTray() {
   tray.setToolTip('Staff Monitor')
   tray.setContextMenu(contextMenu)
   
-  // Click to show window
+  // Click to toggle window visibility
   tray.on('click', () => {
     if (mainWindow) {
-      if (mainWindow.isVisible()) {
+      if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
+        // Window is visible and not minimized - hide it
+        console.log('[Main] Tray clicked - hiding window')
         mainWindow.hide()
       } else {
+        // Window is hidden or minimized - restore and show it
+        console.log('[Main] Tray clicked - showing window')
+        
+        // Restore if minimized
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore()
+        }
+        
+        // Show and focus
         mainWindow.show()
         mainWindow.focus()
+        
+        // Bring to front on Windows
+        if (process.platform === 'win32') {
+          mainWindow.setAlwaysOnTop(true)
+          mainWindow.setAlwaysOnTop(false)
+        }
       }
     }
   })
@@ -279,8 +306,18 @@ function updateTrayMenu() {
       label: 'Show Dashboard',
       click: () => {
         if (mainWindow) {
+          // Restore if minimized
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
           mainWindow.show()
           mainWindow.focus()
+          
+          // Bring to front on Windows
+          if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(true)
+            mainWindow.setAlwaysOnTop(false)
+          }
         }
       }
     },
@@ -391,8 +428,18 @@ function updateTrayMenuForClient() {
       label: 'Show Dashboard',
       click: () => {
         if (mainWindow) {
+          // Restore if minimized
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore()
+          }
           mainWindow.show()
           mainWindow.focus()
+          
+          // Bring to front on Windows
+          if (process.platform === 'win32') {
+            mainWindow.setAlwaysOnTop(true)
+            mainWindow.setAlwaysOnTop(false)
+          }
         }
       }
     },
@@ -601,10 +648,24 @@ function setupIPC() {
   
   // Reset metrics and sync state (called on clock-in)
   ipcMain.handle('reset-metrics', () => {
-    console.log('🔄 [Main] Resetting metrics and sync state (clock-in detected)')
+    console.log('🔄 [Main] ============================================================')
+    console.log('🔄 [Main] CLOCK-IN DETECTED - RESETTING ALL TRACKING SYSTEMS')
+    console.log('🔄 [Main] ============================================================')
+    
+    // Reset performance tracker (sets all metrics to zero)
     performanceTracker.resetMetrics()
+    
+    // Reset sync service (clears last synced snapshot, forces fresh baseline)
     syncService.reset()
-    return { success: true }
+    
+    // Reset activity tracker (clears activity timestamps and state)
+    activityTracker.reset()
+    
+    console.log('🔄 [Main] ============================================================')
+    console.log('🔄 [Main] ALL SYSTEMS RESET - READY FOR NEW SESSION')
+    console.log('🔄 [Main] ============================================================')
+    
+    return { success: true, message: 'All tracking systems reset successfully' }
   })
   
   // Clear all cookies (for debugging auth issues)
@@ -770,6 +831,48 @@ function setupIPC() {
   })
   
   console.log('[Main] IPC handlers registered')
+}
+
+// ============================================================================
+// SINGLE INSTANCE LOCK - Prevent multiple app instances
+// ============================================================================
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // Another instance is already running, quit this one
+  console.log('[Main] Another instance is already running. Quitting...')
+  app.quit()
+} else {
+  // This is the first instance
+  // Handle attempts to create a second instance
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    console.log('[Main] ============================================================')
+    console.log('[Main] Second instance detected - restoring existing window')
+    console.log('[Main] ============================================================')
+    
+    // Someone tried to run a second instance, restore our window instead
+    if (mainWindow) {
+      // If window is minimized, restore it
+      if (mainWindow.isMinimized()) {
+        console.log('[Main] Restoring minimized window')
+        mainWindow.restore()
+      }
+      
+      // Show and focus the window
+      console.log('[Main] Showing and focusing window')
+      mainWindow.show()
+      mainWindow.focus()
+      
+      // Bring to front on Windows
+      if (process.platform === 'win32') {
+        mainWindow.setAlwaysOnTop(true)
+        mainWindow.setAlwaysOnTop(false)
+      }
+    } else {
+      console.log('[Main] Main window not available, creating new window')
+      createWindow()
+    }
+  })
 }
 
 // App lifecycle

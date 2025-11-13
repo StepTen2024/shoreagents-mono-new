@@ -707,6 +707,34 @@ class ActivityTracker {
   }
 
   /**
+   * Reset activity tracking state (called on clock-in)
+   */
+  reset() {
+    console.log('🔄 [ActivityTracker] ========================================')
+    console.log('🔄 [ActivityTracker] RESETTING ACTIVITY TRACKER STATE')
+    console.log('🔄 [ActivityTracker] ========================================')
+    
+    // Reset activity timestamp to now
+    this.lastActivityTime = Date.now()
+    
+    // Reset mouse tracking throttle
+    this.lastMouseTrack = 0
+    
+    // Clear any inactivity state
+    this.dialogShown = false
+    this.inactivityStartTime = null
+    
+    // Close inactivity dialog if open
+    if (this.inactivityDialog && !this.inactivityDialog.isDestroyed()) {
+      this.inactivityDialog.close()
+      this.inactivityDialog = null
+    }
+    
+    console.log('🔄 [ActivityTracker] Activity tracker reset complete')
+    console.log('🔄 [ActivityTracker] Ready to track fresh session activity')
+  }
+
+  /**
    * Get current activity status
    * @returns {Object} Status object with last activity time and inactivity duration
    */

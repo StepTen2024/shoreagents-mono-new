@@ -5,7 +5,8 @@
  * - When user is inactive for 30+ seconds
  */
 
-const { screen, desktopCapturer } = require('electron')
+const { screen, desktopCapturer, net } = require('electron')
+const FormData = require('form-data') // Node.js FormData (not browser FormData)
 
 class ScreenshotService {
   constructor() {
@@ -167,41 +168,87 @@ class ScreenshotService {
   }
 
   /**
-   * Upload screenshot to server
+   * Upload screenshot to server using Electron's net module (Node.js compatible)
    */
   async uploadScreenshot(imageBuffer, filename, timestamp) {
-    try {
-      // Create FormData with the image
-      const formData = new FormData()
-      const mimeType = filename.endsWith('.jpg') ? 'image/jpeg' : 'image/png'
-      const blob = new Blob([imageBuffer], { type: mimeType })
-      formData.append('screenshot', blob, filename)
-      formData.append('timestamp', timestamp.toString())
+    return new Promise((resolve, reject) => {
+      try {
+        const sizeKB = (imageBuffer.length / 1024).toFixed(1)
+        console.log(`[Screenshots API] Uploading screenshot: ${filename} (${sizeKB} KB)`)
+        
+        // Create Node.js FormData
+        const formData = new FormData()
+        const mimeType = filename.endsWith('.jpg') ? 'image/jpeg' : 'image/png'
+        
+        // Append the buffer directly (Node.js FormData can handle buffers)
+        formData.append('screenshot', imageBuffer, {
+          filename: filename,
+          contentType: mimeType
+        })
+        formData.append('timestamp', timestamp.toString())
 
-      const sizeKB = (imageBuffer.length / 1024).toFixed(1)
-      console.log(`[Screenshots API] Uploading screenshot: ${filename} (${sizeKB} KB)`)
+        // Use Electron's net module for HTTP request
+        const request = net.request({
+          method: 'POST',
+          url: `${this.apiUrl}/api/screenshots`
+        })
 
-      const response = await fetch(`${this.apiUrl}/api/screenshots`, {
-        method: 'POST',
-        headers: {
-          'Cookie': this.sessionToken ? `authjs.session-token=${this.sessionToken}` : ''
-        },
-        body: formData
-      })
+        // Set cookie header if we have a session token
+        if (this.sessionToken) {
+          request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
+        }
 
-      if (!response.ok) {
-        const error = await response.text()
-        throw new Error(`Upload failed: ${response.status} - ${error}`)
+        // Set form-data headers (including boundary)
+        const headers = formData.getHeaders()
+        Object.keys(headers).forEach(key => {
+          request.setHeader(key, headers[key])
+        })
+
+        let responseData = ''
+
+        request.on('response', (response) => {
+          console.log(`[Screenshots API] Response status: ${response.statusCode}`)
+
+          response.on('data', (chunk) => {
+            responseData += chunk.toString()
+          })
+
+          response.on('end', () => {
+            if (response.statusCode >= 200 && response.statusCode < 300) {
+              try {
+                const result = JSON.parse(responseData)
+                console.log(`[Screenshots API] ✅ Upload successful: ${filename} (saved ${sizeKB} KB)`)
+                resolve(result)
+              } catch (parseError) {
+                console.error('[Screenshots API] Error parsing response:', parseError)
+                resolve({ success: true }) // Still consider it success if upload worked
+              }
+            } else {
+              console.error(`[Screenshots API] ❌ Upload failed: ${response.statusCode}`)
+              console.error(`[Screenshots API] Error response: ${responseData}`)
+              reject(new Error(`Upload failed: ${response.statusCode} - ${responseData}`))
+            }
+          })
+
+          response.on('error', (error) => {
+            console.error('[Screenshots API] Response error:', error)
+            reject(error)
+          })
+        })
+
+        request.on('error', (error) => {
+          console.error('[Screenshots API] Request error:', error)
+          reject(error)
+        })
+
+        // Write the form data to the request
+        formData.pipe(request)
+
+      } catch (error) {
+        console.error('[ScreenshotService] Upload error:', error)
+        reject(error)
       }
-
-      const result = await response.json()
-      console.log(`[Screenshots API] Upload successful: ${filename} (saved ${sizeKB} KB)`)
-      
-      return result
-    } catch (error) {
-      console.error('[ScreenshotService] Upload error:', error)
-      throw error
-    }
+    })
   }
 
   /**

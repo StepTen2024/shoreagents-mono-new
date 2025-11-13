@@ -568,13 +568,32 @@ class PerformanceTracker {
   }
 
   /**
-   * Reset metrics (usually at midnight)
+   * Reset metrics (called on clock-in or at midnight)
    */
   resetMetrics() {
-    this.log('Resetting daily metrics')
+    console.log('🔄 [PerformanceTracker] ========================================')
+    console.log('🔄 [PerformanceTracker] RESETTING PERFORMANCE METRICS')
+    console.log('🔄 [PerformanceTracker] ========================================')
+    
+    // Completely reinitialize metrics to zero
     this.metrics = this.initializeMetrics()
+    
+    // Clear tracked state
     this.activeApps.clear()
+    this.visitedUrls.clear()
+    
+    // Reset timestamps
     this.sessionStartTime = Date.now()
+    this.lastActivityTime = Date.now()
+    this.lastIdleCheck = Date.now()
+    
+    // Reset current state
+    this.currentApp = null
+    this.currentUrl = null
+    this.lastClipboardContent = ''
+    
+    console.log('🔄 [PerformanceTracker] Metrics reset complete - all counters at zero')
+    console.log('🔄 [PerformanceTracker] Activity Tracker will now populate fresh metrics')
   }
 
   /**
