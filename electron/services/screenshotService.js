@@ -51,7 +51,11 @@ class ScreenshotService {
         url: profileUrl
       })
 
-      request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
+      // Use correct cookie name based on environment
+      const isProduction = this.apiUrl.includes('https://')
+      const cookieName = isProduction ? '__Secure-authjs.session-token' : 'authjs.session-token'
+      console.log('[ScreenshotService] Using cookie name:', cookieName, '(isProduction:', isProduction, ')')
+      request.setHeader('Cookie', `${cookieName}=${this.sessionToken}`)
 
       return new Promise((resolve, reject) => {
         let responseData = ''
@@ -325,7 +329,9 @@ class ScreenshotService {
 
         // Set cookie header if we have a session token
         if (this.sessionToken) {
-          request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
+          const isProduction = this.apiUrl.includes('https://')
+          const cookieName = isProduction ? '__Secure-authjs.session-token' : 'authjs.session-token'
+          request.setHeader('Cookie', `${cookieName}=${this.sessionToken}`)
         }
 
         // Set form-data headers (including boundary)
