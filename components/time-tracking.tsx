@@ -915,6 +915,7 @@ export default function TimeTracking() {
   }
 
   const formatDateTime = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     const date = new Date(dateString)
     return date.toLocaleString("en-US", {
       month: "short",
@@ -926,6 +927,7 @@ export default function TimeTracking() {
   }
 
   const formatDate = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     const date = new Date(dateString)
     const today = new Date()
     const yesterday = new Date(today)
@@ -945,6 +947,7 @@ export default function TimeTracking() {
   }
 
   const formatTime = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     const date = new Date(dateString)
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",

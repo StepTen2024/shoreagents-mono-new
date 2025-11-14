@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge"
 
 interface PerformanceMetric {
   id: string
-  date: string
+  date: string  // Clock-in timestamp (ISO UTC string, browser auto-converts to local timezone) ✅
+  shiftDate?: string  // Shift date at midnight (for day grouping)
+  shiftDayOfWeek?: string  // Day of week (e.g., "Thursday")
   mouseMovements: number
   mouseClicks: number
   keystrokes: number
@@ -503,6 +505,7 @@ export default function PerformanceDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-semibold text-white">
+                          {/* ✅ Date is UTC from DB, browser auto-converts to local timezone */}
                           {new Date(metric.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                         </div>
                         <div className="mt-1 text-sm text-slate-400">

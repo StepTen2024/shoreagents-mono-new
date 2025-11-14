@@ -7,27 +7,55 @@ import { prisma } from "@/lib/prisma"
 
 /**
  * Get current time in staff's timezone (default: Asia/Manila)
+ * Returns the ACTUAL current UTC time (not a fake offset time!)
+ * 
+ * NOTE: Date objects always store UTC internally. This function returns
+ * the actual current time, which is the same in all timezones!
  */
 export function getStaffLocalTime(timezone: string = 'Asia/Manila'): Date {
-  // Get current time as string in staff timezone
-  const nowStr = new Date().toLocaleString('en-US', { 
+  // Current UTC time is the same regardless of timezone!
+  // The timezone parameter is kept for API consistency but isn't needed here.
+  return new Date()
+}
+
+/**
+ * Get start of day (midnight) in staff's timezone
+ * ✅ SIMPLE & RELIABLE: Works the same locally and deployed
+ * 
+ * Returns a Date object representing midnight in the staff's timezone.
+ * Example: Nov 13, 2025 00:00:00 Manila = Nov 12, 2025 16:00:00 UTC
+ */
+export function getStaffDayStart(timezone: string = 'Asia/Manila', daysOffset: number = 0): Date {
+  const now = new Date()
+  
+  // Get the date string in staff timezone
+  const dateInTz = now.toLocaleString('en-US', { 
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
     hour12: false
   })
   
-  // Parse back to Date object
-  // Format: "11/06/2025, 13:45:30"
-  const [datePart, timePart] = nowStr.split(', ')
+  // Parse "MM/DD/YYYY" or "11/13/2025, HH:MM:SS"
+  const datePart = dateInTz.split(',')[0]
   const [month, day, year] = datePart.split('/').map(Number)
-  const [hour, minute, second] = timePart.split(':').map(Number)
   
-  return new Date(year, month - 1, day, hour, minute, second)
+  // Calculate midnight in the target timezone
+  // We create a date string that will be interpreted correctly
+  const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T00:00:00`
+  
+  // Create two dates: one interpreted as local, one as target timezone
+  const localMidnight = new Date(dateStr)
+  const targetTzMidnight = new Date(localMidnight.toLocaleString('en-US', { timeZone: timezone }))
+  
+  // Calculate the offset between them
+  const offset = localMidnight.getTime() - targetTzMidnight.getTime()
+  
+  // Apply offset to get the UTC time that represents midnight in target timezone
+  let result = new Date(Date.UTC(year, month - 1, day + daysOffset, 0, 0, 0, 0) - offset)
+  
+  return result
 }
 
 /**
@@ -85,13 +113,20 @@ export async function detectShiftDay(
   staffUserId: string,
   timezone: string = 'Asia/Manila'
 ): Promise<{ isNightShift: boolean; shiftDayOfWeek: string; shiftDate: Date }> {
-  const staffTime = getStaffLocalTime(timezone)
-  const currentHour = staffTime.getHours()
+  const now = new Date()
+  
+  // Get current hour in staff timezone
+  const nowStr = now.toLocaleString('en-US', { 
+    timeZone: timezone,
+    hour: '2-digit',
+    hour12: false
+  })
+  const currentHour = parseInt(nowStr.replace(/^0/, ''))  // Remove leading zero and parse
   
   const SHIFT_BOUNDARY_HOUR = 6  // 6 AM cutoff
   
   console.log(`🕐 [detectShiftDay] Current time in ${timezone}:`, {
-    time: staffTime.toISOString(),
+    time: now.toISOString(),
     hour: currentHour
   })
   
@@ -99,11 +134,15 @@ export async function detectShiftDay(
   if (currentHour < SHIFT_BOUNDARY_HOUR) {
     console.log(`⏰ [detectShiftDay] Before ${SHIFT_BOUNDARY_HOUR} AM - checking for yesterday's night shift...`)
     
-    // Get yesterday in staff timezone
-    const yesterday = new Date(staffTime)
-    yesterday.setDate(yesterday.getDate() - 1)
-    yesterday.setHours(0, 0, 0, 0) // Start of yesterday
-    const yesterdayDayOfWeek = yesterday.toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })
+    // Get yesterday's date in staff timezone using getStaffDayStart with -1 offset
+    const yesterday = getStaffDayStart(timezone, -1)  // Yesterday at midnight
+    
+    // Get yesterday's day of week in staff timezone
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)  // Subtract 1 day
+    const yesterdayDayOfWeek = yesterdayDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      timeZone: timezone 
+    })
     
     console.log(`📅 [detectShiftDay] Yesterday:`, {
       date: yesterday.toISOString(),
@@ -153,9 +192,11 @@ export async function detectShiftDay(
   }
   
   // Not a night shift crossover - use today
-  const todayDayOfWeek = getStaffDayOfWeek(timezone)
-  const today = new Date(staffTime)
-  today.setHours(0, 0, 0, 0) // Start of today
+  const today = getStaffDayStart(timezone, 0)  // Today at midnight in staff timezone
+  const todayDayOfWeek = now.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    timeZone: timezone 
+  })
   
   console.log(`📅 [detectShiftDay] Using today's shift:`, {
     date: today.toISOString(),

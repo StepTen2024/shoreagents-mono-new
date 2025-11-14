@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { randomUUID } from "crypto"
+import { getStaffDayStart } from "@/lib/timezone-helpers"
 
 // Function to emit performance updates (will be set by server.js)
 declare global {
@@ -17,44 +18,60 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get the StaffUser record using authUserId
+    // Get the StaffUser record using authUserId with staff profile
     const staffUser = await prisma.staff_users.findUnique({
-      where: { authUserId: session.user.id }
+      where: { authUserId: session.user.id },
+      include: {
+        staff_profiles: {
+          select: {
+            timezone: true
+          }
+        }
+      }
     })
 
     if (!staffUser) {
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
 
-    // Get metrics for the last 7 days
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    // ✅ FIX: Use staff timezone (default to Asia/Manila for Filipino staff)
+    const staffTimezone = staffUser.staff_profiles?.timezone || 'Asia/Manila'
+    
+    console.log(`📊 [Analytics API] Fetching metrics in timezone: ${staffTimezone}`)
+    
+    // ✅ FIX: Get midnight "today" in STAFF timezone (works same locally & deployed!)
+    const todayInStaffTz = getStaffDayStart(staffTimezone, 0)  // Today at midnight
+    const sevenDaysAgo = getStaffDayStart(staffTimezone, -7)   // 7 days ago at midnight
+    const tomorrow = getStaffDayStart(staffTimezone, 1)        // Tomorrow at midnight
+    
+    console.log(`📅 [Analytics API] Today midnight in ${staffTimezone}: ${todayInStaffTz.toISOString()}`)
+    console.log(`📅 [Analytics API] 7 days ago midnight: ${sevenDaysAgo.toISOString()}`)
+    console.log(`📅 [Analytics API] Tomorrow midnight: ${tomorrow.toISOString()}`)
 
+    // ✅ FIX: Query using shiftDate (timezone-aware) instead of date field
     const metrics = await prisma.performance_metrics.findMany({
       where: {
         staffUserId: staffUser.id,
-        date: {
+        shiftDate: {
           gte: sevenDaysAgo,
         },
       },
-      orderBy: { date: "desc" },
+      orderBy: { shiftDate: "desc" },
     })
 
-    // Get today's metrics
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // ✅ FIX: Get today's metrics using shiftDate (timezone-aware)
 
     const todayMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
-        date: {
-          gte: today,
+        shiftDate: {
+          gte: todayInStaffTz,
           lt: tomorrow,
         },
       },
     })
+    
+    console.log(`📊 [Analytics API] Found ${metrics.length} metrics (last 7 days), today's metric: ${todayMetric ? 'YES' : 'NO'}`)
 
     // Calculate total screenshot count (sum of all clipboardActions)
     const allMetrics = await prisma.performance_metrics.findMany({
@@ -68,9 +85,12 @@ export async function GET(request: NextRequest) {
     const totalScreenshotCount = allMetrics.reduce((sum, m) => sum + m.clipboardActions, 0)
 
     // Format metrics for frontend (convert minutes to seconds for consistent display)
+    // ✅ FIX: Use shiftDate (timezone-aware) instead of date field
     const formattedMetrics = metrics.map((m) => ({
       id: m.id,
-      date: m.date.toISOString(),
+      date: m.shiftDate ? m.shiftDate.toISOString() : m.date.toISOString(), // Use shiftDate (staff timezone)
+      shiftDate: m.shiftDate ? m.shiftDate.toISOString() : null,
+      shiftDayOfWeek: m.shiftDayOfWeek,
       mouseMovements: m.mouseMovements,
       mouseClicks: m.mouseClicks,
       keystrokes: m.keystrokes,
@@ -93,7 +113,9 @@ export async function GET(request: NextRequest) {
     const formattedToday = todayMetric
       ? {
           id: todayMetric.id,
-          date: todayMetric.date.toISOString(),
+          date: todayMetric.shiftDate ? todayMetric.shiftDate.toISOString() : todayMetric.date.toISOString(), // Use shiftDate (staff timezone)
+          shiftDate: todayMetric.shiftDate ? todayMetric.shiftDate.toISOString() : null,
+          shiftDayOfWeek: todayMetric.shiftDayOfWeek,
           mouseMovements: todayMetric.mouseMovements,
           mouseClicks: todayMetric.mouseClicks,
           keystrokes: todayMetric.keystrokes,

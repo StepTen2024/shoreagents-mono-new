@@ -40,10 +40,9 @@ export async function POST(request: NextRequest) {
     const profileId = staffUser.staff_profiles?.id
     
     // ✅ FIX #4: Check for existing entries for THIS SHIFT DATE (not calendar date)
-    const startOfShiftDate = new Date(shiftDate)
-    startOfShiftDate.setHours(0, 0, 0, 0)
-    const endOfShiftDate = new Date(shiftDate)
-    endOfShiftDate.setHours(23, 59, 59, 999)
+    // shiftDate is already at midnight from detectShiftDay(), so we can use it directly
+    const startOfShiftDate = new Date(shiftDate.getTime())  // Copy timestamp
+    const endOfShiftDate = new Date(shiftDate.getTime() + 24 * 60 * 60 * 1000 - 1)  // Add 1 day minus 1ms
     
     // Run all checks in parallel to speed up the process
     const [activeEntry, existingShiftEntry, workSchedule] = await Promise.all([
@@ -192,7 +191,8 @@ export async function POST(request: NextRequest) {
       data: {
         id: randomUUID(),
         staffUserId: staffUser.id,
-        shiftDate: shiftDate,
+        date: nowInStaffTz,  // ✅ FIX: Use actual clock-in time to match time_entries
+        shiftDate: shiftDate,  // Keep this as midnight for day grouping
         shiftDayOfWeek: shiftDayOfWeek,
         mouseMovements: 0,
         mouseClicks: 0,
@@ -215,8 +215,12 @@ export async function POST(request: NextRequest) {
     })
     
     console.log(`📊 Empty performance_metrics row created for shift:`, {
-      shiftDate,
-      shiftDayOfWeek
+      'date (clock-in time)': nowInStaffTz.toISOString(),
+      'shiftDate (midnight)': shiftDate.toISOString(),
+      shiftDayOfWeek,
+      'time_entries.shiftDate': timeEntry.shiftDate?.toISOString() || 'null',
+      'performance_metrics.shiftDate': shiftDate.toISOString(),
+      'ARE THEY EQUAL?': timeEntry.shiftDate ? (timeEntry.shiftDate.getTime() === shiftDate.getTime() ? '✅ YES' : '❌ NO - BUG!') : '⚠️ timeEntry.shiftDate is null'
     })
     
     // Check if any breaks exist for this shift (we already fetched this data above)

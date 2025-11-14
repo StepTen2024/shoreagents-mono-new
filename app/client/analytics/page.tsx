@@ -141,6 +141,7 @@ export default function ClientMonitoringPage() {
   }
 
   const formatDate = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

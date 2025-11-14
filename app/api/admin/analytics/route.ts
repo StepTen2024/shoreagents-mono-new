@@ -73,9 +73,15 @@ export async function GET(req: NextRequest) {
     const allMetrics = staffUsers.flatMap(staff => staff.performance_metrics)
     
     const totalStaff = staffUsers.length
+    // ✅ FIX: Use shiftDate (timezone-aware) instead of date
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
     const activeStaff = staffUsers.filter(staff => 
       staff.performance_metrics.some(metric => 
-        new Date(metric.date).toDateString() === new Date().toDateString()
+        metric.shiftDate && metric.shiftDate >= today && metric.shiftDate < tomorrow
       )
     ).length
 
@@ -129,8 +135,9 @@ export async function GET(req: NextRequest) {
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
       
+      // ✅ FIX: Use shiftDate (timezone-aware) instead of date
       const dayMetrics = allMetrics.filter(metric => 
-        metric.date >= date && metric.date <= dayEnd
+        metric.shiftDate && metric.shiftDate >= date && metric.shiftDate <= dayEnd
       )
       
       const dayProductivity = dayMetrics.length > 0
@@ -232,9 +239,10 @@ export async function GET(req: NextRequest) {
       return {
         companyName: company.companyName || 'Unknown Company',
         staffCount: companyStaff.length,
+        // ✅ FIX: Use shiftDate (timezone-aware) instead of date
         activeStaff: companyStaff.filter(staff => 
           staff.performance_metrics.some(metric => 
-            new Date(metric.date).toDateString() === new Date().toDateString()
+            metric.shiftDate && metric.shiftDate >= today && metric.shiftDate < tomorrow
           )
         ).length,
         averageProductivity: avgProductivity,
@@ -271,8 +279,9 @@ export async function GET(req: NextRequest) {
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
       
+      // ✅ FIX: Use shiftDate (timezone-aware) instead of date
       const dayMetrics = allMetrics.filter(metric => 
-        metric.date >= date && metric.date <= dayEnd
+        metric.shiftDate && metric.shiftDate >= date && metric.shiftDate <= dayEnd
       )
       
       recentActivity.push({
@@ -311,9 +320,10 @@ export async function GET(req: NextRequest) {
         id: company.id,
         name: company.companyName,
         staffCount: company.staff_users.length,
+        // ✅ FIX: Use shiftDate (timezone-aware) instead of date
         activeStaff: company.staff_users.filter(staff => 
           staff.performance_metrics.some(metric => 
-            new Date(metric.date).toDateString() === new Date().toDateString()
+            metric.shiftDate && metric.shiftDate >= today && metric.shiftDate < tomorrow
           )
         ).length
       }))
