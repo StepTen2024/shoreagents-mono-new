@@ -434,19 +434,25 @@ export default function PerformanceDashboard() {
             {/* Applications & URLs */}
             <div className="grid gap-6 md:grid-cols-2">
               <div className="rounded-2xl bg-slate-900/50 p-6 backdrop-blur-xl ring-1 ring-white/10">
-                <h2 className="mb-4 text-xl font-bold text-white">Active Applications</h2>
+                <h2 className="mb-4 text-xl font-bold text-white">Applications</h2>
                 {!displayMetrics.applicationsUsed || displayMetrics.applicationsUsed.length === 0 ? (
                   <p className="text-slate-400">No applications recorded yet</p>
                 ) : (
                   <div className="space-y-2">
-                    {displayMetrics.applicationsUsed.slice(0, 5).map((app: string, index: number) => (
-                      <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4 text-blue-400" />
-                          <span className="text-white">{app}</span>
+                    <h3 className="text-sm font-semibold text-slate-300">Used Apps:</h3>
+                    <div className="max-h-96 overflow-y-auto space-y-2 pr-2" style={{ 
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#475569 #1e293b'
+                    }}>
+                      {displayMetrics.applicationsUsed.map((app: string, index: number) => (
+                        <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5 hover:bg-slate-800 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Monitor className="h-4 w-4 text-blue-400" />
+                            <span className="text-white">{app}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

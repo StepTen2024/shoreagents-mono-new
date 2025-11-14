@@ -86,8 +86,10 @@ function createWindow() {
         )
         
         if (sessionCookie) {
-          console.log('[Main] 🔄 Updating session token in sync service')
+          console.log('[Main] 🔄 Updating session token in services')
           syncService.setSessionToken(sessionCookie.value)
+          await screenshotService.updateSessionToken(sessionCookie.value)
+          console.log('[Main] ✅ Session token updated in sync and screenshot services')
         }
       } catch (err) {
         console.error('[Main] Error updating session cookie:', err)
@@ -566,7 +568,8 @@ async function initializeTracking() {
       await screenshotService.initialize({
         apiUrl: config.API_BASE_URL
       })
-      console.log('[Main] Screenshot service initialized (waiting for authentication)')
+      await screenshotService.start() // Start without token, will get it after login
+      console.log('[Main] Screenshot service started (waiting for authentication)')
     }
   } catch (err) {
     console.error('[Main] Error starting services:', err)
@@ -575,6 +578,8 @@ async function initializeTracking() {
     await screenshotService.initialize({
       apiUrl: config.API_BASE_URL
     })
+    await screenshotService.start() // Start even without token
+    console.log('[Main] Screenshot service started (fallback mode)')
   }
   
   // Update tray menu with current status
@@ -779,6 +784,12 @@ function setupIPC() {
   
   ipcMain.handle('screenshot:capture-now', async () => {
     return await screenshotService.captureNow()
+  })
+  
+  ipcMain.handle('screenshot:update-token', async (event, sessionToken) => {
+    console.log('[Main] Updating screenshot service session token via IPC')
+    await screenshotService.updateSessionToken(sessionToken)
+    return { success: true }
   })
   
   // Screenshot diagnostic
