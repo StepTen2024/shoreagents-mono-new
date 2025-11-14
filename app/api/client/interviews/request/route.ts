@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { bpoc_candidate_id, preferred_times, client_notes } = body
+    const { bpoc_candidate_id, preferred_times, client_notes, client_timezone } = body
 
     // Validation
     if (!bpoc_candidate_id) {
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         candidateFirstName: candidate.first_name || 'Unknown',
         preferredTimes: preferred_times,
         clientNotes: client_notes || null,
+        clientTimezone: client_timezone || null,
         status: 'PENDING',
         updatedAt: new Date()
       }

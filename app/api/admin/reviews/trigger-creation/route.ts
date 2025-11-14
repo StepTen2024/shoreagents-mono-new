@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
           // Create review
           const review = await prisma.reviews.create({
             data: {
+              id: require('crypto').randomUUID(),
               staffUserId: staff.id,
               type: reviewType,
               status: "PENDING",
@@ -90,7 +91,8 @@ export async function POST(request: NextRequest) {
               reviewer: clientUser.email,
               reviewerTitle: clientUser.role,
               dueDate,
-              evaluationPeriod
+              evaluationPeriod,
+              updatedAt: new Date()
             }
           })
 
@@ -116,29 +118,43 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Handle recurring reviews for regularized staff
-      if (daysSinceStart >= 173) { // 7 days before 180 days
-        const recurringExists = existingReviews.some(r => r.type === "RECURRING")
-        if (!recurringExists) {
-          const clientUser = await prisma.client_users.findFirst({
-            where: { companyId: staff.companyId },
-            orderBy: { createdAt: "asc" }
-          })
+      // Handle recurring reviews for regularized staff (after day 150)
+      if (daysSinceStart >= 323) { // 7 days before first recurring (day 330)
+        const clientUser = await prisma.client_users.findFirst({
+          where: { companyId: staff.companyId },
+          orderBy: { createdAt: "asc" }
+        })
 
-          if (clientUser) {
-            const dueDate = getReviewDueDate(startDate, "RECURRING")
-            const evaluationPeriod = `Past 6 months`
-
+        if (clientUser) {
+          // Get all existing recurring reviews
+          const existingRecurring = existingReviews.filter(r => r.type === "RECURRING")
+          
+          // Calculate which recurring review should be due
+          // First: day 330, Second: day 510, Third: day 690, etc.
+          const recurringNumber = existingRecurring.length + 1
+          const daysUntilDue = 330 + (existingRecurring.length * 180)
+          const recurringDueDate = new Date(startDate)
+          recurringDueDate.setDate(recurringDueDate.getDate() + daysUntilDue)
+          
+          const createDate = new Date(recurringDueDate)
+          createDate.setDate(createDate.getDate() - 7)
+          
+          const now = new Date()
+          const shouldCreate = now >= createDate && now < recurringDueDate
+          
+          if (shouldCreate) {
             const review = await prisma.reviews.create({
               data: {
+                id: require('crypto').randomUUID(),
                 staffUserId: staff.id,
                 type: "RECURRING",
                 status: "PENDING",
                 client: staff.company?.name || "Unknown Company",
                 reviewer: clientUser.email,
                 reviewerTitle: clientUser.role,
-                dueDate,
-                evaluationPeriod
+                dueDate: recurringDueDate,
+                evaluationPeriod: "Past 6 months",
+                updatedAt: new Date()
               }
             })
 
@@ -147,11 +163,11 @@ export async function POST(request: NextRequest) {
               action: "created",
               staffName: staff.name,
               reviewType: "RECURRING",
-              dueDate,
+              dueDate: recurringDueDate,
               daysSinceStart
             })
 
-            console.log(`✅ Created RECURRING review for ${staff.name}`)
+            console.log(`✅ Created RECURRING review #${recurringNumber} for ${staff.name} (day ${daysUntilDue})`)
           }
         }
       }

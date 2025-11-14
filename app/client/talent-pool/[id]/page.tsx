@@ -13,7 +13,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, MapPin, Calendar, Briefcase, Award, Book, Languages,
-  Brain, Zap, Target, TrendingUp, Video, CheckCircle, X, Plus, FileText
+  Brain, Zap, Target, TrendingUp, Video, CheckCircle, X, Plus, FileText,
+  CalendarCheck, XCircle, UserCheck, Mail, Clock, AlertCircle, CheckCircle2
 } from 'lucide-react'
 
 interface CandidateProfile {
@@ -79,6 +80,8 @@ export default function CandidateProfilePage() {
   const [loading, setLoading] = useState(true)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('profile')
+  const [existingInterview, setExistingInterview] = useState<any>(null)
+  const [loadingInterview, setLoadingInterview] = useState(true)
   
   // Get return navigation info from URL params
   const returnTo = searchParams.get('returnTo')
@@ -106,6 +109,7 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     fetchCandidate()
+    checkExistingInterview()
   }, [candidateId])
 
   async function fetchCandidate() {
@@ -123,6 +127,26 @@ export default function CandidateProfilePage() {
       console.error('Error fetching candidate:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function checkExistingInterview() {
+    try {
+      setLoadingInterview(true)
+      const response = await fetch('/api/client/interviews')
+      const data = await response.json()
+
+      if (data.success && data.interviews) {
+        // Find interview for this candidate
+        const interview = data.interviews.find(
+          (i: any) => i.bpocCandidateId === candidateId
+        )
+        setExistingInterview(interview || null)
+      }
+    } catch (error) {
+      console.error('Error checking existing interview:', error)
+    } finally {
+      setLoadingInterview(false)
     }
   }
 
@@ -344,14 +368,20 @@ export default function CandidateProfilePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             <div className="sticky top-36">
-              {/* Request Interview Button */}
-              <button
-                onClick={() => setShowRequestModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all text-lg flex items-center justify-center gap-2"
-              >
-                <Video className="w-5 h-5" />
-                Request Interview
-              </button>
+              {/* Interview Status or Request Button */}
+              {loadingInterview ? (
+                <div className="w-full py-4 bg-gray-200 rounded-xl animate-pulse" />
+              ) : existingInterview ? (
+                <InterviewStatusCard interview={existingInterview} candidateName={candidate.firstName} />
+              ) : (
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all text-lg flex items-center justify-center gap-2"
+                >
+                  <Video className="w-5 h-5" />
+                  Request Interview
+                </button>
+              )}
 
               {/* Quick Snapshot */}
               <div className="mt-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-5 border border-blue-200">
@@ -441,6 +471,9 @@ export default function CandidateProfilePage() {
         <RequestInterviewModal
           candidate={candidate}
           onClose={() => setShowRequestModal(false)}
+          onSuccess={() => {
+            checkExistingInterview()
+          }}
         />
       )}
     </div>
@@ -892,10 +925,239 @@ function DISCBar({ label, score, color }: { label: string; score: number; color:
 }
 
 // ============================================================================
+// INTERVIEW STATUS CARD
+// ============================================================================
+
+function InterviewStatusCard({ interview, candidateName }: { interview: any; candidateName: string }) {
+  return (
+    <div className={`rounded-lg p-6 border-l-4 shadow-sm ${
+      interview.status === 'PENDING' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-yellow-500' :
+      interview.status === 'SCHEDULED' ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-l-blue-500' :
+      interview.status === 'RESCHEDULE_REQUESTED' ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-l-yellow-500' :
+      interview.status === 'COMPLETED' ? 'bg-gradient-to-br from-green-50 to-green-100 border-l-green-500' :
+      (interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED') ? 'bg-gradient-to-br from-orange-50 to-orange-100 border-l-orange-500' :
+      (interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT') ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-l-indigo-500' :
+      (interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED') ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-emerald-500' :
+      (interview.status === 'OFFER_DECLINED' || interview.status === 'OFFER-DECLINED') ? 'bg-gradient-to-br from-red-50 to-red-100 border-l-red-500' :
+      interview.status === 'HIRED' ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-l-purple-500' :
+      interview.status === 'REJECTED' ? 'bg-gradient-to-br from-red-50 to-red-100 border-l-red-500' :
+      interview.status === 'CANCELLED' ? 'bg-gradient-to-br from-gray-50 to-gray-100 border-l-gray-500' :
+      'bg-gradient-to-br from-gray-50 to-gray-100 border-l-gray-500'
+    }`}>
+      {interview.status === 'PENDING' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-yellow-200 flex items-center justify-center">
+              <Clock className="h-6 w-6 text-yellow-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-yellow-900 mb-2">
+              Waiting for Coordination
+            </h3>
+            <p className="text-sm text-yellow-800 leading-relaxed">
+              Our team is coordinating with <span className="font-semibold">{candidateName}</span> to schedule your interview. 
+              You'll be notified once a time is confirmed.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {interview.status === 'SCHEDULED' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center">
+              <CalendarCheck className="h-6 w-6 text-blue-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-blue-900">
+              Interview Scheduled
+            </h3>
+            <p className="text-sm text-blue-800">
+              Your interview with <span className="font-semibold">{candidateName}</span> has been scheduled. Check the interviews tab for meeting details.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {interview.status === 'RESCHEDULE_REQUESTED' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-amber-200 flex items-center justify-center">
+              <Calendar className="h-6 w-6 text-amber-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-amber-900 mb-2">
+              Reschedule Requested
+            </h3>
+            <p className="text-sm text-amber-800 leading-relaxed">
+              Your reschedule request has been submitted. Our team is coordinating a new interview time with <span className="font-semibold">{candidateName}</span>.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {interview.status === 'COMPLETED' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-green-200 flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-green-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-green-900 mb-2">
+              Interview Complete
+            </h3>
+            <p className="text-sm text-green-800 leading-relaxed">
+              Great work! The interview with <span className="font-semibold">{candidateName}</span> has been completed. 
+              You can now request to hire this candidate or reject them below.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(interview.status === 'HIRE_REQUESTED' || interview.status === 'HIRE-REQUESTED') && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-orange-200 flex items-center justify-center">
+              <UserCheck className="h-6 w-6 text-orange-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-orange-900 mb-2">
+              Hire Request Submitted
+            </h3>
+            <p className="text-sm text-orange-800 leading-relaxed">
+              Your hire request for <span className="font-semibold">{candidateName}</span> has been submitted to our admin team. 
+              They will send a formal job offer to the candidate and notify you once they respond.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(interview.status === 'OFFER_SENT' || interview.status === 'OFFER-SENT') && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-indigo-200 flex items-center justify-center">
+              <Mail className="h-6 w-6 text-indigo-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-indigo-900 mb-2">
+              Job Offer Sent 📧
+            </h3>
+            <p className="text-sm text-indigo-800 leading-relaxed">
+              A formal job offer has been sent to <span className="font-semibold">{candidateName}</span>. 
+              We're waiting for their response. You'll be notified once they respond.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(interview.status === 'OFFER_ACCEPTED' || interview.status === 'OFFER-ACCEPTED') && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-emerald-200 flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-emerald-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-emerald-900 mb-2">
+              Offer Accepted! 🎉
+            </h3>
+            <p className="text-sm text-emerald-800 leading-relaxed">
+              Great news! <span className="font-semibold">{candidateName}</span> has accepted your job offer. 
+              They are now completing their onboarding process.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(interview.status === 'OFFER_DECLINED' || interview.status === 'OFFER-DECLINED') && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-red-200 flex items-center justify-center">
+              <XCircle className="h-6 w-6 text-red-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-red-900 mb-2">
+              Offer Declined
+            </h3>
+            <p className="text-sm text-red-800 leading-relaxed">
+              Unfortunately, <span className="font-semibold">{candidateName}</span> has declined the job offer. 
+              Our team will reach out to discuss alternative candidates.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {interview.status === 'HIRED' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-purple-200 flex items-center justify-center">
+              <UserCheck className="h-6 w-6 text-purple-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-purple-900 mb-2">
+              Candidate Hired! 🎉
+            </h3>
+            <p className="text-sm text-purple-800 leading-relaxed">
+              Congratulations! <span className="font-semibold">{candidateName}</span> has been hired and is now moving forward with onboarding.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {interview.status === 'REJECTED' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-red-200 flex items-center justify-center">
+              <XCircle className="h-6 w-6 text-red-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-red-900 mb-2">
+              Candidate Rejected
+            </h3>
+            <p className="text-sm text-red-800 leading-relaxed">
+              You have declined to move forward with <span className="font-semibold">{candidateName}</span>. 
+              The admin team has been notified of your decision. If you'd like to reconsider, you can undo this rejection below.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {interview.status === 'CANCELLED' && (
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
+            <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+              <XCircle className="h-6 w-6 text-gray-700" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Interview Cancelled
+            </h3>
+            <p className="text-sm text-gray-800 leading-relaxed">
+              You have cancelled the interview with <span className="font-semibold">{candidateName}</span>. 
+              The interview request has been closed.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
 // REQUEST INTERVIEW MODAL
 // ============================================================================
 
-function RequestInterviewModal({ candidate, onClose }: { candidate: CandidateProfile; onClose: () => void }) {
+function RequestInterviewModal({ candidate, onClose, onSuccess }: { candidate: CandidateProfile; onClose: () => void; onSuccess?: () => void }) {
   const router = useRouter()
   const [preferredTimes, setPreferredTimes] = useState<string[]>(['', ''])
   const [notes, setNotes] = useState('')
@@ -958,6 +1220,9 @@ function RequestInterviewModal({ candidate, onClose }: { candidate: CandidatePro
 
       if (data.success) {
         setSuccess(true)
+        if (onSuccess) {
+          onSuccess()
+        }
         setTimeout(() => {
           router.push('/client/recruitment?tab=interviews')
         }, 2000)
