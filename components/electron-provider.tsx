@@ -121,14 +121,19 @@ export default function ElectronProvider({ children }: { children: React.ReactNo
         })
 
         // Fetch staff user profile and send ID to screenshot service
-        fetch('/api/staff/profile')
-          .then(res => res.json())
+        fetch('/api/staff/profile', {
+          credentials: 'include' // ✅ Include session cookies in the request
+        })
+          .then(res => {
+            console.log('[ElectronProvider] Profile API response status:', res.status)
+            return res.json()
+          })
           .then(data => {
             if (data.success && data.staffUser) {
               console.log('[ElectronProvider] 📸 Setting staff user ID for screenshots:', data.staffUser.id)
               window.electron?.screenshots?.setStaffUserId(data.staffUser.id)
             } else {
-              console.warn('[ElectronProvider] ⚠️ Could not fetch staff user profile')
+              console.warn('[ElectronProvider] ⚠️ Could not fetch staff user profile:', data)
             }
           })
           .catch(err => {
