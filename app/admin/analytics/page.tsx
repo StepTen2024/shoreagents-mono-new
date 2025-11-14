@@ -90,10 +90,12 @@ export default function StaffAnalyticsPage() {
     setFilteredStaff(filtered)
   }
 
-  function formatTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
+  function formatTime(seconds: number): string {
+    // ⏱️ Database now stores SECONDS (not minutes!)
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours}h ${mins}m ${secs}s`
   }
 
   function getProductivityColor(score: number): string {

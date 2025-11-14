@@ -94,9 +94,9 @@ export async function GET(request: NextRequest) {
       mouseMovements: m.mouseMovements,
       mouseClicks: m.mouseClicks,
       keystrokes: m.keystrokes,
-      activeTime: m.activeTime * 60, // Convert minutes to seconds
-      idleTime: m.idleTime * 60, // Convert minutes to seconds
-      screenTime: m.screenTime * 60, // Convert minutes to seconds
+      activeTime: m.activeTime, // ⏱️ Already in seconds
+      idleTime: m.idleTime, // ⏱️ Already in seconds
+      screenTime: m.screenTime, // ⏱️ Already in seconds
       downloads: m.downloads,
       uploads: m.uploads,
       bandwidth: m.bandwidth,
@@ -119,9 +119,9 @@ export async function GET(request: NextRequest) {
           mouseMovements: todayMetric.mouseMovements,
           mouseClicks: todayMetric.mouseClicks,
           keystrokes: todayMetric.keystrokes,
-          activeTime: todayMetric.activeTime * 60, // Convert minutes to seconds
-          idleTime: todayMetric.idleTime * 60, // Convert minutes to seconds
-          screenTime: todayMetric.screenTime * 60, // Convert minutes to seconds
+          activeTime: todayMetric.activeTime, // ⏱️ Already in seconds
+          idleTime: todayMetric.idleTime, // ⏱️ Already in seconds
+          screenTime: todayMetric.screenTime, // ⏱️ Already in seconds
           downloads: todayMetric.downloads,
           uploads: todayMetric.uploads,
           bandwidth: todayMetric.bandwidth,
@@ -264,15 +264,18 @@ export async function POST(request: NextRequest) {
     console.log(`🖱️  Mouse Movements: ${existingMetric.mouseMovements} + ${mouseMovements || 0} = ${existingMetric.mouseMovements + (mouseMovements || 0)}`)
     console.log(`🖱️  Mouse Clicks: ${existingMetric.mouseClicks} + ${mouseClicks || 0} = ${existingMetric.mouseClicks + (mouseClicks || 0)}`)
     console.log(`⌨️  Keystrokes: ${existingMetric.keystrokes} + ${keystrokes || 0} = ${existingMetric.keystrokes + (keystrokes || 0)}`)
-    console.log(`✅ Active Time: ${existingMetric.activeTime} min + ${activeTime || 0} sec (${Math.round((activeTime || 0) / 60)} min) = ${existingMetric.activeTime + Math.round((activeTime || 0) / 60)} min`)
+    
+    // 🔧 DATABASE NOW STORES SECONDS (not minutes!)
+    // Simply add the new seconds to existing seconds
+    const totalActiveSeconds = existingMetric.activeTime + (activeTime || 0)
+    const totalIdleSeconds = existingMetric.idleTime + (idleTime || 0)
+    const totalScreenSeconds = existingMetric.screenTime + (screenTime || 0)
+    
+    console.log(`✅ Active Time: ${existingMetric.activeTime}s + ${activeTime || 0}s = ${totalActiveSeconds}s (${Math.floor(totalActiveSeconds / 60)} min ${totalActiveSeconds % 60}s)`)
+    console.log(`😴 Idle Time: ${existingMetric.idleTime}s + ${idleTime || 0}s = ${totalIdleSeconds}s (${Math.floor(totalIdleSeconds / 60)} min ${totalIdleSeconds % 60}s)`)
+    console.log(`🖥️  Screen Time: ${existingMetric.screenTime}s + ${screenTime || 0}s = ${totalScreenSeconds}s (${Math.floor(totalScreenSeconds / 60)} min ${totalScreenSeconds % 60}s)`)
     console.log(`🌐 URLs Visited: ${existingMetric.urlsVisited} + ${urlsVisited || 0} = ${existingMetric.urlsVisited + (urlsVisited || 0)}`)
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
-    
-    // 🔧 Convert time values from SECONDS (received) to MINUTES (stored)
-    // Electron sends deltas in seconds, we store in minutes
-    const activeTimeMinutes = activeTime ? Math.round(activeTime / 60) : 0
-    const idleTimeMinutes = idleTime ? Math.round(idleTime / 60) : 0
-    const screenTimeMinutes = screenTime ? Math.round(screenTime / 60) : 0
 
     // ✅ UPDATE the existing row (created at clock-in)
     const metric = await prisma.performance_metrics.update({
@@ -282,10 +285,10 @@ export async function POST(request: NextRequest) {
         mouseMovements: existingMetric.mouseMovements + (mouseMovements || 0),
         mouseClicks: existingMetric.mouseClicks + (mouseClicks || 0),
         keystrokes: existingMetric.keystrokes + (keystrokes || 0),
-        // Time values: convert seconds to minutes before adding
-        activeTime: existingMetric.activeTime + activeTimeMinutes,
-        idleTime: existingMetric.idleTime + idleTimeMinutes,
-        screenTime: existingMetric.screenTime + screenTimeMinutes,
+        // ✅ Time values in SECONDS (stored as Int, just like mouse movements!)
+        activeTime: totalActiveSeconds,
+        idleTime: totalIdleSeconds,
+        screenTime: totalScreenSeconds,
         downloads: existingMetric.downloads + (downloads || 0),
         uploads: existingMetric.uploads + (uploads || 0),
         bandwidth: existingMetric.bandwidth + (bandwidth || 0),

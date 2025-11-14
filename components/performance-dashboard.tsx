@@ -150,7 +150,7 @@ export default function PerformanceDashboard() {
   }
 
   const formatTime = (seconds: number) => {
-    // Handle both seconds (live metrics) and minutes (API metrics)
+    // ⏱️ All time values are now stored in SECONDS (both DB and live metrics)
     const totalSeconds = Math.floor(seconds)
     const hours = Math.floor(totalSeconds / 3600)
     const mins = Math.floor((totalSeconds % 3600) / 60)

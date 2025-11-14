@@ -122,10 +122,12 @@ export default function ClientMonitoringPage() {
   // Use real-time monitoring hook
   const { data, loading, error, lastUpdate, refresh, isConnected, isUpdating } = useRealtimeMonitoring(selectedDays)
 
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
+  const formatTime = (seconds: number) => {
+    // ⏱️ Database now stores SECONDS (not minutes!)
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours}h ${mins}m ${secs}s`
   }
 
   const getProductivityColor = (score: number) => {
