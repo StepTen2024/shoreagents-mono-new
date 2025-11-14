@@ -31,8 +31,8 @@ module.exports = {
       console.log('[TrackerConfig] 🧪 Development mode detected - using localhost:3000')
       return 'http://localhost:3000'
     } else {
-      console.log('[TrackerConfig] 🚀 Production mode detected - using Railway URL')
-      return 'https://shoreagents-mono-new-production.up.railway.app'
+      console.log('[TrackerConfig] 🚀 Production mode detected - using shoreagents.ai')
+      return 'https://shoreagents.ai'
     }
   })(),
   API_PERFORMANCE_ENDPOINT: '/api/analytics',
