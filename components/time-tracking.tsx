@@ -34,6 +34,24 @@ interface TimeStats {
 export default function TimeTracking() {
   const { toast } = useToast()
   
+  // Helper function to format minutes into readable hours/minutes
+  const formatLateTime = (minutes: number | undefined): string => {
+    if (!minutes) return "0 min"
+    
+    if (minutes < 60) {
+      return `${minutes} min`
+    }
+    
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    
+    if (mins === 0) {
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+    }
+    
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${mins} min`
+  }
+  
   // Get user information from WebSocket context (already authenticated)
   const { socket } = useWebSocket()
   
@@ -1178,7 +1196,7 @@ export default function TimeTracking() {
                   <div className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-red-500/10 px-3 py-1 border border-red-500/20">
                     <AlertCircle className="h-4 w-4 text-red-400" />
                     <span className="text-sm font-medium text-red-400">
-                      Clocked in {activeEntry.lateBy} min late
+                      Clocked in {formatLateTime(activeEntry.lateBy)} late
                     </span>
                   </div>
                 )}
@@ -1627,7 +1645,7 @@ export default function TimeTracking() {
                           )}
                           {isCompleted && breakItem.isLate && (
                             <div className="text-xs font-medium text-red-400 mt-1">
-                              Returned {breakItem.lateBy} min late
+                              Returned {formatLateTime(breakItem.lateBy)} late
                             </div>
                           )}
                         </div>

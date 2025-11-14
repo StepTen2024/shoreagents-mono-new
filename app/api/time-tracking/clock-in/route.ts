@@ -5,6 +5,22 @@ import { logClockedIn } from "@/lib/activity-generator"
 import { randomUUID } from "crypto"
 import { getStaffLocalTime, detectShiftDay, createExpectedClockIn } from "@/lib/timezone-helpers"
 
+// Helper function to format minutes into readable hours/minutes
+function formatLateTime(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} minutes`
+  }
+  
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  
+  if (mins === 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+  }
+  
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${mins} minutes`
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log("🔍 Clock-in API called")
@@ -267,9 +283,9 @@ export async function POST(request: NextRequest) {
       shiftDayOfWeek,                  // ✅ NEW! Tell UI which day this shift belongs to
       showBreakScheduler: shouldShowBreakScheduler,
       message: isNightShift
-        ? `Clocked in for ${shiftDayOfWeek}'s night shift` + (wasLate ? ` (${lateBy} min late)` : '')
+        ? `Clocked in for ${shiftDayOfWeek}'s night shift` + (wasLate ? ` (${formatLateTime(lateBy)} late)` : '')
         : wasLate 
-        ? `Clocked in ${lateBy} minutes late`
+        ? `Clocked in ${formatLateTime(lateBy)} late`
         : wasEarly
         ? `Clocked in ${earlyBy} minutes early`
         : "Clocked in on time",

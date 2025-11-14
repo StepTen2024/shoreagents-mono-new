@@ -19,6 +19,22 @@ import {
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+// Helper function to format minutes into readable hours/minutes
+function formatLateTime(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} minutes`
+  }
+  
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  
+  if (mins === 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+  }
+  
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${mins} minutes`
+}
+
 async function getTimeEntry(id: string) {
   try {
     const entry = await prisma.time_entries.findUnique({
@@ -361,7 +377,7 @@ export default async function TimeEntryDetailPage({
                     <span className="text-sm font-medium">Late Clock-In</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {entry.lateBy} minutes late
+                    {formatLateTime(entry.lateBy)} late
                   </p>
                 </div>
               )}
