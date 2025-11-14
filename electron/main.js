@@ -1,5 +1,41 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } = require('electron')
 const path = require('path')
+const fs = require('fs')
+
+// Setup file logging for production debugging
+const logFilePath = path.join(app.getPath('userData'), 'screenshot-debug.log')
+const logStream = fs.createWriteStream(logFilePath, { flags: 'a' })
+
+// Override console.log to also write to file in production
+const originalLog = console.log
+const originalError = console.error
+const originalWarn = console.warn
+
+console.log = function(...args) {
+  const timestamp = new Date().toISOString()
+  const message = `[${timestamp}] ${args.join(' ')}\n`
+  logStream.write(message)
+  originalLog.apply(console, args)
+}
+
+console.error = function(...args) {
+  const timestamp = new Date().toISOString()
+  const message = `[${timestamp}] ERROR: ${args.join(' ')}\n`
+  logStream.write(message)
+  originalError.apply(console, args)
+}
+
+console.warn = function(...args) {
+  const timestamp = new Date().toISOString()
+  const message = `[${timestamp}] WARN: ${args.join(' ')}\n`
+  logStream.write(message)
+  originalWarn.apply(console, args)
+}
+
+console.log('[Main] ============================================')
+console.log('[Main] 📝 Logging initialized')
+console.log('[Main] Log file location:', logFilePath)
+console.log('[Main] ============================================')
 
 // Import services
 const performanceTracker = require('./services/performanceTracker')
@@ -796,6 +832,18 @@ function setupIPC() {
   ipcMain.handle('screenshot:run-diagnostic', async () => {
     const { runDiagnostic } = require('./utils/screenshotDiagnostic')
     return await runDiagnostic()
+  })
+  
+  // Get log file path
+  ipcMain.handle('get-log-file-path', () => {
+    return logFilePath
+  })
+  
+  // Open log file
+  ipcMain.handle('open-log-file', () => {
+    const { shell } = require('electron')
+    shell.openPath(logFilePath)
+    return { success: true, path: logFilePath }
   })
   
   // Auto-updater handlers

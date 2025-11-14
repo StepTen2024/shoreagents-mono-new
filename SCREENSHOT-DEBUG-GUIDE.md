@@ -2,11 +2,44 @@
 
 ## 🎯 What Changed
 
-Added **comprehensive logging** to the screenshot service to identify why screenshots work in local development but not in the production installer.
+Added **comprehensive logging** to the screenshot service AND **automatic file logging** to debug the production installer.
 
-## 📝 What to Look For in Console Logs
+## 📂 How to Access the Log File
 
-When you run the installer and login, look for these key log sections:
+### **Method 1: Open from Browser Console** (Easiest!)
+
+1. Open the installed app
+2. Press `Ctrl+Shift+I` to open Developer Tools
+3. In the Console tab, run:
+```javascript
+window.electron.debug.openLogFile()
+```
+4. The log file will open in your default text editor!
+
+### **Method 2: Get the Log File Path**
+
+In the browser console, run:
+```javascript
+window.electron.debug.getLogFilePath()
+```
+
+This will show you the path, typically:
+```
+C:\Users\YourName\AppData\Roaming\your-app-name\screenshot-debug.log
+```
+
+### **Method 3: Manual Location**
+
+Navigate to:
+```
+%APPDATA%\your-app-name\screenshot-debug.log
+```
+
+---
+
+## 📝 What to Look For in the Log File
+
+The log file contains **ALL console output** from the Electron app with timestamps. Look for these key sections:
 
 ### 1. **Service Start** (Should appear when app launches)
 

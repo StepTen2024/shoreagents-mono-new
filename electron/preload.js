@@ -202,6 +202,12 @@ contextBridge.exposeInMainWorld('electron', {
   debug: {
     // Clear all cookies (for fixing auth issues)
     clearCookies: () => ipcRenderer.invoke('clear-cookies'),
+    
+    // Get log file path
+    getLogFilePath: () => ipcRenderer.invoke('get-log-file-path'),
+    
+    // Open log file in default text editor
+    openLogFile: () => ipcRenderer.invoke('open-log-file'),
   },
 })
 
