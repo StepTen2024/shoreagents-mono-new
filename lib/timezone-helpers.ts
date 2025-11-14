@@ -172,17 +172,18 @@ export async function detectShiftDay(
       
       console.log(`⏰ [detectShiftDay] Yesterday's shift starts at:`, startTime)
       
-      // Night shift = starts at 6 PM (18:00) or later
-      if (startTime.hour >= 18) {
-        console.log(`🌙 [detectShiftDay] NIGHT SHIFT DETECTED! This is ${yesterdayDayOfWeek}'s shift`)
-        
-        return {
-          isNightShift: true,
-          shiftDayOfWeek: yesterdayDayOfWeek,
-          shiftDate: yesterday
-        }
-      } else {
-        console.log(`☀️ [detectShiftDay] Yesterday's shift starts before 6 PM - not a night shift`)
+      // ✅ FIX: If clocking in before 6 AM and yesterday had a shift, treat it as yesterday's shift
+      // This handles:
+      // 1. Night shifts (6 PM or later)
+      // 2. Afternoon shifts where staff might clock in late after midnight
+      // 3. Overtime situations
+      console.log(`🌙 [detectShiftDay] Before 6 AM with yesterday's shift - treating as ${yesterdayDayOfWeek}'s shift`)
+      console.log(`   (This could be late arrival, night shift, or overtime for yesterday's shift)`)
+      
+      return {
+        isNightShift: true,  // Mark as night shift to indicate it crosses midnight
+        shiftDayOfWeek: yesterdayDayOfWeek,
+        shiftDate: yesterday
       }
     } else {
       console.log(`❌ [detectShiftDay] No schedule found for ${yesterdayDayOfWeek}`)
@@ -213,6 +214,9 @@ export async function detectShiftDay(
 /**
  * Create expected clock-in time for a shift
  * Handles night shifts that cross midnight
+ * 
+ * ✅ CRITICAL: Uses milliseconds math to avoid server timezone issues!
+ * .setHours() uses SERVER timezone, but shiftDate is timezone-aware!
  */
 export function createExpectedClockIn(
   shiftDate: Date,
@@ -220,10 +224,13 @@ export function createExpectedClockIn(
 ): Date {
   const { hour, minute } = parseTimeString(startTimeStr)
   
-  const expectedTime = new Date(shiftDate)
-  expectedTime.setHours(hour, minute, 0, 0)
+  // ✅ Add hours/minutes using milliseconds (timezone-independent!)
+  // shiftDate = midnight Manila (e.g., Nov 14 00:00 Manila = Nov 13 16:00 UTC)
+  // Add 9 hours = Nov 14 09:00 Manila = Nov 14 01:00 UTC ✅
+  const hoursInMs = hour * 60 * 60 * 1000
+  const minutesInMs = minute * 60 * 1000
   
-  return expectedTime
+  return new Date(shiftDate.getTime() + hoursInMs + minutesInMs)
 }
 
 

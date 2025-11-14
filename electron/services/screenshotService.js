@@ -12,6 +12,7 @@ class ScreenshotService {
   constructor() {
     this.isEnabled = false
     this.sessionToken = null
+    this.staffUserId = null // Store staff user ID for direct authentication
     this.apiUrl = 'http://localhost:3000'
     this.screenshotCount = 0
     this.captureInterval = null
@@ -24,8 +25,72 @@ class ScreenshotService {
    */
   initialize(config = {}) {
     console.log('[ScreenshotService] Initializing automatic screenshot capture...')
+    console.log('[ScreenshotService] Config received:', config)
+    console.log('[ScreenshotService] Current API URL (before):', this.apiUrl)
     this.apiUrl = config.apiUrl || this.apiUrl
+    console.log('[ScreenshotService] API URL (after):', this.apiUrl)
     return Promise.resolve()
+  }
+
+  /**
+   * Fetch staff user ID from the API using session token
+   */
+  async fetchStaffUserId() {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('[ScreenshotService] Fetching staff user ID from API...')
+        
+        const request = net.request({
+          method: 'GET',
+          url: `${this.apiUrl}/api/staff/profile`
+        })
+
+        // Set cookie header if we have a session token
+        if (this.sessionToken) {
+          request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
+        }
+
+        let responseData = ''
+
+        request.on('response', (response) => {
+          response.on('data', (chunk) => {
+            responseData += chunk.toString()
+          })
+
+          response.on('end', () => {
+            if (response.statusCode >= 200 && response.statusCode < 300) {
+              try {
+                const result = JSON.parse(responseData)
+                if (result.staffUser && result.staffUser.id) {
+                  this.staffUserId = result.staffUser.id
+                  console.log('[ScreenshotService] ✅ Staff user ID fetched:', this.staffUserId)
+                  resolve(this.staffUserId)
+                } else {
+                  console.error('[ScreenshotService] ❌ No staff user ID in response')
+                  resolve(null)
+                }
+              } catch (parseError) {
+                console.error('[ScreenshotService] Error parsing profile response:', parseError)
+                resolve(null)
+              }
+            } else {
+              console.error('[ScreenshotService] ❌ Failed to fetch staff user ID:', response.statusCode)
+              resolve(null)
+            }
+          })
+        })
+
+        request.on('error', (error) => {
+          console.error('[ScreenshotService] Request error:', error)
+          resolve(null)
+        })
+
+        request.end()
+      } catch (error) {
+        console.error('[ScreenshotService] Error fetching staff user ID:', error)
+        resolve(null)
+      }
+    })
   }
 
   /**
@@ -41,6 +106,9 @@ class ScreenshotService {
     this.isEnabled = true
     this.sessionToken = sessionToken
     this.screenshotCount = 0
+
+    // Fetch staff user ID for reliable authentication
+    await this.fetchStaffUserId()
 
     // Capture immediately on start
     console.log('[ScreenshotService] 📸 Capturing initial screenshot...')
@@ -174,7 +242,13 @@ class ScreenshotService {
     return new Promise((resolve, reject) => {
       try {
         const sizeKB = (imageBuffer.length / 1024).toFixed(1)
+        const uploadUrl = `${this.apiUrl}/api/screenshots`
+        console.log(`[Screenshots API] ======================================`)
         console.log(`[Screenshots API] Uploading screenshot: ${filename} (${sizeKB} KB)`)
+        console.log(`[Screenshots API] API URL: ${this.apiUrl}`)
+        console.log(`[Screenshots API] Full upload URL: ${uploadUrl}`)
+        console.log(`[Screenshots API] Has session token: ${!!this.sessionToken}`)
+        console.log(`[Screenshots API] ======================================`)
         
         // Create Node.js FormData
         const formData = new FormData()
@@ -186,11 +260,19 @@ class ScreenshotService {
           contentType: mimeType
         })
         formData.append('timestamp', timestamp.toString())
+        
+        // ✅ Send staffUserId for direct authentication (more reliable than cookies)
+        if (this.staffUserId) {
+          formData.append('staffUserId', this.staffUserId)
+          console.log('[Screenshots API] Sending with staffUserId:', this.staffUserId)
+        } else {
+          console.log('[Screenshots API] No staffUserId - will rely on session cookie')
+        }
 
         // Use Electron's net module for HTTP request
         const request = net.request({
           method: 'POST',
-          url: `${this.apiUrl}/api/screenshots`
+          url: uploadUrl
         })
 
         // Set cookie header if we have a session token
@@ -274,6 +356,9 @@ class ScreenshotService {
       inactivityTrigger: '30+ seconds',
       screenshotCount: this.screenshotCount,
       hasSessionToken: !!this.sessionToken,
+      hasStaffUserId: !!this.staffUserId,
+      staffUserId: this.staffUserId,
+      apiUrl: this.apiUrl,
       isMonitoring: this.isEnabled,
       isProcessing: this.isProcessing
     }
@@ -301,6 +386,7 @@ class ScreenshotService {
     console.log('[ScreenshotService] Cleaning up')
     this.stop()
     this.sessionToken = null
+    this.staffUserId = null
     this.screenshotCount = 0
   }
 }
