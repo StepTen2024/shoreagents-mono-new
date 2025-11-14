@@ -171,6 +171,9 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Run screenshot diagnostic
     runDiagnostic: () => ipcRenderer.invoke('screenshot:run-diagnostic'),
+    
+    // Set staff user ID directly (called after login)
+    setStaffUserId: (staffUserId) => ipcRenderer.invoke('screenshot:set-staff-user-id', staffUserId),
   },
   
   // Auto-Updater API

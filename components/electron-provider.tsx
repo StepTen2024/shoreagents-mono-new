@@ -43,6 +43,12 @@ declare global {
         onBreakRequested: (callback: () => void) => () => void
         onActivityDebug: (callback: (data: any) => void) => () => void
       }
+      screenshots?: {
+        getStatus: () => Promise<any>
+        captureNow: () => Promise<any>
+        runDiagnostic: () => Promise<any>
+        setStaffUserId: (staffUserId: string) => Promise<{ success: boolean }>
+      }
     }
   }
 }
@@ -113,6 +119,21 @@ export default function ElectronProvider({ children }: { children: React.ReactNo
         }).catch((err) => {
           console.error('[ElectronProvider] ❌ Error starting sync service:', err)
         })
+
+        // Fetch staff user profile and send ID to screenshot service
+        fetch('/api/staff/profile')
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.staffUser) {
+              console.log('[ElectronProvider] 📸 Setting staff user ID for screenshots:', data.staffUser.id)
+              window.electron?.screenshots?.setStaffUserId(data.staffUser.id)
+            } else {
+              console.warn('[ElectronProvider] ⚠️ Could not fetch staff user profile')
+            }
+          })
+          .catch(err => {
+            console.error('[ElectronProvider] ❌ Error fetching staff profile:', err)
+          })
       } else {
         console.warn('[ElectronProvider] ⚠️ No session token found in cookies')
         console.log('[ElectronProvider] Available cookies:', document.cookie)

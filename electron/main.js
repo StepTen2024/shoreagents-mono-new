@@ -828,6 +828,13 @@ function setupIPC() {
     return { success: true }
   })
   
+  // Set staff user ID directly (more reliable than fetching from API)
+  ipcMain.handle('screenshot:set-staff-user-id', async (event, staffUserId) => {
+    console.log('[Main] Setting screenshot service staff user ID via IPC:', staffUserId)
+    screenshotService.setStaffUserId(staffUserId)
+    return { success: true }
+  })
+  
   // Screenshot diagnostic
   ipcMain.handle('screenshot:run-diagnostic', async () => {
     const { runDiagnostic } = require('./utils/screenshotDiagnostic')

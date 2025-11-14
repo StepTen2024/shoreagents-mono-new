@@ -434,6 +434,25 @@ class ScreenshotService {
   }
 
   /**
+   * Set staff user ID directly (called from renderer after login)
+   * This is more reliable than fetching from API in production
+   */
+  setStaffUserId(staffUserId) {
+    console.log('[ScreenshotService] ============================================')
+    console.log('[ScreenshotService] 🆔 SETTING STAFF USER ID DIRECTLY')
+    console.log('[ScreenshotService] Staff User ID:', staffUserId)
+    console.log('[ScreenshotService] ============================================')
+    
+    this.staffUserId = staffUserId
+    
+    if (staffUserId) {
+      console.log('[ScreenshotService] ✅ Staff user ID set successfully')
+    } else {
+      console.warn('[ScreenshotService] ⚠️ Staff user ID cleared')
+    }
+  }
+
+  /**
    * Get current status
    */
   getStatus() {
