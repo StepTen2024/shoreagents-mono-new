@@ -39,11 +39,16 @@ class ScreenshotService {
     }
 
     try {
-      console.log('[ScreenshotService] Fetching staff user ID...')
+      const profileUrl = `${this.apiUrl}/api/staff/profile`
+      console.log('[ScreenshotService] ============================================')
+      console.log('[ScreenshotService] 🔑 Fetching Staff User ID')
+      console.log('[ScreenshotService] URL:', profileUrl)
+      console.log('[ScreenshotService] Session Token:', this.sessionToken ? `${this.sessionToken.substring(0, 20)}...` : 'NONE')
+      console.log('[ScreenshotService] ============================================')
       
       const request = net.request({
         method: 'GET',
-        url: `${this.apiUrl}/api/staff/profile`
+        url: profileUrl
       })
 
       request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
@@ -52,6 +57,8 @@ class ScreenshotService {
         let responseData = ''
 
         request.on('response', (response) => {
+          console.log('[ScreenshotService] Profile API Response Status:', response.statusCode)
+          
           response.on('data', (chunk) => {
             responseData += chunk.toString()
           })
@@ -62,26 +69,44 @@ class ScreenshotService {
                 const result = JSON.parse(responseData)
                 if (result.success && result.staffUser) {
                   this.staffUserId = result.staffUser.id
-                  console.log('[ScreenshotService] ✅ Staff user ID fetched:', this.staffUserId)
+                  console.log('[ScreenshotService] ============================================')
+                  console.log('[ScreenshotService] ✅ STAFF USER ID FETCHED SUCCESSFULLY')
+                  console.log('[ScreenshotService] Staff User ID:', this.staffUserId)
+                  console.log('[ScreenshotService] Staff Name:', result.staffUser.name || 'N/A')
+                  console.log('[ScreenshotService] ============================================')
                   resolve(true)
                 } else {
-                  console.error('[ScreenshotService] ❌ Invalid response format:', result)
+                  console.error('[ScreenshotService] ============================================')
+                  console.error('[ScreenshotService] ❌ Invalid response format from profile API')
+                  console.error('[ScreenshotService] Response:', result)
+                  console.error('[ScreenshotService] ============================================')
                   resolve(false)
                 }
               } catch (error) {
-                console.error('[ScreenshotService] ❌ Error parsing response:', error)
+                console.error('[ScreenshotService] ============================================')
+                console.error('[ScreenshotService] ❌ Error parsing profile API response')
+                console.error('[ScreenshotService] Parse Error:', error.message)
+                console.error('[ScreenshotService] Raw Response:', responseData)
+                console.error('[ScreenshotService] ============================================')
                 resolve(false)
               }
             } else {
-              console.error('[ScreenshotService] ❌ Failed to fetch staff user ID:', response.statusCode)
-              console.error('[ScreenshotService] Response:', responseData)
+              console.error('[ScreenshotService] ============================================')
+              console.error('[ScreenshotService] ❌ Failed to fetch staff user ID')
+              console.error('[ScreenshotService] Status Code:', response.statusCode)
+              console.error('[ScreenshotService] Response Body:', responseData)
+              console.error('[ScreenshotService] ============================================')
               resolve(false)
             }
           })
         })
 
         request.on('error', (error) => {
-          console.error('[ScreenshotService] ❌ Network error fetching staff user ID:', error)
+          console.error('[ScreenshotService] ============================================')
+          console.error('[ScreenshotService] ❌ Network error fetching staff user ID')
+          console.error('[ScreenshotService] Error:', error.message)
+          console.error('[ScreenshotService] Error Code:', error.code)
+          console.error('[ScreenshotService] ============================================')
           resolve(false)
         })
 
@@ -102,14 +127,23 @@ class ScreenshotService {
       return
     }
 
-    console.log('[ScreenshotService] Starting screenshot capture service')
+    console.log('[ScreenshotService] ============================================')
+    console.log('[ScreenshotService] 🚀 STARTING SCREENSHOT SERVICE')
+    console.log('[ScreenshotService] API URL:', this.apiUrl)
+    console.log('[ScreenshotService] Has Session Token:', !!sessionToken)
+    console.log('[ScreenshotService] Environment:', process.env.NODE_ENV || 'production')
+    console.log('[ScreenshotService] ============================================')
+    
     this.isEnabled = true
     this.sessionToken = sessionToken
     this.screenshotCount = 0
 
     // Fetch staff user ID if we have a session token
     if (sessionToken) {
-      await this.fetchStaffUserId()
+      const success = await this.fetchStaffUserId()
+      if (!success) {
+        console.warn('[ScreenshotService] ⚠️ Failed to fetch staff user ID - screenshots may not work!')
+      }
     } else {
       console.warn('[ScreenshotService] ⚠️ Starting without session token - will need to update after login')
     }
@@ -126,10 +160,13 @@ class ScreenshotService {
       }
     }, this.captureIntervalMs)
 
+    console.log('[ScreenshotService] ============================================')
     console.log('[ScreenshotService] ✅ Screenshot capture enabled:')
     console.log('   📅 Scheduled: Every 1 minute')
     console.log('   ⚠️  Inactivity: When idle for 30+ seconds')
     console.log(`   🔑 Staff User ID: ${this.staffUserId || 'Not set (will rely on session cookie)'}`)
+    console.log(`   🌐 Upload URL: ${this.apiUrl}/api/screenshots`)
+    console.log('[ScreenshotService] ============================================')
   }
 
   /**
@@ -247,7 +284,19 @@ class ScreenshotService {
     return new Promise((resolve, reject) => {
       try {
         const sizeKB = (imageBuffer.length / 1024).toFixed(1)
-        console.log(`[Screenshots API] Uploading screenshot: ${filename} (${sizeKB} KB)`)
+        const uploadUrl = `${this.apiUrl}/api/screenshots`
+        
+        console.log(`[Screenshots API] ============================================`)
+        console.log(`[Screenshots API] 📤 UPLOAD ATTEMPT`)
+        console.log(`[Screenshots API] URL: ${uploadUrl}`)
+        console.log(`[Screenshots API] File: ${filename}`)
+        console.log(`[Screenshots API] Size: ${sizeKB} KB`)
+        console.log(`[Screenshots API] Has Session Token: ${!!this.sessionToken}`)
+        console.log(`[Screenshots API] Has Staff User ID: ${!!this.staffUserId}`)
+        if (this.staffUserId) {
+          console.log(`[Screenshots API] Staff User ID: ${this.staffUserId}`)
+        }
+        console.log(`[Screenshots API] ============================================`)
         
         // Create Node.js FormData
         const formData = new FormData()
@@ -263,15 +312,15 @@ class ScreenshotService {
         // ✅ Send staffUserId for direct authentication (works in installer!)
         if (this.staffUserId) {
           formData.append('staffUserId', this.staffUserId)
-          console.log('[Screenshots API] Sending with staffUserId:', this.staffUserId)
+          console.log('[Screenshots API] ✅ Including staffUserId in request')
         } else {
-          console.log('[Screenshots API] No staffUserId - will rely on session cookie')
+          console.warn('[Screenshots API] ⚠️ No staffUserId - relying on session cookie (may not work in installer!)')
         }
 
         // Use Electron's net module for HTTP request
         const request = net.request({
           method: 'POST',
-          url: `${this.apiUrl}/api/screenshots`
+          url: uploadUrl
         })
 
         // Set cookie header if we have a session token
@@ -288,37 +337,53 @@ class ScreenshotService {
         let responseData = ''
 
         request.on('response', (response) => {
-          console.log(`[Screenshots API] Response status: ${response.statusCode}`)
+          console.log(`[Screenshots API] 📥 Response received - Status: ${response.statusCode}`)
+          console.log(`[Screenshots API] Response headers:`, response.headers)
 
           response.on('data', (chunk) => {
             responseData += chunk.toString()
           })
 
           response.on('end', () => {
+            console.log(`[Screenshots API] Response body length: ${responseData.length} chars`)
+            
             if (response.statusCode >= 200 && response.statusCode < 300) {
               try {
                 const result = JSON.parse(responseData)
-                console.log(`[Screenshots API] ✅ Upload successful: ${filename} (saved ${sizeKB} KB)`)
+                console.log(`[Screenshots API] ✅ SUCCESS - ${filename} uploaded (${sizeKB} KB)`)
+                console.log(`[Screenshots API] Response data:`, result)
                 resolve(result)
               } catch (parseError) {
-                console.error('[Screenshots API] Error parsing response:', parseError)
+                console.error('[Screenshots API] ⚠️ Error parsing success response:', parseError)
+                console.error('[Screenshots API] Raw response:', responseData)
                 resolve({ success: true }) // Still consider it success if upload worked
               }
             } else {
-              console.error(`[Screenshots API] ❌ Upload failed: ${response.statusCode}`)
-              console.error(`[Screenshots API] Error response: ${responseData}`)
+              console.error(`[Screenshots API] ============================================`)
+              console.error(`[Screenshots API] ❌ UPLOAD FAILED`)
+              console.error(`[Screenshots API] Status Code: ${response.statusCode}`)
+              console.error(`[Screenshots API] Status Message: ${response.statusMessage}`)
+              console.error(`[Screenshots API] Response Body: ${responseData}`)
+              console.error(`[Screenshots API] ============================================`)
               reject(new Error(`Upload failed: ${response.statusCode} - ${responseData}`))
             }
           })
 
           response.on('error', (error) => {
-            console.error('[Screenshots API] Response error:', error)
+            console.error('[Screenshots API] ❌ Response stream error:', error)
+            console.error('[Screenshots API] Error details:', error.message, error.stack)
             reject(error)
           })
         })
 
         request.on('error', (error) => {
-          console.error('[Screenshots API] Request error:', error)
+          console.error(`[Screenshots API] ============================================`)
+          console.error(`[Screenshots API] ❌ REQUEST ERROR`)
+          console.error(`[Screenshots API] Error type: ${error.name}`)
+          console.error(`[Screenshots API] Error message: ${error.message}`)
+          console.error(`[Screenshots API] Error code: ${error.code}`)
+          console.error(`[Screenshots API] Full error:`, error)
+          console.error(`[Screenshots API] ============================================`)
           reject(error)
         })
 
@@ -348,11 +413,20 @@ class ScreenshotService {
    * Update session token and fetch staff user ID (called after login)
    */
   async updateSessionToken(sessionToken) {
-    console.log('[ScreenshotService] Updating session token')
+    console.log('[ScreenshotService] ============================================')
+    console.log('[ScreenshotService] 🔄 UPDATING SESSION TOKEN')
+    console.log('[ScreenshotService] Has New Token:', !!sessionToken)
+    console.log('[ScreenshotService] ============================================')
+    
     this.sessionToken = sessionToken
     
     if (sessionToken) {
-      await this.fetchStaffUserId()
+      const success = await this.fetchStaffUserId()
+      if (success) {
+        console.log('[ScreenshotService] ✅ Session token updated and staff user ID fetched')
+      } else {
+        console.error('[ScreenshotService] ❌ Failed to fetch staff user ID after token update')
+      }
     } else {
       console.warn('[ScreenshotService] ⚠️ Session token cleared')
       this.staffUserId = null
