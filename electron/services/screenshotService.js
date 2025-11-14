@@ -12,6 +12,7 @@ class ScreenshotService {
   constructor() {
     this.isEnabled = false
     this.sessionToken = null
+    this.staffUserId = null // ✅ Store staff user ID for direct authentication
     this.apiUrl = 'http://localhost:3000'
     this.screenshotCount = 0
     this.captureInterval = null
@@ -29,9 +30,73 @@ class ScreenshotService {
   }
 
   /**
+   * Fetch staff user ID from the API using session token
+   */
+  async fetchStaffUserId() {
+    if (!this.sessionToken) {
+      console.warn('[ScreenshotService] ⚠️ No session token - cannot fetch staff user ID')
+      return false
+    }
+
+    try {
+      console.log('[ScreenshotService] Fetching staff user ID...')
+      
+      const request = net.request({
+        method: 'GET',
+        url: `${this.apiUrl}/api/staff/profile`
+      })
+
+      request.setHeader('Cookie', `authjs.session-token=${this.sessionToken}`)
+
+      return new Promise((resolve, reject) => {
+        let responseData = ''
+
+        request.on('response', (response) => {
+          response.on('data', (chunk) => {
+            responseData += chunk.toString()
+          })
+
+          response.on('end', () => {
+            if (response.statusCode === 200) {
+              try {
+                const result = JSON.parse(responseData)
+                if (result.success && result.staffUser) {
+                  this.staffUserId = result.staffUser.id
+                  console.log('[ScreenshotService] ✅ Staff user ID fetched:', this.staffUserId)
+                  resolve(true)
+                } else {
+                  console.error('[ScreenshotService] ❌ Invalid response format:', result)
+                  resolve(false)
+                }
+              } catch (error) {
+                console.error('[ScreenshotService] ❌ Error parsing response:', error)
+                resolve(false)
+              }
+            } else {
+              console.error('[ScreenshotService] ❌ Failed to fetch staff user ID:', response.statusCode)
+              console.error('[ScreenshotService] Response:', responseData)
+              resolve(false)
+            }
+          })
+        })
+
+        request.on('error', (error) => {
+          console.error('[ScreenshotService] ❌ Network error fetching staff user ID:', error)
+          resolve(false)
+        })
+
+        request.end()
+      })
+    } catch (error) {
+      console.error('[ScreenshotService] ❌ Error in fetchStaffUserId:', error)
+      return false
+    }
+  }
+
+  /**
    * Start screenshot capture (scheduled + inactivity-based)
    */
-  async start(sessionToken) {
+  async start(sessionToken = null) {
     if (this.isEnabled) {
       console.log('[ScreenshotService] Already running')
       return
@@ -41,6 +106,13 @@ class ScreenshotService {
     this.isEnabled = true
     this.sessionToken = sessionToken
     this.screenshotCount = 0
+
+    // Fetch staff user ID if we have a session token
+    if (sessionToken) {
+      await this.fetchStaffUserId()
+    } else {
+      console.warn('[ScreenshotService] ⚠️ Starting without session token - will need to update after login')
+    }
 
     // Capture immediately on start
     console.log('[ScreenshotService] 📸 Capturing initial screenshot...')
@@ -57,6 +129,7 @@ class ScreenshotService {
     console.log('[ScreenshotService] ✅ Screenshot capture enabled:')
     console.log('   📅 Scheduled: Every 1 minute')
     console.log('   ⚠️  Inactivity: When idle for 30+ seconds')
+    console.log(`   🔑 Staff User ID: ${this.staffUserId || 'Not set (will rely on session cookie)'}`)
   }
 
   /**
@@ -186,6 +259,14 @@ class ScreenshotService {
           contentType: mimeType
         })
         formData.append('timestamp', timestamp.toString())
+        
+        // ✅ Send staffUserId for direct authentication (works in installer!)
+        if (this.staffUserId) {
+          formData.append('staffUserId', this.staffUserId)
+          console.log('[Screenshots API] Sending with staffUserId:', this.staffUserId)
+        } else {
+          console.log('[Screenshots API] No staffUserId - will rely on session cookie')
+        }
 
         // Use Electron's net module for HTTP request
         const request = net.request({
@@ -264,6 +345,21 @@ class ScreenshotService {
   }
 
   /**
+   * Update session token and fetch staff user ID (called after login)
+   */
+  async updateSessionToken(sessionToken) {
+    console.log('[ScreenshotService] Updating session token')
+    this.sessionToken = sessionToken
+    
+    if (sessionToken) {
+      await this.fetchStaffUserId()
+    } else {
+      console.warn('[ScreenshotService] ⚠️ Session token cleared')
+      this.staffUserId = null
+    }
+  }
+
+  /**
    * Get current status
    */
   getStatus() {
@@ -274,6 +370,8 @@ class ScreenshotService {
       inactivityTrigger: '30+ seconds',
       screenshotCount: this.screenshotCount,
       hasSessionToken: !!this.sessionToken,
+      hasStaffUserId: !!this.staffUserId,
+      staffUserId: this.staffUserId,
       isMonitoring: this.isEnabled,
       isProcessing: this.isProcessing
     }
@@ -301,6 +399,7 @@ class ScreenshotService {
     console.log('[ScreenshotService] Cleaning up')
     this.stop()
     this.sessionToken = null
+    this.staffUserId = null
     this.screenshotCount = 0
   }
 }
