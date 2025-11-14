@@ -102,23 +102,53 @@ export function useTimeTrackingWebSocket() {
       return
     }
     
-    // Make API call in background (don't await)
+    // Make API call and handle errors
     fetch('/api/time-tracking/clock-out', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason, notes })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
+    .then(async response => {
+      const data = await response.json()
+      
+      console.log('[Clock Out] API Response:', { 
+        status: response.status, 
+        ok: response.ok,
+        data 
+      })
+      
+      if (response.ok && data.success) {
         // Emit WebSocket event for real-time updates
         emit('time:clockout', data)
       } else {
-        console.error('Clock out failed:', data)
+        const errorMsg = data.details || data.error || 'Unknown error'
+        console.error('❌ Clock out failed:', {
+          status: response.status,
+          error: errorMsg,
+          fullData: data
+        })
+        
+        // Show error toast to user
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('clock-out-error', { 
+            detail: { error: errorMsg } 
+          })
+          window.dispatchEvent(event)
+        }
+        
+        throw new Error(errorMsg)
       }
     })
     .catch(error => {
-      console.error('Clock out error:', error)
+      console.error('❌ Clock out error:', error.message || error)
+      
+      // Show error toast to user if not already shown
+      if (typeof window !== 'undefined' && !error.message?.includes('Failed to fetch')) {
+        const event = new CustomEvent('clock-out-error', { 
+          detail: { error: error.message || 'Network error' } 
+        })
+        window.dispatchEvent(event)
+      }
     })
   }, [emit, isConnected])
 
@@ -278,6 +308,31 @@ export function useTimeTrackingWebSocket() {
   // WebSocket event handlers
   const handleClockInSuccess = useCallback(async (data: any) => {
     console.log('[WebSocket] Clock in success:', data)
+    
+    // Trigger late/early modal if applicable (only on actual clock-in action)
+    if (data.timeEntry?.wasLate && data.timeEntry?.lateBy) {
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('show-late-modal', { 
+          detail: { 
+            lateBy: data.timeEntry.lateBy,
+            timeEntryId: data.timeEntry.id 
+          } 
+        })
+        window.dispatchEvent(event)
+      }
+    }
+    
+    if (data.timeEntry?.wasEarly && data.timeEntry?.earlyBy) {
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('show-early-modal', { 
+          detail: { 
+            earlyBy: data.timeEntry.earlyBy,
+            timeEntryId: data.timeEntry.id 
+          } 
+        })
+        window.dispatchEvent(event)
+      }
+    }
     
     // Update state immediately
     setState(prev => ({

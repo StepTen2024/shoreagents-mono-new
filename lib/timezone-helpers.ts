@@ -20,40 +20,66 @@ export function getStaffLocalTime(timezone: string = 'Asia/Manila'): Date {
 
 /**
  * Get start of day (midnight) in staff's timezone
- * ✅ SIMPLE & RELIABLE: Works the same locally and deployed
+ * Returns UTC Date that represents midnight in the target timezone
  * 
- * Returns a Date object representing midnight in the staff's timezone.
- * Example: Nov 13, 2025 00:00:00 Manila = Nov 12, 2025 16:00:00 UTC
+ * Example: Nov 14, 2025 00:00:00 Manila = Nov 13, 2025 16:00:00 UTC
+ * (Manila is UTC+8, so we subtract 8 hours from Manila midnight to get UTC)
  */
 export function getStaffDayStart(timezone: string = 'Asia/Manila', daysOffset: number = 0): Date {
   const now = new Date()
   
-  // Get the date string in staff timezone
-  const dateInTz = now.toLocaleString('en-US', { 
+  // Get date components in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
+    day: '2-digit'
+  })
+  
+  const parts = formatter.formatToParts(now)
+  const year = parseInt(parts.find(p => p.type === 'year')!.value)
+  const month = parseInt(parts.find(p => p.type === 'month')!.value)
+  const day = parseInt(parts.find(p => p.type === 'day')!.value) + daysOffset
+  
+  // Create Date for midnight in target timezone
+  // We'll use Date.UTC which creates a UTC date, then adjust
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+  
+  // Get what time this UTC date appears as in the target timezone
+  const tzTime = utcDate.toLocaleString('en-US', { 
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
     hour12: false
   })
   
-  // Parse "MM/DD/YYYY" or "11/13/2025, HH:MM:SS"
-  const datePart = dateInTz.split(',')[0]
-  const [month, day, year] = datePart.split('/').map(Number)
+  // If it shows as "00:00", we're good. Otherwise we need to adjust.
+  // For Manila (UTC+8): UTC midnight shows as "08:00" in Manila
+  // So we need to go back 8 hours to get Manila midnight in UTC
   
-  // Calculate midnight in the target timezone
-  // We create a date string that will be interpreted correctly
-  const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T00:00:00`
+  // Simple approach: Manila is always UTC+8
+  const MANILA_OFFSET_HOURS = 8
+  const result = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (MANILA_OFFSET_HOURS * 60 * 60 * 1000))
   
-  // Create two dates: one interpreted as local, one as target timezone
-  const localMidnight = new Date(dateStr)
-  const targetTzMidnight = new Date(localMidnight.toLocaleString('en-US', { timeZone: timezone }))
-  
-  // Calculate the offset between them
-  const offset = localMidnight.getTime() - targetTzMidnight.getTime()
-  
-  // Apply offset to get the UTC time that represents midnight in target timezone
-  let result = new Date(Date.UTC(year, month - 1, day + daysOffset, 0, 0, 0, 0) - offset)
+  console.log('[getStaffDayStart] Debug:', {
+    timezone,
+    daysOffset,
+    inputDate: now.toISOString(),
+    targetYMD: `${year}-${month}-${day}`,
+    utcMidnight: utcDate.toISOString(),
+    tzTime,
+    result: result.toISOString(),
+    resultInManila: result.toLocaleString('en-US', { 
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  })
   
   return result
 }
@@ -215,8 +241,9 @@ export async function detectShiftDay(
  * Create expected clock-in time for a shift
  * Handles night shifts that cross midnight
  * 
- * ✅ CRITICAL: Uses milliseconds math to avoid server timezone issues!
- * .setHours() uses SERVER timezone, but shiftDate is timezone-aware!
+ * ✅ CRITICAL: Properly handles Manila timezone (UTC+8)
+ * shiftDate should be midnight Manila time in UTC
+ * Example: Nov 14 00:00 Manila = Nov 13 16:00 UTC
  */
 export function createExpectedClockIn(
   shiftDate: Date,
@@ -224,13 +251,25 @@ export function createExpectedClockIn(
 ): Date {
   const { hour, minute } = parseTimeString(startTimeStr)
   
-  // ✅ Add hours/minutes using milliseconds (timezone-independent!)
-  // shiftDate = midnight Manila (e.g., Nov 14 00:00 Manila = Nov 13 16:00 UTC)
-  // Add 9 hours = Nov 14 09:00 Manila = Nov 14 01:00 UTC ✅
+  // shiftDate should already be midnight Manila in UTC format
+  // e.g., Nov 14 00:00 Manila = Nov 13 16:00:00 UTC
+  // If we add 7 hours: Nov 14 07:00 Manila = Nov 13 23:00:00 UTC ✅
   const hoursInMs = hour * 60 * 60 * 1000
   const minutesInMs = minute * 60 * 1000
   
-  return new Date(shiftDate.getTime() + hoursInMs + minutesInMs)
+  const result = new Date(shiftDate.getTime() + hoursInMs + minutesInMs)
+  
+  console.log('[createExpectedClockIn] Debug:', {
+    shiftDate: shiftDate.toISOString(),
+    shiftDateManila: shiftDate.toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
+    startTimeStr,
+    hour,
+    minute,
+    result: result.toISOString(),
+    resultManila: result.toLocaleString('en-US', { timeZone: 'Asia/Manila' })
+  })
+  
+  return result
 }
 
 

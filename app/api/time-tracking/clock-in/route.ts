@@ -122,12 +122,23 @@ export async function POST(request: NextRequest) {
         
         console.log(`⏰ Expected clock-in:`, {
           expectedTime: expectedClockIn.toISOString(),
-          actualTime: nowInStaffTz.toISOString()
+          expectedTimeManila: expectedClockIn.toLocaleString('en-US', { timeZone: staffTimezone }),
+          actualTime: nowInStaffTz.toISOString(),
+          actualTimeManila: nowInStaffTz.toLocaleString('en-US', { timeZone: staffTimezone }),
+          timezone: staffTimezone
         })
         
         // ✅ FIX #10: Compare against STAFF TIMEZONE time (not server time)
         const diffMs = nowInStaffTz.getTime() - expectedClockIn.getTime()
         const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
+        
+        console.log(`⏰ Time difference calculation:`, {
+          diffMs,
+          diffMinutes,
+          diffHours: (diffMinutes / 60).toFixed(2),
+          wasLate: diffMs > 0,
+          wasEarly: diffMs < 0
+        })
         
         if (diffMs > 0) {
           // Clocked in AFTER shift start = LATE
@@ -179,10 +190,18 @@ export async function POST(request: NextRequest) {
     
     console.log(`✅ Time entry created:`, {
       id: timeEntry.id,
-      clockIn: timeEntry.clockIn,
-      shiftDate: timeEntry.shiftDate,
+      clockIn: timeEntry.clockIn.toISOString(),
+      clockInManila: timeEntry.clockIn.toLocaleString('en-US', { timeZone: staffTimezone }),
+      shiftDate: timeEntry.shiftDate?.toISOString(),
       shiftDayOfWeek: timeEntry.shiftDayOfWeek,
-      isNightShift
+      wasLate: timeEntry.wasLate,
+      lateBy: timeEntry.lateBy,
+      wasEarly: timeEntry.wasEarly,
+      earlyBy: timeEntry.earlyBy,
+      expectedClockIn: timeEntry.expectedClockIn?.toISOString(),
+      expectedClockInManila: timeEntry.expectedClockIn?.toLocaleString('en-US', { timeZone: staffTimezone }),
+      isNightShift,
+      timezone: staffTimezone
     })
     
     // ✅ NEW: Create empty performance_metrics row for this shift
