@@ -666,3 +666,148 @@ Error details: {
  ✓ Compiled in 1129ms (1761 modules)
  GET /ai-assistant 200 in 96ms
 [Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 1236ms (1524 modules)
+ GET /ai-assistant 200 in 139ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled /api/auth/[...nextauth] in 371ms (1091 modules)
+ GET /api/auth/session 200 in 686ms
+ GET /api/auth/session 200 in 36ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /ai-assistant
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /ai-assistant 200 in 222ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: Ctb6zSzgWmn16ayXAAAn
+ ✓ Compiled /api/documents in 259ms (1093 modules)
+ ✓ Compiled (1166 modules)
+ GET /api/auth/session 200 in 646ms
+[WebSocket] Client disconnected: Ctb6zSzgWmn16ayXAAAn
+ ✓ Compiled /api/onboarding/status in 155ms (1168 modules)
+ ✓ Compiled (1170 modules)
+ GET /api/auth/session 200 in 380ms
+[WebSocket] Client connected: ejrKsNHUoIQrOd1SAAAp
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+📚 [STAFF] Fetched 0 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 1231ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1346ms
+ GET /api/onboarding/status 200 in 729ms
+ GET /api/tasks 200 in 1748ms
+ GET /api/profile 200 in 1060ms
+[Break Auto-Start] Checking 4 active sessions
+✅ Text file read directly, length: 302078
+📤 [STAFF] Uploading to Supabase: {
+  fileName: 'shoreagents_complete_case_studies.md',
+  contentType: 'text/markdown',
+  path: 'staff_docs/0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda/1763354946647-shoreagents_complete_case_studies.md'
+}
+✅ [STAFF] File uploaded SUCCESS: {
+  bucket: 'staff',
+  path: 'staff_docs/0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda/1763354946647-shoreagents_complete_case_studies.md',
+  url: 'https://ijxxtnakmexuavidzzvx.supabase.co/storage/v1/object/public/staff/staff_docs/0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda/1763354946647-shoreagents_complete_case_studies.md'
+}
+📤 [STAFF] Auto-sharing with assigned client company: f945a460-b8ac-4a8c-bde9-956d0be0b3b3
+ POST /api/documents 201 in 1607ms
+📚 [STAFF] Fetched 1 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 789ms
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 64ms
+ GET /api/auth/session 200 in 28ms
+ ○ Compiling /api/chat ...
+ ✓ Compiled /api/chat in 770ms (1808 modules)
+🔍 [CHAT API] Request received - checking API key...
+   ANTHROPIC_API_KEY exists? false
+   CLAUDE_API_KEY exists? true
+   Using key starts with: sk-ant-api03-Bhfj7dNnv8sDRmFJZ
+ GET /ai-assistant 200 in 71ms
+📬 AI Chat API received:
+  - documentIds: 1
+  - taskIds: 0
+🤖 [CHAT API] Calling Claude...
+   System prompt length: 2507
+   Messages: 1
+   Model: claude-sonnet-4-20250514
+🔑 [CHAT API] Creating fresh Anthropic client with key: sk-ant-api03-Bhfj7dNnv8sDRmFJZ
+✅ [CHAT API] Claude response received
+ POST /api/chat 200 in 10356ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 48ms
+ GET /api/auth/session 200 in 26ms
+🔍 [CHAT API] Request received - checking API key...
+   ANTHROPIC_API_KEY exists? false
+   CLAUDE_API_KEY exists? true
+   Using key starts with: sk-ant-api03-Bhfj7dNnv8sDRmFJZ
+📬 AI Chat API received:
+  - documentIds: 0
+  - taskIds: 0
+🤖 [CHAT API] Calling Claude...
+   System prompt length: 2507
+   Messages: 3
+   Model: claude-sonnet-4-20250514
+🔑 [CHAT API] Creating fresh Anthropic client with key: sk-ant-api03-Bhfj7dNnv8sDRmFJZ
+✅ [CHAT API] Claude response received
+ POST /api/chat 200 in 6117ms
+ GET /api/auth/session 200 in 104ms
+ GET /api/auth/session 200 in 65ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 70ms
+ GET /api/auth/session 200 in 62ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /ai-assistant
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /ai-assistant 200 in 238ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: t1lorEog0Yca7EBWAAAr
+ ✓ Compiled /api/documents in 316ms (1093 modules)
+ ✓ Compiled (1166 modules)
+ GET /api/auth/session 200 in 646ms
+[WebSocket] Client disconnected: t1lorEog0Yca7EBWAAAr
+ ✓ Compiled /api/onboarding/status in 150ms (1168 modules)
+ ✓ Compiled (1170 modules)
+ GET /api/auth/session 200 in 434ms
+[WebSocket] Client connected: l8BgWgzvyBthXk0kAAAt
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1633ms
+📚 [STAFF] Fetched 1 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 1737ms
+ GET /api/onboarding/status 200 in 1075ms
+ GET /api/tasks 200 in 1983ms
+ GET /api/profile 200 in 1408ms
+ ✓ Compiled /api/chat in 367ms (1217 modules)
+🔍 [CHAT API] Request received - checking API key...
+   ANTHROPIC_API_KEY exists? false
+   CLAUDE_API_KEY exists? true
+   Using key starts with: sk-ant-api03-Bhfj7dNnv8sDRmFJZ
+📬 AI Chat API received:
+  - documentIds: 1
+  - taskIds: 0
+🤖 [CHAT API] Calling Claude...
+   System prompt length: 304724
+   Messages: 1
+   Model: claude-sonnet-4-20250514
+🔑 [CHAT API] Creating fresh Anthropic client with key: sk-ant-api03-Bhfj7dNnv8sDRmFJZ
+[Break Auto-Start] Checking 4 active sessions
+✅ [CHAT API] Claude response received
+ POST /api/chat 200 in 15599ms
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 49ms
+ GET /api/auth/session 200 in 32ms
+[Break Auto-Start] Checking 4 active sessions
