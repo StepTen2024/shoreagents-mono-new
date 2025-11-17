@@ -83,13 +83,14 @@ export default function CreateTaskModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Auto-focus first field
+  // Auto-focus first field ONLY on initial mount
   useEffect(() => {
     const firstInput = modalRef.current?.querySelector('input')
     if (firstInput) {
       firstInput.focus()
     }
-  }, [tasks])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty array = only run on mount, not on tasks changes
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
