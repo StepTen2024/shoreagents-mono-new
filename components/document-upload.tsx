@@ -205,7 +205,7 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor={`file-${doc.id}`} className="text-white">Document File *</Label>
+                  <label htmlFor={`file-${doc.id}`} className="text-white text-sm font-medium">Document File *</label>
                   <input
                     id={`file-${doc.id}`}
                     type="file"
@@ -225,8 +225,16 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                     className="hidden"
                     disabled={uploading}
                   />
-                  <label 
-                    htmlFor={`file-${doc.id}`} 
+                  <div 
+                    onClick={() => {
+                      console.log('[Click Debug] Div clicked for doc:', doc.id)
+                      const input = document.getElementById(`file-${doc.id}`) as HTMLInputElement
+                      console.log('[Click Debug] Input found:', !!input)
+                      if (input) {
+                        input.click()
+                        console.log('[Click Debug] Input clicked')
+                      }
+                    }}
                     className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-500 transition-colors cursor-pointer"
                   >
                     {doc.file ? (
@@ -248,7 +256,7 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                         </p>
                       </div>
                     )}
-                  </label>
+                  </div>
                   {index === 0 && (
                     <p className="text-xs text-gray-500">
                       Text will be extracted automatically using CloudConvert and made searchable

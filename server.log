@@ -498,3 +498,46 @@ Error details: {
 [Break Auto-Start] Checking 4 active sessions
  ✓ Compiled in 596ms (1524 modules)
  GET /ai-assistant 200 in 128ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /ai-assistant
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /ai-assistant 200 in 258ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: 0O3bv-79N_bAYTwMAAAX
+ ✓ Compiled /api/auth/[...nextauth] in 201ms (1091 modules)
+ ✓ Compiled (1166 modules)
+ GET /api/auth/session 200 in 567ms
+[WebSocket] Client disconnected: 0O3bv-79N_bAYTwMAAAX
+ GET /api/auth/session 200 in 33ms
+[WebSocket] Client connected: SF-nVgx-wYuhc1ARAAAZ
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+ ✓ Compiled /api/onboarding/status in 398ms (1168 modules)
+ ✓ Compiled (1170 modules)
+📚 [STAFF] Fetched 0 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 1464ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1592ms
+ GET /api/tasks 200 in 1662ms
+ GET /api/onboarding/status 200 in 1225ms
+ GET /api/profile 200 in 1564ms
+ GET /api/auth/session 200 in 165ms
+ GET /api/auth/session 200 in 30ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 885ms (1761 modules)
+ GET /ai-assistant 200 in 189ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+(node:72401) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 16 beforeExit listeners added to [process]. MaxListeners is 15. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+ GET /api/auth/session 200 in 111ms
+ GET /api/auth/session 200 in 37ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 2.6s (1761 modules)
+ GET /ai-assistant 200 in 158ms
