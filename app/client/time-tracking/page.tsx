@@ -727,14 +727,29 @@ export default function ClientTimeTrackingPage() {
 
                     {/* Break Summary */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Coffee className="h-4 w-4 text-orange-600" />
-                          <span className="text-sm font-semibold text-gray-700">Total Breaks Today</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Coffee className="h-4 w-4 text-orange-600" />
+                            <span className="text-sm font-semibold text-gray-700">Scheduled Breaks</span>
+                          </div>
+                          <Badge className="bg-orange-100 text-orange-700 border-orange-200">
+                            {selectedStaff.currentEntry.breaks?.filter((b: Break) => b.type !== 'AWAY').length || 0} breaks
+                          </Badge>
                         </div>
-                        <Badge className="bg-orange-100 text-orange-700 border-orange-200">
-                          {selectedStaff.currentEntry.breaks?.length || 0} breaks
-                        </Badge>
+                        {(() => {
+                          const awayBreaksCount = selectedStaff.currentEntry.breaks?.filter((b: Break) => b.type === 'AWAY').length || 0
+                          if (awayBreaksCount > 0) {
+                            return (
+                              <div className="flex items-center justify-between pl-6">
+                                <span className="text-xs text-gray-600">+ Away breaks</span>
+                                <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs">
+                                  {awayBreaksCount}
+                                </Badge>
+                              </div>
+                            )
+                          }
+                        })()}
                       </div>
                     </div>
                   </Card>
