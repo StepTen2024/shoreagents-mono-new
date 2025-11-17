@@ -207,6 +207,7 @@ export default function CreateTaskModal({
   }
 
   const updateTask = (taskId: string, field: keyof BulkTask, value: string) => {
+    console.log('[Task Update]', { taskId, field, value: value.substring(0, 50) })
     setTasks(
       tasks.map((task) =>
         task.id === taskId ? { ...task, [field]: value } : task
