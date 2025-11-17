@@ -2,17 +2,18 @@
 > ShoreAgentsAI@1.0.0 dev
 > cross-env NODE_ENV=development node server.js
 
-[dotenv@17.2.3] injecting env (16) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.2.3] injecting env (16) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
 ✅ Socket server registered globally
 > Ready on http://localhost:3000
 > WebSocket server ready on ws://localhost:3000/api/socketio
 [Break Auto-Start] Background job started
-[WebSocket] Client connected: -ftsHgd0eM7osLn4AAAB
+[WebSocket] Client connected: 1M2mOQ3meG94DOR9AAAB
 [WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
 [WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
- ✓ Compiled /middleware in 245ms (114 modules)
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled /middleware in 123ms (114 modules)
  ○ Compiling /tasks ...
- ✓ Compiled /tasks in 2.8s (1117 modules)
+ ✓ Compiled /tasks in 832ms (1094 modules)
 🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
 ✅ [LAYOUT-WRAPPER] Pathname loaded: /tasks
 🎯 [LAYOUT-WRAPPER] Page type: {
@@ -23,133 +24,218 @@
 }
 [ElectronProvider] 🚀 Component mounted!
 [ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
- GET /tasks 200 in 3133ms
+ GET /tasks 200 in 1136ms
 [WebSocket] Client disconnected: Kevin Macabanti
-[WebSocket] Client connected: zM4MICX0T7u3HOauAAAD
+[WebSocket] Client connected: UG5QIsyrETDQPYtCAAAD
  ○ Compiling /api/auth/[...nextauth] ...
- ✓ Compiled /api/auth/[...nextauth] in 1551ms (1336 modules)
- GET /tasks 200 in 59ms
- GET /api/auth/session 200 in 2019ms
-[WebSocket] Client disconnected: zM4MICX0T7u3HOauAAAD
-[WebSocket] Client connected: 7GEnSNz2PUR590O1AAAF
+ ✓ Compiled /api/auth/[...nextauth] in 692ms (1336 modules)
+ GET /api/auth/session 200 in 1146ms
+[WebSocket] Client disconnected: UG5QIsyrETDQPYtCAAAD
+[WebSocket] Client connected: Zoch3iBrf-qyGbMrAAAF
+ GET /api/auth/session 200 in 31ms
 [WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
 [WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
- ✓ Compiled /api/onboarding/status in 308ms (1340 modules)
- GET /api/auth/session 200 in 393ms
- GET /api/tasks 200 in 2923ms
- GET /api/notifications?unreadOnly=true&limit=1 200 in 3082ms
- GET /api/onboarding/status 200 in 988ms
- GET /api/profile 200 in 1333ms
- ✓ Compiled /api/tasks/attachments in 210ms (1342 modules)
+ ✓ Compiled /api/onboarding/status in 276ms (1340 modules)
+ GET /api/onboarding/status 200 in 1572ms
+ GET /api/tasks 200 in 2934ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 3373ms
+ GET /api/profile 200 in 2299ms
+ ✓ Compiled /api/tasks/attachments in 205ms (1342 modules)
 ✅ staff 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda uploaded 1 task attachment(s) to staff/staff_task
- POST /api/tasks/attachments 200 in 1139ms
+ POST /api/tasks/attachments 200 in 1616ms
+✅ Staff Kevin Macabanti created self-task "bdsbbh"
+ POST /api/tasks 201 in 1900ms
+ GET /api/tasks 200 in 2145ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled /api/tasks/[id] in 253ms (1345 modules)
 prisma:error 
-Invalid `prisma.tasks.create()` invocation:
+Invalid `prisma.tasks.findUnique()` invocation:
 
 {
-  data: {
-    id: "8373aed3-e142-48a9-8487-c22b21830acc",
-    companyId: "f945a460-b8ac-4a8c-bde9-956d0be0b3b3",
-    title: "rshghr",
-    description: "erthjetjhet",
-    status: "TODO",
-    priority: "MEDIUM",
-    deadline: new Date("2025-11-19T00:00:00.000Z"),
-    tags: [],
-    attachments: [
-      "https://ijxxtnakmexuavidzzvx.supabase.co/storage/v1/object/public/staff/staff_task/0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda/1763352956276-lhwe8j1njkg.jpeg"
-    ],
-    source: "SELF",
-    createdByType: "STAFF",
-    createdById: "0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda",
-    task_assignments: {
-      create: {
-        id: "a45cffe2-652f-4c0e-b2a0-7990176a909d",
-        staffUserId: "0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda"
-      }
-    },
-+   updatedAt: DateTime
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
   },
   include: {
-    company: {
-      select: {
-        id: true,
-        companyName: true
-      }
-    },
-    task_assignments: {
-      include: {
-        staff_users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-            role: true
-          }
-        }
-      }
-    }
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
   }
 }
 
-Argument `updatedAt` is missing.
-Error creating task: Error [PrismaClientValidationError]: 
-Invalid `prisma.tasks.create()` invocation:
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+❌ [Task Update Error]: Error [PrismaClientValidationError]: 
+Invalid `prisma.tasks.findUnique()` invocation:
 
 {
-  data: {
-    id: "8373aed3-e142-48a9-8487-c22b21830acc",
-    companyId: "f945a460-b8ac-4a8c-bde9-956d0be0b3b3",
-    title: "rshghr",
-    description: "erthjetjhet",
-    status: "TODO",
-    priority: "MEDIUM",
-    deadline: new Date("2025-11-19T00:00:00.000Z"),
-    tags: [],
-    attachments: [
-      "https://ijxxtnakmexuavidzzvx.supabase.co/storage/v1/object/public/staff/staff_task/0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda/1763352956276-lhwe8j1njkg.jpeg"
-    ],
-    source: "SELF",
-    createdByType: "STAFF",
-    createdById: "0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda",
-    task_assignments: {
-      create: {
-        id: "a45cffe2-652f-4c0e-b2a0-7990176a909d",
-        staffUserId: "0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda"
-      }
-    },
-+   updatedAt: DateTime
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
   },
   include: {
-    company: {
-      select: {
-        id: true,
-        companyName: true
-      }
-    },
-    task_assignments: {
-      include: {
-        staff_users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-            role: true
-          }
-        }
-      }
-    }
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
   }
 }
 
-Argument `updatedAt` is missing.
-    at async POST (webpack-internal:///(rsc)/./app/api/tasks/route.ts:170:22)
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+    at async PUT (webpack-internal:///(rsc)/./app/api/tasks/[id]/route.ts:42:30)
     at async Server.<anonymous> (server.js:47:7) {
   clientVersion: '6.18.0'
 }
- POST /api/tasks 500 in 331ms
+Error details: {
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.18.0"
+}
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 1375ms
+prisma:error 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+❌ [Task Update Error]: Error [PrismaClientValidationError]: 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+    at async PUT (webpack-internal:///(rsc)/./app/api/tasks/[id]/route.ts:42:30)
+    at async Server.<anonymous> (server.js:47:7) {
+  clientVersion: '6.18.0'
+}
+Error details: {
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.18.0"
+}
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 454ms
+prisma:error 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+❌ [Task Update Error]: Error [PrismaClientValidationError]: 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+    at async PUT (webpack-internal:///(rsc)/./app/api/tasks/[id]/route.ts:42:30)
+    at async Server.<anonymous> (server.js:47:7) {
+  clientVersion: '6.18.0'
+}
+Error details: {
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.18.0"
+}
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 597ms
 [Break Auto-Start] Checking 4 active sessions
- ✓ Compiled in 1105ms (1356 modules)
- GET /tasks 200 in 90ms
+prisma:error 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+❌ [Task Update Error]: Error [PrismaClientValidationError]: 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+    at async PUT (webpack-internal:///(rsc)/./app/api/tasks/[id]/route.ts:42:30)
+    at async Server.<anonymous> (server.js:47:7) {
+  clientVersion: '6.18.0'
+}
+Error details: {
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.18.0"
+}
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 513ms
+ ✓ Compiled in 1325ms (1347 modules)
+ GET /tasks 200 in 94ms

@@ -72,6 +72,7 @@ export async function PUT(
         ...(tags && { tags }),
         ...(timeSpent !== undefined && { timeSpent }),
         ...(status === "COMPLETED" && { completedAt: new Date() }),
+        updatedAt: new Date(),
       },
       include: {
         company: {
