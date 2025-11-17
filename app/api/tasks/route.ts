@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
         source: "SELF",
         createdByType: "STAFF",
         createdById: staffUser.id,
+        updatedAt: new Date(),
         // Use new assignment method
         task_assignments: {
           create: {
