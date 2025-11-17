@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
     // Create task for themselves using new TaskAssignment method
     const task = await prisma.tasks.create({
       data: {
+        id: require('crypto').randomUUID(),
         companyId: staffUser.companyId,
         title,
         description,
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
         // Use new assignment method
         task_assignments: {
           create: {
+            id: require('crypto').randomUUID(),
             staffUserId: staffUser.id,
           }
         }
