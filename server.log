@@ -239,3 +239,157 @@ Error details: {
  PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 513ms
  ✓ Compiled in 1325ms (1347 modules)
  GET /tasks 200 in 94ms
+ ✓ Compiled in 750ms (1347 modules)
+ GET /tasks 200 in 60ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /tasks
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /tasks 200 in 176ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: KX45ehjFMeQq6tcRAAAH
+ ✓ Compiled /api/auth/[...nextauth] in 105ms (882 modules)
+ ✓ Compiled (886 modules)
+ GET /api/auth/session 200 in 294ms
+[WebSocket] Client disconnected: KX45ehjFMeQq6tcRAAAH
+[WebSocket] Client connected: Q0nFD_U6zQK9O3YGAAAJ
+ GET /api/auth/session 200 in 31ms
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+ ○ Compiling /api/onboarding/status ...
+ ✓ Compiled /api/onboarding/status in 528ms (888 modules)
+ ✓ Compiled (890 modules)
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1720ms
+ GET /api/onboarding/status 200 in 1540ms
+ GET /api/profile 200 in 2226ms
+ GET /api/tasks 200 in 2605ms
+prisma:error 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+❌ [Task Update Error]: Error [PrismaClientValidationError]: 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+    at async PUT (webpack-internal:///(rsc)/./app/api/tasks/[id]/route.ts:42:30)
+    at async Server.<anonymous> (server.js:47:7) {
+  clientVersion: '6.18.0'
+}
+Error details: {
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.18.0"
+}
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 461ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /tasks
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /tasks 200 in 170ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: 8vIpgqRlxMXH7UdSAAAL
+ GET /api/auth/session 200 in 81ms
+[WebSocket] Client disconnected: 8vIpgqRlxMXH7UdSAAAL
+[WebSocket] Client connected: mMtOFES4FNkg9bhTAAAN
+ GET /api/auth/session 200 in 69ms
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+ GET /api/onboarding/status 200 in 687ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1357ms
+ GET /api/profile 200 in 1362ms
+ GET /api/tasks 200 in 2234ms
+[Break Auto-Start] Checking 4 active sessions
+prisma:error 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+❌ [Task Update Error]: Error [PrismaClientValidationError]: 
+Invalid `prisma.tasks.findUnique()` invocation:
+
+{
+  where: {
+    id: "890cb853-7a8a-440c-91ef-82547e26c915"
+  },
+  include: {
+    assignedStaff: true,
+    ~~~~~~~~~~~~~
+?   subtasks?: true,
+?   task_assignments?: true,
+?   client_users?: true,
+?   company?: true,
+?   staff_users?: true
+  }
+}
+
+Unknown field `assignedStaff` for include statement on model `tasks`. Available options are marked with ?.
+    at async PUT (webpack-internal:///(rsc)/./app/api/tasks/[id]/route.ts:42:30)
+    at async Server.<anonymous> (server.js:47:7) {
+  clientVersion: '6.18.0'
+}
+Error details: {
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.18.0"
+}
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 500 in 559ms
+ ✓ Compiled in 782ms (1357 modules)
+ GET /tasks 200 in 46ms
+ ✓ Compiled in 490ms (1357 modules)
+ GET /tasks 200 in 40ms
+ ✓ Compiled in 657ms (1357 modules)
+ GET /tasks 200 in 44ms

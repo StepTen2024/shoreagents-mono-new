@@ -40,7 +40,7 @@ export async function PUT(
     const existingTask = await prisma.tasks.findUnique({
       where: { id },
       include: {
-        assignedStaff: true,
+        task_assignments: true,
       }
     })
 
@@ -50,7 +50,7 @@ export async function PUT(
 
     // Check if staff is assigned (via legacy staffUserId OR new TaskAssignment)
     const isAssigned = existingTask.staffUserId === staffUser.id || 
-                      existingTask.assignedStaff.some(assignment => assignment.staffUserId === staffUser.id)
+                      existingTask.task_assignments.some(assignment => assignment.staffUserId === staffUser.id)
 
     if (!isAssigned) {
       return NextResponse.json({ error: "Forbidden: Task not assigned to you" }, { status: 403 })
@@ -89,7 +89,7 @@ export async function PUT(
             avatar: true,
           }
         },
-        assignedStaff: {
+        task_assignments: {
           include: {
             staff_users: {
               select: {
