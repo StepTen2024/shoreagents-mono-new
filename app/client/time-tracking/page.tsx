@@ -18,6 +18,7 @@ import {
   Calendar,
   Grid3x3,
   List,
+  RefreshCw,
   TrendingUp,
   Play,
   Pause,
@@ -76,10 +77,15 @@ type StaffTimeEntry = {
 
 export default function ClientTimeTrackingPage() {
   const [staffData, setStaffData] = useState<StaffTimeEntry[]>([])
+  const [allStaffData, setAllStaffData] = useState<StaffTimeEntry[]>([]) // Store unfiltered data
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [selectedStaff, setSelectedStaff] = useState<StaffTimeEntry | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month'>('today')
+  const [staffFilter, setStaffFilter] = useState<string>('all') // 'all' or staffId
+  const [statusFilter, setStatusFilter] = useState<string>('all') // 'all', 'working', 'break', 'out'
   
   const [summary, setSummary] = useState({
     totalHours: 0,
@@ -92,29 +98,82 @@ export default function ClientTimeTrackingPage() {
     fetchTimeEntries()
   }, [selectedDate])
 
-  // Update active staff hours every minute
+  // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // Force re-render to update calculated hours for active staff
-      setStaffData(prevData => [...prevData])
-    }, 60000) // Update every minute
+      fetchTimeEntries(true) // Silent refresh
+    }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [])
+  }, [selectedDate])
 
-  async function fetchTimeEntries() {
+  // Apply filters whenever they change
+  useEffect(() => {
+    applyFilters()
+  }, [staffFilter, statusFilter, allStaffData])
+
+  async function fetchTimeEntries(silent = false) {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
+      setRefreshing(true)
+      
       const res = await fetch(`/api/client/time-tracking?startDate=${selectedDate}&endDate=${selectedDate}`)
       if (res.ok) {
         const data = await res.json()
-        setStaffData(data.staffTimeEntries)
+        setAllStaffData(data.staffTimeEntries)
         setSummary(data.summary)
       }
     } catch (error) {
       console.error("Failed to fetch time entries:", error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  function applyFilters() {
+    let filtered = [...allStaffData]
+
+    // Staff filter
+    if (staffFilter !== 'all') {
+      filtered = filtered.filter(s => s.staff.id === staffFilter)
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      switch (statusFilter) {
+        case 'working':
+          filtered = filtered.filter(s => s.isClockedIn && !s.isOnBreak)
+          break
+        case 'break':
+          filtered = filtered.filter(s => s.isOnBreak)
+          break
+        case 'out':
+          filtered = filtered.filter(s => !s.isClockedIn)
+          break
+      }
+    }
+
+    setStaffData(filtered)
+  }
+
+  function setDateRangePreset(range: 'today' | 'week' | 'month') {
+    setDateRange(range)
+    const today = new Date()
+    
+    switch (range) {
+      case 'today':
+        setSelectedDate(today.toISOString().split('T')[0])
+        break
+      case 'week':
+        const monday = new Date(today)
+        monday.setDate(today.getDate() - today.getDay() + 1)
+        setSelectedDate(monday.toISOString().split('T')[0])
+        break
+      case 'month':
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        setSelectedDate(firstDay.toISOString().split('T')[0])
+        break
     }
   }
 
@@ -134,18 +193,10 @@ export default function ClientTimeTrackingPage() {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
 
-  const calculateCurrentHours = (clockIn: Date | string) => {
-    const clockInTime = new Date(clockIn)
-    const now = new Date()
-    const diffInMs = now.getTime() - clockInTime.getTime()
-    const diffInHours = diffInMs / (1000 * 60 * 60)
-    return Math.round(diffInHours * 100) / 100 // Round to 2 decimal places
-  }
-
   const getDisplayHours = (staff: StaffTimeEntry) => {
     if (staff.isClockedIn && staff.currentEntry) {
-      // For active staff, calculate hours from clock-in to now
-      return calculateCurrentHours(staff.currentEntry.clockIn)
+      // For active staff, use backend's calculated current hours (includes break deduction)
+      return (staff.currentEntry as any).currentHours || staff.totalHours
     }
     // For inactive staff, use the total hours from completed entries
     return staff.totalHours
@@ -294,6 +345,108 @@ export default function ClientTimeTrackingPage() {
                 </div>
               </div>
             </Card>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="mb-6 space-y-4">
+            {/* Date Range Presets & Refresh */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={dateRange === 'today' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDateRangePreset('today')}
+                  className={dateRange === 'today' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-100'}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={dateRange === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDateRangePreset('week')}
+                  className={dateRange === 'week' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-100'}
+                >
+                  This Week
+                </Button>
+                <Button
+                  variant={dateRange === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDateRangePreset('month')}
+                  className={dateRange === 'month' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-100'}
+                >
+                  This Month
+                </Button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchTimeEntries(false)}
+                disabled={refreshing}
+                className="text-gray-700 hover:bg-gray-100"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+
+            {/* Staff & Status Filters */}
+            <div className="flex items-center gap-3">
+              {/* Staff Filter */}
+              <select
+                value={staffFilter}
+                onChange={(e) => setStaffFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+              >
+                <option value="all">All Staff ({allStaffData.length})</option>
+                {allStaffData.map(s => (
+                  <option key={s.staff.id} value={s.staff.id}>
+                    {s.staff.name} ({s.totalHours}h)
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                <Button
+                  variant={statusFilter === 'all' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('all')}
+                  className={statusFilter === 'all' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  All
+                </Button>
+                <Button
+                  variant={statusFilter === 'working' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('working')}
+                  className={statusFilter === 'working' ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  Working
+                </Button>
+                <Button
+                  variant={statusFilter === 'break' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('break')}
+                  className={statusFilter === 'break' ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  On Break
+                </Button>
+                <Button
+                  variant={statusFilter === 'out' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('out')}
+                  className={statusFilter === 'out' ? 'bg-gray-50 text-gray-700 hover:bg-gray-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  Clocked Out
+                </Button>
+              </div>
+
+              {/* Results Count */}
+              <span className="text-sm text-gray-600 ml-auto">
+                Showing {staffData.length} of {allStaffData.length} staff
+              </span>
+            </div>
           </div>
         </div>
 

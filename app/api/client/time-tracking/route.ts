@@ -152,6 +152,24 @@ export async function GET(req: NextRequest) {
       const activeBreak = activeEntry?.breaks.find((b: any) => b.actualStart && !b.actualEnd)
       const isOnBreak = !!activeBreak
 
+      // Calculate current hours for active entry (including break time deduction)
+      let currentHours = 0
+      if (activeEntry && !activeEntry.clockOut) {
+        const clockInTime = new Date(activeEntry.clockIn).getTime()
+        const now = new Date().getTime()
+        const totalMs = now - clockInTime
+        
+        // Subtract completed break time
+        const breakTimeMs = activeEntry.breaks
+          .filter((b: any) => b.actualStart && b.actualEnd)
+          .reduce((sum: number, b: any) => {
+            const breakDuration = new Date(b.actualEnd).getTime() - new Date(b.actualStart).getTime()
+            return sum + breakDuration
+          }, 0)
+        
+        currentHours = Math.round(((totalMs - breakTimeMs) / (1000 * 60 * 60)) * 100) / 100
+      }
+
       return {
         staff: {
           id: staff.id,
@@ -167,6 +185,7 @@ export async function GET(req: NextRequest) {
         currentEntry: activeEntry ? {
           id: activeEntry.id,
           clockIn: activeEntry.clockIn,
+          currentHours, // Add calculated current hours
           breaks: activeEntry.breaks.map((b: any) => ({
             id: b.id,
             type: b.type,
@@ -218,6 +237,11 @@ export async function GET(req: NextRequest) {
     const activeStaff = staffTimeEntries.filter(s => s.isClockedIn).length
     const totalHours = staffTimeEntries.reduce((sum, s) => sum + s.totalHours, 0)
     const totalEntries = timeEntries.length
+    
+    // Only count staff who have started work (not in NOT_STARTED status)
+    const activeEmployees = staffTimeEntries.filter(s => 
+      s.staff.employmentStatus !== 'NOT_STARTED'
+    ).length
 
     return NextResponse.json({
       staffTimeEntries: sortedStaffTimeEntries,
@@ -225,7 +249,7 @@ export async function GET(req: NextRequest) {
         totalHours: Math.round(totalHours * 100) / 100,
         activeStaff,
         totalEntries,
-        totalStaff: staffTimeEntries.length
+        totalStaff: activeEmployees // Only count active employees
       }
     })
   } catch (error: any) {
