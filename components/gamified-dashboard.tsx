@@ -6,6 +6,8 @@ import {
   CheckSquare, Coffee, Star, Headphones, Trophy, Activity, MessageSquare,
   Calendar, Clock, TrendingUp, AlertCircle, Users
 } from "lucide-react"
+import { TimeTrackingWidget } from "./dashboard/time-tracking-widget"
+import { ScheduleWidget } from "./dashboard/schedule-widget"
 
 interface DashboardData {
   tasks: any[]
@@ -143,8 +145,8 @@ export default function GamifiedDashboard() {
   }
 
   const quickActions = [
+    { href: "/time-tracking", icon: Clock, label: "Time Tracking" },
     { href: "/tasks", icon: CheckSquare, label: "Manage Tasks" },
-    // { href: "/breaks", icon: Coffee, label: "Track Breaks" }, // TODO: Create breaks page
     { href: "/performance-reviews", icon: Star, label: "View Reviews" },
     { href: "/tickets", icon: Headphones, label: "Support Tickets" },
   ]
@@ -199,6 +201,12 @@ export default function GamifiedDashboard() {
             ))}
           </div>
         </div>
+
+        {/* Time Tracking Widget */}
+        <TimeTrackingWidget />
+
+        {/* Schedule Widget */}
+        <ScheduleWidget />
 
         {/* Welcome Form Banner */}
         {onboardingStatus?.isComplete && welcomeFormStatus?.needsCompletion && (

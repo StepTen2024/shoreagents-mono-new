@@ -123,11 +123,30 @@ export default function TimeTracking() {
   
   // Listen for late clock-in event (ONLY triggered on actual clock-in, not page refresh)
   useEffect(() => {
-    const handleShowLateModal = (event: CustomEvent) => {
-      const { lateBy } = event.detail
-      console.log('[Time Tracking] Late modal event received:', lateBy)
-      setLateMinutes(lateBy)
-      setShowLateModal(true)
+    if (isClockedIn && activeEntry?.wasLate && activeEntry?.lateBy && activeEntry?.id) {
+      // Check if user already saw this modal for this time entry
+      const seenKey = `late-modal-seen-${activeEntry.id}`
+      const alreadySeen = localStorage.getItem(seenKey)
+      
+      console.log('[Late Modal] Check:', {
+        timeEntryId: activeEntry.id,
+        wasLate: activeEntry.wasLate,
+        lateBy: activeEntry.lateBy,
+        seenKey,
+        alreadySeen,
+        willShow: !alreadySeen
+      })
+      
+      if (!alreadySeen) {
+        console.log('[Late Modal] Showing late modal for the first time')
+        setLateMinutes(activeEntry.lateBy)
+        setShowLateModal(true)
+        // Mark as seen immediately to prevent re-showing
+        localStorage.setItem(seenKey, 'true')
+        console.log('[Late Modal] Marked as seen in localStorage:', seenKey)
+      } else {
+        console.log('[Late Modal] Already seen, skipping')
+      }
     }
     
     window.addEventListener('show-late-modal', handleShowLateModal as EventListener)

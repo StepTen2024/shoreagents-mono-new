@@ -179,6 +179,18 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
       const actualElapsed = Math.floor((now - startTime) / 1000)
       setElapsedSeconds(Math.max(0, actualElapsed)) // Ensure it's never negative
       
+      console.log('[Break Modal] Initialized break timer:', {
+        breakId: breakData.id,
+        type: breakData.type,
+        actualStart: breakData.actualStart,
+        startTime: new Date(startTime).toISOString(),
+        now: new Date(now).toISOString(),
+        actualElapsed: actualElapsed,
+        elapsedMinutes: Math.floor(actualElapsed / 60),
+        isPaused: breakData.isPaused,
+        pausedDuration: breakData.pausedDuration
+      })
+      
       setIsInitializing(false) // Timer is ready to start
     }
   }, [breakData, originalStartTime])

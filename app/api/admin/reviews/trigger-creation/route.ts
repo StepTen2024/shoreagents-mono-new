@@ -120,12 +120,12 @@ export async function POST(request: NextRequest) {
 
       // Handle recurring reviews for regularized staff (after day 150)
       if (daysSinceStart >= 323) { // 7 days before first recurring (day 330)
-        const clientUser = await prisma.client_users.findFirst({
-          where: { companyId: staff.companyId },
-          orderBy: { createdAt: "asc" }
-        })
+          const clientUser = await prisma.client_users.findFirst({
+            where: { companyId: staff.companyId },
+            orderBy: { createdAt: "asc" }
+          })
 
-        if (clientUser) {
+          if (clientUser) {
           // Get all existing recurring reviews
           const existingRecurring = existingReviews.filter(r => r.type === "RECURRING")
           

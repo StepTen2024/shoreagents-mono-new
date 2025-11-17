@@ -83,13 +83,14 @@ export default function CreateTaskModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Auto-focus first field
+  // Auto-focus first field ONLY on initial mount
   useEffect(() => {
     const firstInput = modalRef.current?.querySelector('input')
     if (firstInput) {
       firstInput.focus()
     }
-  }, [tasks])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty array = only run on mount, not on tasks changes
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -207,6 +208,7 @@ export default function CreateTaskModal({
   }
 
   const updateTask = (taskId: string, field: keyof BulkTask, value: string) => {
+    console.log('[Task Update]', { taskId, field, value: value.substring(0, 50) })
     setTasks(
       tasks.map((task) =>
         task.id === taskId ? { ...task, [field]: value } : task
@@ -301,22 +303,50 @@ export default function CreateTaskModal({
       }
 
       // Create tasks
-      const endpoint = isClient ? "/api/client/tasks/bulk" : "/api/tasks/bulk"
-      const body = {
-        tasks: validTasks,
-        staffUserIds: selectedStaffIds,
-        attachments: attachmentUrls,
-      }
+      if (isClient) {
+        // Client: Create bulk tasks for selected staff
+        const endpoint = "/api/client/tasks/bulk"
+        const body = {
+          tasks: validTasks,
+          staffUserIds: selectedStaffIds,
+          attachments: attachmentUrls,
+        }
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to create tasks")
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to create tasks")
+        }
+      } else {
+        // Staff: Create tasks for themselves (one at a time)
+        const endpoint = "/api/tasks"
+        
+        for (const task of validTasks) {
+          const body = {
+            title: task.title.trim(),
+            description: task.description || "",
+            priority: task.priority || "MEDIUM",
+            deadline: task.deadline || null,
+            tags: [],
+            attachments: attachmentUrls,
+          }
+
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to create task")
+          }
+        }
       }
 
       toast({
@@ -433,11 +463,17 @@ export default function CreateTaskModal({
                           Title <span className="text-red-500">*</span>
                         </label>
                         <input
+                          id={`task-title-${task.id}`}
+                          name={`task-title-${task.id}`}
                           type="text"
                           value={task.title}
-                          onChange={(e) => updateTask(task.id, "title", e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateTask(task.id, "title", e.target.value)
+                          }}
                           onFocus={() => setFocusedField(`bulk-title-${task.id}`)}
                           onBlur={() => setFocusedField(null)}
+                          autoComplete="off"
                           className={`w-full rounded-lg px-4 py-3 outline-none transition-all duration-200 ${
                             isDark
                               ? "bg-gray-700/50 text-white border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
@@ -519,9 +555,15 @@ export default function CreateTaskModal({
                           Description
                         </label>
                         <textarea
+                          id={`task-description-${task.id}`}
+                          name={`task-description-${task.id}`}
                           value={task.description}
-                          onChange={(e) => updateTask(task.id, "description", e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateTask(task.id, "description", e.target.value)
+                          }}
                           rows={3}
+                          autoComplete="off"
                           className={`w-full rounded-lg px-4 py-3 outline-none transition-all duration-200 resize-none ${
                             isDark
                               ? "bg-gray-700/50 text-white border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-gray-500"

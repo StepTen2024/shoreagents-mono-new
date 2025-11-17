@@ -45,11 +45,84 @@ export default async function ClientDashboard() {
     }
   }) : []
 
-  // Set other stats to 0 for now to reduce database load
-  const tasksCompletedThisWeek = 0
-  const hoursThisWeek = 0
-  const avgPerformance = 0
-  const recentActivities: any[] = []
+  // Calculate start of this week (Sunday)
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - now.getDay())
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  // Get staff IDs for queries
+  const staffIds = clientUser.companyId ? (await prisma.staff_users.findMany({
+    where: { companyId: clientUser.companyId },
+    select: { id: true }
+  })).map(s => s.id) : []
+
+  // 1. Tasks completed this week
+  const tasksCompletedThisWeek = staffIds.length > 0 ? await prisma.tasks.count({
+    where: {
+      staffUserId: { in: staffIds },
+      status: 'COMPLETED',
+      completedAt: { gte: startOfWeek }
+    }
+  }) : 0
+
+  // 2. Hours this week - sum all time entries
+  const timeEntriesThisWeek = staffIds.length > 0 ? await prisma.time_entries.findMany({
+    where: {
+      staffUserId: { in: staffIds },
+      clockIn: { gte: startOfWeek }
+    },
+    select: {
+      clockIn: true,
+      clockOut: true
+    }
+  }) : []
+
+  const hoursThisWeek = timeEntriesThisWeek.reduce((total, entry) => {
+    if (entry.clockOut) {
+      const duration = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / (1000 * 60 * 60)
+      return total + duration
+    }
+    // For active sessions, calculate up to now
+    const duration = (now.getTime() - new Date(entry.clockIn).getTime()) / (1000 * 60 * 60)
+    return total + duration
+  }, 0)
+
+  // 3. Average performance from latest reviews
+  const completedReviews = staffIds.length > 0 ? await prisma.reviews.findMany({
+    where: {
+      staffUserId: { in: staffIds },
+      status: 'COMPLETED',
+      overallScore: { not: null }
+    },
+    select: { overallScore: true },
+    orderBy: { submittedDate: 'desc' },
+    take: 20 // Last 20 reviews for average
+  }) : []
+
+  const avgPerformance = completedReviews.length > 0
+    ? completedReviews.reduce((sum, r) => sum + Number(r.overallScore || 0), 0) / completedReviews.length
+    : 0
+
+  // 4. Recent activity from posts (latest updates from staff)
+  const recentActivities = staffIds.length > 0 ? await prisma.activity_posts.findMany({
+    where: {
+      staffUserId: { in: staffIds },
+      type: {
+        in: ['ACHIEVEMENT', 'MILESTONE', 'KUDOS', 'WIN', 'CELEBRATION', 'UPDATE', 'ANNOUNCEMENT']
+      }
+    },
+    include: {
+      staff_users: {
+        select: {
+          name: true,
+          avatar: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 5
+  }) : []
 
   return (
     <div className="p-8 space-y-6">

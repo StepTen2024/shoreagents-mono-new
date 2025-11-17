@@ -18,14 +18,17 @@ import {
   Calendar,
   Grid3x3,
   List,
+  RefreshCw,
   TrendingUp,
   Play,
   Pause,
   LogOut,
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Activity
 } from "lucide-react"
+import { useWebSocket } from "@/lib/websocket-provider"
 
 type BreakType = "MORNING" | "LUNCH" | "AFTERNOON" | "AWAY"
 
@@ -76,10 +79,15 @@ type StaffTimeEntry = {
 
 export default function ClientTimeTrackingPage() {
   const [staffData, setStaffData] = useState<StaffTimeEntry[]>([])
+  const [allStaffData, setAllStaffData] = useState<StaffTimeEntry[]>([]) // Store unfiltered data
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [selectedStaff, setSelectedStaff] = useState<StaffTimeEntry | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month'>('today')
+  const [staffFilter, setStaffFilter] = useState<string>('all') // 'all' or staffId
+  const [statusFilter, setStatusFilter] = useState<string>('all') // 'all', 'working', 'break', 'out'
   
   const [summary, setSummary] = useState({
     totalHours: 0,
@@ -88,33 +96,113 @@ export default function ClientTimeTrackingPage() {
     totalStaff: 0
   })
 
+  // WebSocket for real-time updates
+  const { on, off, isConnected } = useWebSocket()
+
   useEffect(() => {
     fetchTimeEntries()
   }, [selectedDate])
 
-  // Update active staff hours every minute
+  // WebSocket real-time event handlers
+  useEffect(() => {
+    if (!isConnected) return
+
+    const handleTimeUpdate = (data: any) => {
+      console.log('[Time Tracking] WebSocket update:', data)
+      // Refresh data when staff clocks in/out or takes break
+      fetchTimeEntries(true)
+    }
+
+    // Listen to time tracking events
+    on('time:clockin', handleTimeUpdate)
+    on('time:clockout', handleTimeUpdate)
+    on('break:start', handleTimeUpdate)
+    on('break:end', handleTimeUpdate)
+
+    return () => {
+      off('time:clockin', handleTimeUpdate)
+      off('time:clockout', handleTimeUpdate)
+      off('break:start', handleTimeUpdate)
+      off('break:end', handleTimeUpdate)
+    }
+  }, [isConnected, on, off])
+
+  // Auto-refresh every 30 seconds (backup for WebSocket)
   useEffect(() => {
     const interval = setInterval(() => {
-      // Force re-render to update calculated hours for active staff
-      setStaffData(prevData => [...prevData])
-    }, 60000) // Update every minute
+      fetchTimeEntries(true) // Silent refresh
+    }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [])
+  }, [selectedDate])
 
-  async function fetchTimeEntries() {
+  // Apply filters whenever they change
+  useEffect(() => {
+    applyFilters()
+  }, [staffFilter, statusFilter, allStaffData])
+
+  async function fetchTimeEntries(silent = false) {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
+      setRefreshing(true)
+      
       const res = await fetch(`/api/client/time-tracking?startDate=${selectedDate}&endDate=${selectedDate}`)
       if (res.ok) {
         const data = await res.json()
-        setStaffData(data.staffTimeEntries)
+        setAllStaffData(data.staffTimeEntries)
         setSummary(data.summary)
       }
     } catch (error) {
       console.error("Failed to fetch time entries:", error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  function applyFilters() {
+    let filtered = [...allStaffData]
+
+    // Staff filter
+    if (staffFilter !== 'all') {
+      filtered = filtered.filter(s => s.staff.id === staffFilter)
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      switch (statusFilter) {
+        case 'working':
+          filtered = filtered.filter(s => s.isClockedIn && !s.isOnBreak)
+          break
+        case 'break':
+          filtered = filtered.filter(s => s.isOnBreak)
+          break
+        case 'out':
+          filtered = filtered.filter(s => !s.isClockedIn)
+          break
+      }
+    }
+
+    setStaffData(filtered)
+  }
+
+  function setDateRangePreset(range: 'today' | 'week' | 'month') {
+    setDateRange(range)
+    const today = new Date()
+    
+    switch (range) {
+      case 'today':
+        setSelectedDate(today.toISOString().split('T')[0])
+        break
+      case 'week':
+        const monday = new Date(today)
+        monday.setDate(today.getDate() - today.getDay() + 1)
+        setSelectedDate(monday.toISOString().split('T')[0])
+        break
+      case 'month':
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        setSelectedDate(firstDay.toISOString().split('T')[0])
+        break
     }
   }
 
@@ -134,18 +222,10 @@ export default function ClientTimeTrackingPage() {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
 
-  const calculateCurrentHours = (clockIn: Date | string) => {
-    const clockInTime = new Date(clockIn)
-    const now = new Date()
-    const diffInMs = now.getTime() - clockInTime.getTime()
-    const diffInHours = diffInMs / (1000 * 60 * 60)
-    return Math.round(diffInHours * 100) / 100 // Round to 2 decimal places
-  }
-
   const getDisplayHours = (staff: StaffTimeEntry) => {
     if (staff.isClockedIn && staff.currentEntry) {
-      // For active staff, calculate hours from clock-in to now
-      return calculateCurrentHours(staff.currentEntry.clockIn)
+      // For active staff, use backend's calculated current hours (includes break deduction)
+      return (staff.currentEntry as any).currentHours || staff.totalHours
     }
     // For inactive staff, use the total hours from completed entries
     return staff.totalHours
@@ -295,6 +375,114 @@ export default function ClientTimeTrackingPage() {
               </div>
             </Card>
           </div>
+
+          {/* Filter Controls */}
+          <div className="mb-6 space-y-4">
+            {/* Date Range Presets & Refresh */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateRangePreset('today')}
+                  className={dateRange === 'today' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateRangePreset('week')}
+                  className={dateRange === 'week' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}
+                >
+                  This Week
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDateRangePreset('month')}
+                  className={dateRange === 'month' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}
+                >
+                  This Month
+                </Button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchTimeEntries(false)}
+                disabled={refreshing}
+                className="bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+
+            {/* Staff & Status Filters */}
+            <div className="flex items-center gap-3">
+              {/* Staff Filter */}
+              <select
+                value={staffFilter}
+                onChange={(e) => setStaffFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+              >
+                <option value="all">All Staff ({allStaffData.length})</option>
+                {allStaffData.map(s => (
+                  <option key={s.staff.id} value={s.staff.id}>
+                    {s.staff.name} ({s.totalHours}h)
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                <Button
+                  variant={statusFilter === 'all' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('all')}
+                  className={statusFilter === 'all' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  All
+                </Button>
+                <Button
+                  variant={statusFilter === 'working' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('working')}
+                  className={statusFilter === 'working' ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  Working
+                </Button>
+                <Button
+                  variant={statusFilter === 'break' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('break')}
+                  className={statusFilter === 'break' ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  On Break
+                </Button>
+                <Button
+                  variant={statusFilter === 'out' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('out')}
+                  className={statusFilter === 'out' ? 'bg-gray-50 text-gray-700 hover:bg-gray-100' : 'text-gray-600 hover:bg-gray-100'}
+                >
+                  Clocked Out
+                </Button>
+              </div>
+
+              {/* Results Count */}
+              <span className="text-sm text-gray-600 ml-auto">
+                Showing {staffData.length} of {allStaffData.length} staff
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Staff Time Entries */}
@@ -430,19 +618,19 @@ export default function ClientTimeTrackingPage() {
 
         {/* Detail Modal */}
         <Dialog open={!!selectedStaff} onOpenChange={() => setSelectedStaff(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+            <DialogHeader className="border-b border-gray-200 pb-4">
               <DialogTitle className="flex items-center gap-3">
                 {selectedStaff && (
                   <>
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-12 w-12 ring-4 ring-blue-100">
                       <AvatarImage src={selectedStaff.staff.avatar || undefined} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-600 to-cyan-600 text-white">
                         {selectedStaff.staff.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-xl font-bold">{selectedStaff.staff.name}</p>
+                      <p className="text-xl font-bold text-gray-900">{selectedStaff.staff.name}</p>
                       <p className="text-sm text-gray-600 font-normal">{selectedStaff.staff.role}</p>
                     </div>
                   </>
@@ -451,100 +639,130 @@ export default function ClientTimeTrackingPage() {
             </DialogHeader>
 
             {selectedStaff && (
-              <div className="space-y-6">
-                {/* Summary */}
-                <div className="grid grid-cols-3 gap-4">
-                  <Card className="p-4 bg-blue-50 border-blue-200">
-                    <p className="text-sm text-gray-600 mb-1">Total Hours</p>
-                    <p className="text-2xl font-bold text-blue-600">{getDisplayHours(selectedStaff)}h</p>
-                  </Card>
-                  <Card className="p-4 bg-green-50 border-green-200">
-                    <p className="text-sm text-gray-600 mb-1">Total Shifts</p>
-                    <p className="text-2xl font-bold text-green-600">{selectedStaff.totalEntries}</p>
-                  </Card>
-                  <Card className="p-4 bg-purple-50 border-purple-200">
-                    <p className="text-sm text-gray-600 mb-1">Status</p>
-                    <div className="mt-1">{getStatusBadge(selectedStaff)}</div>
-                  </Card>
+              <div className="space-y-6 pt-4">
+                {/* BIG STATUS BADGE */}
+                <div className="text-center py-6 px-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200">
+                  {selectedStaff.isClockedIn && selectedStaff.isOnBreak ? (
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full border-2 border-yellow-300">
+                        <Pause className="h-8 w-8 text-yellow-700" />
+                        <span className="text-2xl font-bold text-yellow-900">ON BREAK</span>
+                      </div>
+                      <p className="text-lg text-gray-700">
+                        {selectedStaff.currentBreakType === 'AWAY' ? '🚶 Away' : `☕ ${selectedStaff.currentBreakType}`}
+                      </p>
+                    </div>
+                  ) : selectedStaff.isClockedIn ? (
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full border-2 border-green-300">
+                        <Activity className="h-8 w-8 text-green-700 animate-pulse" />
+                        <span className="text-2xl font-bold text-green-900">WORKING NOW</span>
+                      </div>
+                      <p className="text-lg text-gray-700">✨ Active and productive</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-br from-gray-100 to-slate-100 rounded-full border-2 border-gray-300">
+                        <LogOut className="h-8 w-8 text-gray-600" />
+                        <span className="text-2xl font-bold text-gray-700">CLOCKED OUT</span>
+                      </div>
+                      <p className="text-lg text-gray-600">Not currently working</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Time Entries */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Time Entries</h3>
-                  <div className="space-y-4">
-                    {selectedStaff.timeEntries.map((entry) => (
-                      <Card key={entry.id} className="p-4 border-l-4 border-l-blue-500">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Play className="h-4 w-4 text-green-600" />
-                              <span className="font-semibold">Clock In: {formatTime(entry.clockIn)}</span>
-                              {entry.wasLate && (
-                                <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
+                {/* CURRENT SESSION ONLY */}
+                {selectedStaff.isClockedIn && selectedStaff.currentEntry && (
+                  <Card className="p-6 bg-white border-2 border-blue-200 shadow-md">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                      Today's Session
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                        <p className="text-sm text-gray-600 mb-1">Clock In</p>
+                        <p className="text-2xl font-bold text-blue-900">{formatTime(selectedStaff.currentEntry.clockIn)}</p>
+                        {selectedStaff.timeEntries[0]?.wasLate && (
+                          <Badge className="bg-red-100 text-red-700 border-red-200 text-xs mt-2">
                                   <AlertCircle className="h-3 w-3 mr-1" />
-                                  Late {entry.lateBy}m
+                            Late {selectedStaff.timeEntries[0].lateBy}m
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              {entry.clockOut ? (
-                                <>
-                                  <LogOut className="h-4 w-4 text-gray-600" />
-                                  <span className="font-semibold">Clock Out: {formatTime(entry.clockOut)}</span>
-                                </>
-                              ) : (
-                                <Badge className="bg-green-100 text-green-700 border-green-200">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Currently Active
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">Total Hours</p>
-                            <p className="text-2xl font-bold text-blue-600">{entry.totalHours}h</p>
-                          </div>
-                        </div>
+                      <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                        <p className="text-sm text-gray-600 mb-1">Hours Worked</p>
+                        <p className="text-2xl font-bold text-green-900">{getDisplayHours(selectedStaff)}h</p>
+                        <p className="text-xs text-gray-600 mt-1">Updates in real-time</p>
+                      </div>
+                    </div>
 
-                        {/* Breaks */}
-                        {entry.breaks.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-sm font-semibold text-gray-700 mb-3">Breaks</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              {entry.breaks.map((brk) => (
-                                <div key={brk.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    {getBreakIcon(brk.type)}
-                                    <span className="text-sm font-semibold">{brk.type}</span>
-                                  </div>
-                                  <div className="text-xs space-y-1">
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">Start:</span>
-                                      <span className="font-medium">{formatTime(brk.actualStart)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">End:</span>
-                                      <span className="font-medium">{formatTime(brk.actualEnd)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">Duration:</span>
-                                      <span className="font-medium">{formatDuration(brk.duration)}</span>
-                                    </div>
-                                    {brk.isLate && (
-                                      <Badge className="bg-red-100 text-red-700 border-red-200 text-xs w-full justify-center mt-1">
-                                        Late {brk.lateBy}m
-                                      </Badge>
-                                    )}
-                                  </div>
+                    {/* Current Break Info */}
+                    {selectedStaff.isOnBreak && selectedStaff.currentEntry.breaks && (
+                      <div className="p-4 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg border-2 border-orange-200 mt-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Coffee className="h-5 w-5 text-orange-600" />
+                          <p className="font-bold text-gray-900">Current Break: {selectedStaff.currentBreakType}</p>
+                        </div>
+                        {(() => {
+                          const currentBreak = selectedStaff.currentEntry.breaks.find((b: Break) => !b.actualEnd)
+                          if (currentBreak) {
+                            return (
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Started:</span>
+                                  <span className="font-medium text-gray-900">{formatTime(currentBreak.actualStart)}</span>
                                 </div>
-                              ))}
+                                {currentBreak.isLate && (
+                                  <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
+                                    Late by {currentBreak.lateBy} minutes
+                                </Badge>
+                              )}
+                            </div>
+                            )
+                          }
+                        })()}
+                          </div>
+                    )}
+
+                    {/* Break Summary */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Coffee className="h-4 w-4 text-orange-600" />
+                            <span className="text-sm font-semibold text-gray-700">Scheduled Breaks</span>
+                          </div>
+                          <Badge className="bg-orange-100 text-orange-700 border-orange-200">
+                            {selectedStaff.currentEntry.breaks?.filter((b: Break) => b.type !== 'AWAY').length || 0} breaks
+                          </Badge>
+                        </div>
+                        {(() => {
+                          const awayBreaksCount = selectedStaff.currentEntry.breaks?.filter((b: Break) => b.type === 'AWAY').length || 0
+                          if (awayBreaksCount > 0) {
+                            return (
+                              <div className="flex items-center justify-between pl-6">
+                                <span className="text-xs text-gray-600">+ Away breaks</span>
+                                <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs">
+                                  {awayBreaksCount}
+                                      </Badge>
+                                  </div>
+                            )
+                          }
+                        })()}
                             </div>
                           </div>
-                        )}
                       </Card>
-                    ))}
+                )}
+
+                {/* Not Clocked In Message */}
+                {!selectedStaff.isClockedIn && (
+                  <div className="text-center py-8 text-gray-600">
+                    <Clock className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-lg">This staff member is not currently clocked in.</p>
+                    <p className="text-sm mt-2">Total hours today: {selectedStaff.totalHours}h</p>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </DialogContent>

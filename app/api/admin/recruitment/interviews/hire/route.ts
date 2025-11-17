@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
         candidateEmail,
         candidatePhone: candidatePhone || null,
         position,
+        salary: salary ? parseFloat(salary) : null,
         companyId,
         acceptedByAdminId: managementUser.id,
         workDays,

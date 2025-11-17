@@ -21,21 +21,24 @@ model activity_posts {
   taggedUserIds    String[]          @default([])
   audience         PostAudience?     @default(ALL)
   managementUserId String?
-  originalPostId   String?
-  reshareComment   String?
-  resharedBy       String?
-  resharedByType   String?
+  
+  // 🔁 RESHARE FUNCTIONALITY
+  originalPostId   String?                    // If this is a reshare, reference original post
+  resharedBy       String?                    // Who reshared it (staffId, clientId, or managementId)
+  resharedByType   String?                    // "STAFF", "CLIENT", or "MANAGEMENT"
+  reshareComment   String?                    // Optional comment when resharing
+  
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_clientuserid_fkey")
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "activity_posts_managementuserid_fkey")
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   notifications    notifications[]
 
   @@index([audience])
-  @@index([originalPostId])
   @@index([taggedUserIds], map: "activity_posts_tagged_users_idx", type: Gin)
   @@index([audience, createdAt(sort: Desc)], map: "idx_posts_audience_created")
   @@index([taggedUserIds], map: "idx_posts_tagged_users", type: Gin)
   @@index([type, createdAt(sort: Desc)], map: "idx_posts_type_created")
+  @@index([originalPostId])  // Index for reshares
 }
 
 model breaks {
@@ -158,20 +161,20 @@ model documents {
   title          String
   category       DocumentCategory
   uploadedBy     String
+  uploadedByRole DocumentSource   @default(STAFF) // Who uploaded: STAFF, CLIENT, ADMIN
   size           String
   fileUrl        String?
   content        String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime
   staffUserId    String
-  source         DocumentSource   @default(STAFF)
+  source         DocumentSource   @default(STAFF) // Legacy field
   sharedWithAll  Boolean          @default(false)
   sharedWith     String[]         @default([])
-  approvedAt     DateTime?
-  approvedBy     String?
-  rejectionNote  String?
-  status         DocumentStatus   @default(PENDING)
-  uploadedByRole DocumentSource   @default(STAFF)
+  status         DocumentStatus   @default(PENDING) // PENDING, APPROVED, REJECTED
+  approvedBy     String? // Email of approver
+  approvedAt     DateTime? // When approved/rejected
+  rejectionNote  String? // Why rejected (optional)
   staff_users    staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
@@ -274,14 +277,6 @@ model job_acceptances {
   workDays             String[]              @default(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
   workEndTime          String                @default("18:00")
   workStartTime        String                @default("09:00")
-  customHours          Json?
-  salary               Decimal?              @db.Decimal(10, 2)
-  shiftType            String?               @db.VarChar(255)
-  workLocation         String?               @db.VarChar(255)
-  hmoIncluded          Boolean               @default(false)
-  leaveCredits         Int                   @default(12)
-  workHours            String?
-  preferredStartDate   DateTime?             @db.Timestamp(6)
   employment_contracts employment_contracts?
   company              company               @relation(fields: [companyId], references: [id])
   interview_requests   interview_requests    @relation(fields: [interviewRequestId], references: [id], onDelete: Cascade)
@@ -369,9 +364,9 @@ model performance_metrics {
   mouseMovements    Int         @default(0)
   mouseClicks       Int         @default(0)
   keystrokes        Int         @default(0)
-  activeTime        Int         @default(0) // ⏱️ Stored in SECONDS (not minutes!)
-  idleTime          Int         @default(0) // ⏱️ Stored in SECONDS (not minutes!)
-  screenTime        Int         @default(0) // ⏱️ Stored in SECONDS (not minutes!)
+  activeTime        Int         @default(0)
+  idleTime          Int         @default(0)
+  screenTime        Int         @default(0)
   downloads         Int         @default(0)
   uploads           Int         @default(0)
   bandwidth         Int         @default(0)
@@ -903,9 +898,9 @@ enum DocumentSource {
 }
 
 enum DocumentStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  PENDING   // Waiting for approval
+  APPROVED  // Approved by client/admin
+  REJECTED  // Rejected, needs revision
 }
 
 enum EmploymentStatus {
@@ -980,18 +975,25 @@ enum OnboardingStatus {
 }
 
 enum PostAudience {
-  STAFF
-  CLIENT
-  MANAGEMENT
-  ALL
-  ALL_STAFF
-  MY_TEAM
-  MY_CLIENT
-  EVERYONE
-  ALL_CLIENTS
-  ALL_STAFF_MGMT
-  MANAGEMENT_ONLY
-  MY_TEAM_AND_MANAGEMENT
+  // Staff posting options
+  ALL_STAFF        // All staff can see
+  MY_TEAM          // Only my department/team
+  MY_CLIENT        // Only my assigned client + management
+  
+  // Management posting options
+  EVERYONE         // All staff + clients + management
+  ALL_CLIENTS      // All clients + management
+  ALL_STAFF_MGMT   // All staff + management (renamed from ALL_STAFF to avoid conflict)
+  MANAGEMENT_ONLY  // Management team only
+  
+  // Client posting options
+  MY_TEAM_AND_MANAGEMENT  // My team + my account manager
+  
+  // Legacy/fallback
+  ALL              // Everyone (legacy)
+  STAFF            // Legacy
+  CLIENT           // Legacy
+  MANAGEMENT       // Legacy
 }
 
 enum PostType {
@@ -1002,7 +1004,7 @@ enum PostType {
   CELEBRATION
   UPDATE
   ANNOUNCEMENT
-  RESHARE
+  RESHARE        // For reshared posts
 }
 
 enum ReactionType {
