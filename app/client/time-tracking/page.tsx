@@ -430,19 +430,19 @@ export default function ClientTimeTrackingPage() {
 
         {/* Detail Modal */}
         <Dialog open={!!selectedStaff} onOpenChange={() => setSelectedStaff(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+            <DialogHeader className="border-b border-gray-200 pb-4">
               <DialogTitle className="flex items-center gap-3">
                 {selectedStaff && (
                   <>
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-12 w-12 ring-4 ring-blue-100">
                       <AvatarImage src={selectedStaff.staff.avatar || undefined} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-600 to-cyan-600 text-white">
                         {selectedStaff.staff.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-xl font-bold">{selectedStaff.staff.name}</p>
+                      <p className="text-xl font-bold text-gray-900">{selectedStaff.staff.name}</p>
                       <p className="text-sm text-gray-600 font-normal">{selectedStaff.staff.role}</p>
                     </div>
                   </>
@@ -451,18 +451,18 @@ export default function ClientTimeTrackingPage() {
             </DialogHeader>
 
             {selectedStaff && (
-              <div className="space-y-6">
+              <div className="space-y-6 pt-4">
                 {/* Summary */}
                 <div className="grid grid-cols-3 gap-4">
-                  <Card className="p-4 bg-blue-50 border-blue-200">
+                  <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Total Hours</p>
                     <p className="text-2xl font-bold text-blue-600">{getDisplayHours(selectedStaff)}h</p>
                   </Card>
-                  <Card className="p-4 bg-green-50 border-green-200">
+                  <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Total Shifts</p>
                     <p className="text-2xl font-bold text-green-600">{selectedStaff.totalEntries}</p>
                   </Card>
-                  <Card className="p-4 bg-purple-50 border-purple-200">
+                  <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Status</p>
                     <div className="mt-1">{getStatusBadge(selectedStaff)}</div>
                   </Card>
@@ -470,15 +470,17 @@ export default function ClientTimeTrackingPage() {
 
                 {/* Time Entries */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">Time Entries</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Time Entries</h3>
                   <div className="space-y-4">
                     {selectedStaff.timeEntries.map((entry) => (
-                      <Card key={entry.id} className="p-4 border-l-4 border-l-blue-500">
+                      <Card key={entry.id} className="p-4 bg-white border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between mb-4">
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <Play className="h-4 w-4 text-green-600" />
-                              <span className="font-semibold">Clock In: {formatTime(entry.clockIn)}</span>
+                              <div className="p-1.5 bg-green-100 rounded-lg">
+                                <Play className="h-4 w-4 text-green-600" />
+                              </div>
+                              <span className="font-semibold text-gray-900">Clock In: {formatTime(entry.clockIn)}</span>
                               {entry.wasLate && (
                                 <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
                                   <AlertCircle className="h-3 w-3 mr-1" />
@@ -489,8 +491,10 @@ export default function ClientTimeTrackingPage() {
                             <div className="flex items-center gap-2">
                               {entry.clockOut ? (
                                 <>
-                                  <LogOut className="h-4 w-4 text-gray-600" />
-                                  <span className="font-semibold">Clock Out: {formatTime(entry.clockOut)}</span>
+                                  <div className="p-1.5 bg-gray-100 rounded-lg">
+                                    <LogOut className="h-4 w-4 text-gray-600" />
+                                  </div>
+                                  <span className="font-semibold text-gray-900">Clock Out: {formatTime(entry.clockOut)}</span>
                                 </>
                               ) : (
                                 <Badge className="bg-green-100 text-green-700 border-green-200">
@@ -500,8 +504,8 @@ export default function ClientTimeTrackingPage() {
                               )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">Total Hours</p>
+                          <div className="text-right bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
+                            <p className="text-xs text-gray-600 mb-1">Total Hours</p>
                             <p className="text-2xl font-bold text-blue-600">{entry.totalHours}h</p>
                           </div>
                         </div>
@@ -509,26 +513,29 @@ export default function ClientTimeTrackingPage() {
                         {/* Breaks */}
                         {entry.breaks.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-sm font-semibold text-gray-700 mb-3">Breaks</p>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Coffee className="h-4 w-4 text-orange-600" />
+                              <p className="text-sm font-semibold text-gray-900">Breaks ({entry.breaks.length})</p>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
                               {entry.breaks.map((brk) => (
-                                <div key={brk.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div key={brk.id} className="p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
                                   <div className="flex items-center gap-2 mb-2">
                                     {getBreakIcon(brk.type)}
-                                    <span className="text-sm font-semibold">{brk.type}</span>
+                                    <span className="text-sm font-semibold text-gray-900">{brk.type}</span>
                                   </div>
                                   <div className="text-xs space-y-1">
                                     <div className="flex justify-between">
                                       <span className="text-gray-600">Start:</span>
-                                      <span className="font-medium">{formatTime(brk.actualStart)}</span>
+                                      <span className="font-medium text-gray-900">{formatTime(brk.actualStart)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-gray-600">End:</span>
-                                      <span className="font-medium">{formatTime(brk.actualEnd)}</span>
+                                      <span className="font-medium text-gray-900">{formatTime(brk.actualEnd)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                       <span className="text-gray-600">Duration:</span>
-                                      <span className="font-medium">{formatDuration(brk.duration)}</span>
+                                      <span className="font-medium text-gray-900">{formatDuration(brk.duration)}</span>
                                     </div>
                                     {brk.isLate && (
                                       <Badge className="bg-red-100 text-red-700 border-red-200 text-xs w-full justify-center mt-1">
