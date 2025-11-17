@@ -600,3 +600,26 @@ Error details: {
  GET /ai-assistant 200 in 250ms
 [WebSocket] Client connected: d005ddljfw9L_iCMAAAf
  ✓ Compiled /api/tasks in 217ms (1091 modules)
+ ✓ Compiled (1166 modules)
+ GET /api/auth/session 200 in 640ms
+[WebSocket] Client disconnected: d005ddljfw9L_iCMAAAf
+ GET /api/auth/session 200 in 37ms
+[WebSocket] Client connected: f5i1ssnL3J9vgXgdAAAh
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+📚 [STAFF] Fetched 0 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 1210ms
+ ✓ Compiled /api/onboarding/status in 488ms (1168 modules)
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1372ms
+ ✓ Compiled (1170 modules)
+ GET /api/onboarding/status 200 in 1008ms
+ GET /api/tasks 200 in 1738ms
+ GET /api/profile 200 in 1311ms
+ ✓ Compiled in 986ms (1840 modules)
+ GET /ai-assistant 200 in 162ms
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 176ms
+ GET /api/auth/session 200 in 47ms
+ ✓ Compiled in 1157ms (1761 modules)
+ GET /ai-assistant 200 in 167ms
+[Break Auto-Start] Checking 4 active sessions

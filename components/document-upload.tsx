@@ -218,8 +218,12 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                       type="file"
                       accept=".pdf,.doc,.docx,.txt,.md"
                       onChange={(e) => {
+                        console.log('[File Input] onChange FIRED!')
+                        console.log('[File Input] e.target:', e.target)
+                        console.log('[File Input] e.target.files:', e.target.files)
                         const file = e.target.files?.[0] || null
-                        console.log('[File Input] Selected file:', file?.name, 'for doc:', doc.id)
+                        console.log('[File Input] Selected file:', file)
+                        console.log('[File Input] File name:', file?.name)
                         updateDocument(doc.id, { file })
                         console.log('[File Input] Updated document with file')
                         // Auto-fill title from filename if title is empty
@@ -229,7 +233,7 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                           console.log('[File Input] Auto-filled title:', fileNameWithoutExt)
                         }
                       }}
-                      className="hidden"
+                      className="block mb-4 p-2 border-2 border-red-500 bg-white text-black"
                       disabled={uploading}
                     />
                     <label htmlFor={`file-${doc.id}`} className="cursor-pointer">
