@@ -353,26 +353,32 @@ export default function ClientTimeTrackingPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button
-                  variant={dateRange === 'today' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
                   onClick={() => setDateRangePreset('today')}
-                  className={dateRange === 'today' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-100'}
+                  className={dateRange === 'today' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}
                 >
                   Today
                 </Button>
                 <Button
-                  variant={dateRange === 'week' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
                   onClick={() => setDateRangePreset('week')}
-                  className={dateRange === 'week' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-100'}
+                  className={dateRange === 'week' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}
                 >
                   This Week
                 </Button>
                 <Button
-                  variant={dateRange === 'month' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
                   onClick={() => setDateRangePreset('month')}
-                  className={dateRange === 'month' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-700 hover:bg-gray-100'}
+                  className={dateRange === 'month' 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'}
                 >
                   This Month
                 </Button>
@@ -383,7 +389,7 @@ export default function ClientTimeTrackingPage() {
                 size="sm"
                 onClick={() => fetchTimeEntries(false)}
                 disabled={refreshing}
-                className="text-gray-700 hover:bg-gray-100"
+                className="bg-white text-gray-700 hover:bg-gray-100 border-gray-300"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Refreshing...' : 'Refresh'}
