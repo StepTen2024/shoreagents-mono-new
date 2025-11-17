@@ -104,10 +104,10 @@ export default async function ClientDashboard() {
     ? completedReviews.reduce((sum, r) => sum + Number(r.overallScore || 0), 0) / completedReviews.length
     : 0
 
-  // 4. Recent activity from activity_log
-  const recentActivities = staffIds.length > 0 ? await prisma.activity_log.findMany({
+  // 4. Recent activity from posts (latest updates from staff)
+  const recentActivities = staffIds.length > 0 ? await prisma.activity_posts.findMany({
     where: {
-      actorId: { in: staffIds },
+      staffUserId: { in: staffIds },
       type: {
         in: ['ACHIEVEMENT', 'MILESTONE', 'KUDOS', 'WIN', 'CELEBRATION', 'UPDATE', 'ANNOUNCEMENT']
       }
