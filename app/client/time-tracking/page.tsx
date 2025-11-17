@@ -685,11 +685,11 @@ export default function ClientTimeTrackingPage() {
                         <p className="text-2xl font-bold text-blue-900">{formatTime(selectedStaff.currentEntry.clockIn)}</p>
                         {selectedStaff.timeEntries[0]?.wasLate && (
                           <Badge className="bg-red-100 text-red-700 border-red-200 text-xs mt-2">
-                            <AlertCircle className="h-3 w-3 mr-1" />
+                                  <AlertCircle className="h-3 w-3 mr-1" />
                             Late {selectedStaff.timeEntries[0].lateBy}m
-                          </Badge>
-                        )}
-                      </div>
+                                </Badge>
+                              )}
+                            </div>
                       <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
                         <p className="text-sm text-gray-600 mb-1">Hours Worked</p>
                         <p className="text-2xl font-bold text-green-900">{getDisplayHours(selectedStaff)}h</p>
@@ -716,13 +716,13 @@ export default function ClientTimeTrackingPage() {
                                 {currentBreak.isLate && (
                                   <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">
                                     Late by {currentBreak.lateBy} minutes
-                                  </Badge>
-                                )}
-                              </div>
+                                </Badge>
+                              )}
+                            </div>
                             )
                           }
                         })()}
-                      </div>
+                          </div>
                     )}
 
                     {/* Break Summary */}
@@ -745,14 +745,14 @@ export default function ClientTimeTrackingPage() {
                                 <span className="text-xs text-gray-600">+ Away breaks</span>
                                 <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-xs">
                                   {awayBreaksCount}
-                                </Badge>
-                              </div>
+                                      </Badge>
+                                  </div>
                             )
                           }
                         })()}
-                      </div>
-                    </div>
-                  </Card>
+                            </div>
+                          </div>
+                      </Card>
                 )}
 
                 {/* Not Clocked In Message */}

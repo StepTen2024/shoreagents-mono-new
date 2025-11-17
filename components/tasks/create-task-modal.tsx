@@ -303,22 +303,50 @@ export default function CreateTaskModal({
       }
 
       // Create tasks
-      const endpoint = isClient ? "/api/client/tasks/bulk" : "/api/tasks/bulk"
-      const body = {
-        tasks: validTasks,
-        staffUserIds: selectedStaffIds,
-        attachments: attachmentUrls,
-      }
+      if (isClient) {
+        // Client: Create bulk tasks for selected staff
+        const endpoint = "/api/client/tasks/bulk"
+        const body = {
+          tasks: validTasks,
+          staffUserIds: selectedStaffIds,
+          attachments: attachmentUrls,
+        }
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to create tasks")
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to create tasks")
+        }
+      } else {
+        // Staff: Create tasks for themselves (one at a time)
+        const endpoint = "/api/tasks"
+        
+        for (const task of validTasks) {
+          const body = {
+            title: task.title.trim(),
+            description: task.description || "",
+            priority: task.priority || "MEDIUM",
+            deadline: task.deadline || null,
+            tags: [],
+            attachments: attachmentUrls,
+          }
+
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to create task")
+          }
+        }
       }
 
       toast({
