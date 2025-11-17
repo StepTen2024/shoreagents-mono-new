@@ -60,7 +60,7 @@ export default async function ClientDashboard() {
   // 1. Tasks completed this week
   const tasksCompletedThisWeek = staffIds.length > 0 ? await prisma.tasks.count({
     where: {
-      assignedToId: { in: staffIds },
+      staffUserId: { in: staffIds },
       status: 'COMPLETED',
       completedAt: { gte: startOfWeek }
     }
