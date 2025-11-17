@@ -110,11 +110,24 @@ export default function TimeTracking() {
       const seenKey = `late-modal-seen-${activeEntry.id}`
       const alreadySeen = localStorage.getItem(seenKey)
       
+      console.log('[Late Modal] Check:', {
+        timeEntryId: activeEntry.id,
+        wasLate: activeEntry.wasLate,
+        lateBy: activeEntry.lateBy,
+        seenKey,
+        alreadySeen,
+        willShow: !alreadySeen
+      })
+      
       if (!alreadySeen) {
+        console.log('[Late Modal] Showing late modal for the first time')
         setLateMinutes(activeEntry.lateBy)
         setShowLateModal(true)
         // Mark as seen immediately to prevent re-showing
         localStorage.setItem(seenKey, 'true')
+        console.log('[Late Modal] Marked as seen in localStorage:', seenKey)
+      } else {
+        console.log('[Late Modal] Already seen, skipping')
       }
     }
   }, [isClockedIn, activeEntry?.wasLate, activeEntry?.lateBy, activeEntry?.id])
