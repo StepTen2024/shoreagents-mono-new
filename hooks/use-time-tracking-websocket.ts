@@ -523,9 +523,25 @@ export function useTimeTrackingWebSocket() {
   // Request initial data when connection is established (only once)
   useEffect(() => {
     if (isConnected) {
+      console.log('[WebSocket] Connection established, fetching initial time tracking data...')
       requestInitialData()
     }
   }, [isConnected]) // Remove requestInitialData from dependencies to prevent loops
+  
+  // Log active break state changes for debugging
+  useEffect(() => {
+    if (state.activeBreak) {
+      console.log('[WebSocket] Active break detected:', {
+        id: state.activeBreak.id,
+        type: state.activeBreak.type,
+        actualStart: state.activeBreak.actualStart,
+        isPaused: state.activeBreak.isPaused,
+        pausedDuration: state.activeBreak.pausedDuration
+      })
+    } else {
+      console.log('[WebSocket] No active break')
+    }
+  }, [state.activeBreak])
 
   // Reset break scheduler state
   const resetBreakScheduler = useCallback(() => {
