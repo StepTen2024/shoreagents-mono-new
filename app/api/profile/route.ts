@@ -59,7 +59,10 @@ export async function GET(req: NextRequest) {
         dateOfBirth: staffUser.staff_profiles.dateOfBirth,
         employmentStatus: staffUser.staff_profiles.employmentStatus,
         startDate: staffUser.staff_profiles.startDate,
-        daysEmployed: Math.floor((new Date().getTime() - new Date(staffUser.staff_profiles.startDate).getTime()) / (1000 * 60 * 60 * 24)),
+        daysEmployed: (() => {
+          const daysDiff = Math.floor((new Date().getTime() - new Date(staffUser.staff_profiles.startDate).getTime()) / (1000 * 60 * 60 * 24))
+          return daysDiff >= 0 ? daysDiff : 0 // Return 0 if start date is in the future
+        })(),
         currentRole: staffUser.staff_profiles.currentRole,
         salary: Number(staffUser.staff_profiles.salary),
         lastPayIncrease: staffUser.staff_profiles.lastPayIncrease,

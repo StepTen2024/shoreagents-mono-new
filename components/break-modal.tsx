@@ -39,6 +39,8 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
       return breakData.pausedDuration
     }
     // For new breaks, calculate full duration
+    // AWAY breaks have no time limit (set to 999 minutes = ~16 hours)
+    if (breakData?.type === 'AWAY') return 999 * 60
     return breakData?.type === 'LUNCH' ? 3600 : 900
   })
   
@@ -75,7 +77,10 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
       setLocalRemainingTime(breakData.pausedDuration)
     } else {
       // For new breaks, use full duration
-      const fullDuration = breakData?.type === 'LUNCH' ? 3600 : 900
+      // AWAY breaks have no time limit (set to 999 minutes = ~16 hours)
+      let fullDuration = 900 // Default 15 minutes
+      if (breakData?.type === 'LUNCH') fullDuration = 3600 // 60 minutes
+      if (breakData?.type === 'AWAY') fullDuration = 999 * 60 // ~16 hours (essentially unlimited)
       setLocalRemainingTime(fullDuration)
     }
   }, [breakData?.pausedDuration, breakData?.type, breakData?.actualStart])
@@ -204,12 +209,16 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
         // Count down the local remaining time
         setLocalRemainingTime(prev => {
           const newRemaining = Math.max(0, prev - 1)
-          const expectedDuration = breakData?.type === 'LUNCH' ? 3600 : 900 // 60 min for lunch, 15 min for others
+          // Get expected duration based on break type
+          let expectedDuration = 900 // Default 15 minutes
+          if (breakData?.type === 'LUNCH') expectedDuration = 3600 // 60 minutes
+          if (breakData?.type === 'AWAY') expectedDuration = 999 * 60 // ~16 hours (essentially unlimited)
+          
           const trueElapsed = expectedDuration - newRemaining
           setElapsedSeconds(trueElapsed)
           
-          // Show "I'm Back" popup when duration is reached
-          if (trueElapsed >= expectedDurationSeconds) {
+          // Show "I'm Back" popup when duration is reached (but not for AWAY breaks - they have no time limit)
+          if (breakData?.type !== 'AWAY' && trueElapsed >= expectedDurationSeconds) {
             clearInterval(interval)
             setShowReturnPopup(true)
           }
@@ -370,7 +379,25 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
                       </div>
                       <div className="text-xs text-slate-500 mt-1 font-semibold">LOADING...</div>
                     </div>
+                  ) : breakData?.type === 'AWAY' ? (
+                    // AWAY breaks: Show ELAPSED time counting UP
+                    <>
+                      <div className="text-center">
+                        <div className="text-6xl font-mono font-bold text-amber-400">
+                          {String(elapsedMinutes).padStart(2, '0')}
+                        </div>
+                        <div className="text-xs text-amber-300 mt-1 font-semibold">MINUTES</div>
+                      </div>
+                      <div className="text-5xl text-amber-400 mb-4">:</div>
+                      <div className="text-center">
+                        <div className="text-6xl font-mono font-bold text-amber-400">
+                          {String(elapsedSecondsDisplay).padStart(2, '0')}
+                        </div>
+                        <div className="text-xs text-amber-300 mt-1 font-semibold">SECONDS</div>
+                      </div>
+                    </>
                   ) : (
+                    // Other breaks: Show REMAINING time counting DOWN
                     <>
                       <div className="text-center">
                         <div className="text-6xl font-mono font-bold text-white">
@@ -389,7 +416,7 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
                   )}
                 </div>
                 <div className="text-sm text-slate-400">
-                  Time Remaining
+                  {breakData?.type === 'AWAY' ? 'Time Elapsed' : 'Time Remaining'}
                 </div>
                 <div className="text-xs text-green-400 mt-2">
                   🟢 Live: Tick #{debugCount} (updating every second)
@@ -412,7 +439,11 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
             
             {/* Elapsed Time */}
             <div className="text-center mt-4 text-sm text-slate-400">
-              Elapsed: {String(elapsedMinutes).padStart(2, '0')}:{String(elapsedSecondsDisplay).padStart(2, '0')} / {expectedDurationMinutes} min
+              {breakData?.type === 'AWAY' ? (
+                <span>Time Away: {String(elapsedMinutes).padStart(2, '0')}:{String(elapsedSecondsDisplay).padStart(2, '0')}</span>
+              ) : (
+                <span>Elapsed: {String(elapsedMinutes).padStart(2, '0')}:{String(elapsedSecondsDisplay).padStart(2, '0')} / {expectedDurationMinutes} min</span>
+              )}
             </div>
           </div>
           
@@ -484,7 +515,11 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
                   )}
                 </div>
                 <div className="text-center text-xs text-slate-500 mt-1">
-                  💡 This break will auto-end in {remainingMinutes}:{String(remainingSecondsDisplay).padStart(2, '0')}
+                  {breakData?.type === 'AWAY' ? (
+                    <span>💡 No time limit - End break when you return</span>
+                  ) : (
+                    <span>💡 This break will auto-end in {remainingMinutes}:{String(remainingSecondsDisplay).padStart(2, '0')}</span>
+                  )}
                 </div>
               </div>
             </>

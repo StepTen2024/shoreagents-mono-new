@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge"
 
 interface PerformanceMetric {
   id: string
-  date: string
+  date: string  // Clock-in timestamp (ISO UTC string, browser auto-converts to local timezone) ✅
+  shiftDate?: string  // Shift date at midnight (for day grouping)
+  shiftDayOfWeek?: string  // Day of week (e.g., "Thursday")
   mouseMovements: number
   mouseClicks: number
   keystrokes: number
@@ -148,7 +150,7 @@ export default function PerformanceDashboard() {
   }
 
   const formatTime = (seconds: number) => {
-    // Handle both seconds (live metrics) and minutes (API metrics)
+    // ⏱️ All time values are now stored in SECONDS (both DB and live metrics)
     const totalSeconds = Math.floor(seconds)
     const hours = Math.floor(totalSeconds / 3600)
     const mins = Math.floor((totalSeconds % 3600) / 60)
@@ -432,19 +434,25 @@ export default function PerformanceDashboard() {
             {/* Applications & URLs */}
             <div className="grid gap-6 md:grid-cols-2">
               <div className="rounded-2xl bg-slate-900/50 p-6 backdrop-blur-xl ring-1 ring-white/10">
-                <h2 className="mb-4 text-xl font-bold text-white">Active Applications</h2>
+                <h2 className="mb-4 text-xl font-bold text-white">Applications</h2>
                 {!displayMetrics.applicationsUsed || displayMetrics.applicationsUsed.length === 0 ? (
                   <p className="text-slate-400">No applications recorded yet</p>
                 ) : (
                   <div className="space-y-2">
-                    {displayMetrics.applicationsUsed.slice(0, 5).map((app: string, index: number) => (
-                      <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4 text-blue-400" />
-                          <span className="text-white">{app}</span>
+                    <h3 className="text-sm font-semibold text-slate-300">Used Apps:</h3>
+                    <div className="max-h-96 overflow-y-auto space-y-2 pr-2" style={{ 
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#475569 #1e293b'
+                    }}>
+                      {displayMetrics.applicationsUsed.map((app: string, index: number) => (
+                        <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5 hover:bg-slate-800 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Monitor className="h-4 w-4 text-blue-400" />
+                            <span className="text-white">{app}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -503,6 +511,7 @@ export default function PerformanceDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-semibold text-white">
+                          {/* ✅ Date is UTC from DB, browser auto-converts to local timezone */}
                           {new Date(metric.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                         </div>
                         <div className="mt-1 text-sm text-slate-400">

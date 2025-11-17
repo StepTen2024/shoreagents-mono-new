@@ -31,8 +31,8 @@ module.exports = {
       console.log('[TrackerConfig] 🧪 Development mode detected - using localhost:3000')
       return 'http://localhost:3000'
     } else {
-      console.log('[TrackerConfig] 🚀 Production mode detected - using Railway URL')
-      return 'https://shoreagents-mono-new-production.up.railway.app'
+      console.log('[TrackerConfig] 🚀 Production mode detected - using shoreagents.ai')
+      return 'https://shoreagents.ai'
     }
   })(),
   API_PERFORMANCE_ENDPOINT: '/api/analytics',
@@ -59,8 +59,9 @@ module.exports = {
   // Queue limits
   MAX_QUEUE_SIZE: 100, // Maximum number of unsent metric batches to queue
   
-  // Daily reset time
-  DAILY_RESET_HOUR: 0, // Reset counters at midnight (0:00)
+  // Daily reset: DISABLED
+  // No automatic midnight reset - supports night shifts that cross midnight!
+  // Metrics reset ONLY on clock-in (new shift starts)
 }
 
 

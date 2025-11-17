@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Clock-out reason is required" }, { status: 400 })
     }
 
-    // Find active time entry with breaks AND work_schedule in one query
+    // Find active time entry with breaks AND work_schedules in one query
     const activeEntry = await prisma.time_entries.findFirst({
       where: {
         staffUserId: staffUser.id,
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         breaks: true,
-        work_schedule: {
+        work_schedules: {
           select: {
             startTime: true,
             endTime: true
@@ -67,10 +67,10 @@ export async function POST(request: NextRequest) {
     let earlyClockOutBy = 0
     let expectedClockOut: Date | null = null
     
-    if (activeEntry.work_schedule && activeEntry.work_schedule.endTime && activeEntry.work_schedule.endTime.trim() !== '') {
+    if (activeEntry.work_schedules && activeEntry.work_schedules.endTime && activeEntry.work_schedules.endTime.trim() !== '') {
       try {
         // Parse shift end time using helper function
-        const { hour, minute } = parseTimeString(activeEntry.work_schedule.endTime)
+        const { hour, minute } = parseTimeString(activeEntry.work_schedules.endTime)
         
         // ✅ Use shift date for expected clock-out (handles night shifts crossing midnight)
         const shiftDate = activeEntry.shiftDate || activeEntry.clockIn
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
         
         // For night shifts, if end time is earlier than start time (e.g., 8 AM < 11 PM),
         // the shift ends the next day
-        if (activeEntry.work_schedule.startTime) {
-          const startTime = parseTimeString(activeEntry.work_schedule.startTime)
+        if (activeEntry.work_schedules.startTime) {
+          const startTime = parseTimeString(activeEntry.work_schedules.startTime)
           if (hour < startTime.hour) {
             // End time is next day (e.g., shift ends at 8 AM but started at 11 PM)
             expectedClockOut.setDate(expectedClockOut.getDate() + 1)
@@ -148,8 +148,16 @@ export async function POST(request: NextRequest) {
         : `Clocked out successfully. Net work hours: ${netWorkHours.toFixed(2)}`,
     })
   } catch (error) {
-    console.error("Error clocking out:", error)
-    return NextResponse.json({ error: "Failed to clock out" }, { status: 500 })
+    console.error("❌ ERROR CLOCKING OUT:", error)
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    })
+    return NextResponse.json({ 
+      error: "Failed to clock out", 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

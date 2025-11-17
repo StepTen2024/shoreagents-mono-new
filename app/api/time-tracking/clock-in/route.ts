@@ -5,6 +5,22 @@ import { logClockedIn } from "@/lib/activity-generator"
 import { randomUUID } from "crypto"
 import { getStaffLocalTime, detectShiftDay, createExpectedClockIn } from "@/lib/timezone-helpers"
 
+// Helper function to format minutes into readable hours/minutes
+function formatLateTime(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} minutes`
+  }
+  
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  
+  if (mins === 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+  }
+  
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${mins} minutes`
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log("🔍 Clock-in API called")
@@ -40,10 +56,9 @@ export async function POST(request: NextRequest) {
     const profileId = staffUser.staff_profiles?.id
     
     // ✅ FIX #4: Check for existing entries for THIS SHIFT DATE (not calendar date)
-    const startOfShiftDate = new Date(shiftDate)
-    startOfShiftDate.setHours(0, 0, 0, 0)
-    const endOfShiftDate = new Date(shiftDate)
-    endOfShiftDate.setHours(23, 59, 59, 999)
+    // shiftDate is already at midnight from detectShiftDay(), so we can use it directly
+    const startOfShiftDate = new Date(shiftDate.getTime())  // Copy timestamp
+    const endOfShiftDate = new Date(shiftDate.getTime() + 24 * 60 * 60 * 1000 - 1)  // Add 1 day minus 1ms
     
     // Run all checks in parallel to speed up the process
     const [activeEntry, existingShiftEntry, workSchedule] = await Promise.all([
@@ -123,12 +138,23 @@ export async function POST(request: NextRequest) {
         
         console.log(`⏰ Expected clock-in:`, {
           expectedTime: expectedClockIn.toISOString(),
-          actualTime: nowInStaffTz.toISOString()
+          expectedTimeManila: expectedClockIn.toLocaleString('en-US', { timeZone: staffTimezone }),
+          actualTime: nowInStaffTz.toISOString(),
+          actualTimeManila: nowInStaffTz.toLocaleString('en-US', { timeZone: staffTimezone }),
+          timezone: staffTimezone
         })
         
         // ✅ FIX #10: Compare against STAFF TIMEZONE time (not server time)
         const diffMs = nowInStaffTz.getTime() - expectedClockIn.getTime()
         const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
+        
+        console.log(`⏰ Time difference calculation:`, {
+          diffMs,
+          diffMinutes,
+          diffHours: (diffMinutes / 60).toFixed(2),
+          wasLate: diffMs > 0,
+          wasEarly: diffMs < 0
+        })
         
         if (diffMs > 0) {
           // Clocked in AFTER shift start = LATE
@@ -180,10 +206,18 @@ export async function POST(request: NextRequest) {
     
     console.log(`✅ Time entry created:`, {
       id: timeEntry.id,
-      clockIn: timeEntry.clockIn,
-      shiftDate: timeEntry.shiftDate,
+      clockIn: timeEntry.clockIn.toISOString(),
+      clockInManila: timeEntry.clockIn.toLocaleString('en-US', { timeZone: staffTimezone }),
+      shiftDate: timeEntry.shiftDate?.toISOString(),
       shiftDayOfWeek: timeEntry.shiftDayOfWeek,
-      isNightShift
+      wasLate: timeEntry.wasLate,
+      lateBy: timeEntry.lateBy,
+      wasEarly: timeEntry.wasEarly,
+      earlyBy: timeEntry.earlyBy,
+      expectedClockIn: timeEntry.expectedClockIn?.toISOString(),
+      expectedClockInManila: timeEntry.expectedClockIn?.toLocaleString('en-US', { timeZone: staffTimezone }),
+      isNightShift,
+      timezone: staffTimezone
     })
     
     // ✅ NEW: Create empty performance_metrics row for this shift
@@ -192,7 +226,8 @@ export async function POST(request: NextRequest) {
       data: {
         id: randomUUID(),
         staffUserId: staffUser.id,
-        shiftDate: shiftDate,
+        date: nowInStaffTz,  // ✅ FIX: Use actual clock-in time to match time_entries
+        shiftDate: shiftDate,  // Keep this as midnight for day grouping
         shiftDayOfWeek: shiftDayOfWeek,
         mouseMovements: 0,
         mouseClicks: 0,
@@ -215,8 +250,12 @@ export async function POST(request: NextRequest) {
     })
     
     console.log(`📊 Empty performance_metrics row created for shift:`, {
-      shiftDate,
-      shiftDayOfWeek
+      'date (clock-in time)': nowInStaffTz.toISOString(),
+      'shiftDate (midnight)': shiftDate.toISOString(),
+      shiftDayOfWeek,
+      'time_entries.shiftDate': timeEntry.shiftDate?.toISOString() || 'null',
+      'performance_metrics.shiftDate': shiftDate.toISOString(),
+      'ARE THEY EQUAL?': timeEntry.shiftDate ? (timeEntry.shiftDate.getTime() === shiftDate.getTime() ? '✅ YES' : '❌ NO - BUG!') : '⚠️ timeEntry.shiftDate is null'
     })
     
     // Check if any breaks exist for this shift (we already fetched this data above)
@@ -244,9 +283,9 @@ export async function POST(request: NextRequest) {
       shiftDayOfWeek,                  // ✅ NEW! Tell UI which day this shift belongs to
       showBreakScheduler: shouldShowBreakScheduler,
       message: isNightShift
-        ? `Clocked in for ${shiftDayOfWeek}'s night shift` + (wasLate ? ` (${lateBy} min late)` : '')
+        ? `Clocked in for ${shiftDayOfWeek}'s night shift` + (wasLate ? ` (${formatLateTime(lateBy)} late)` : '')
         : wasLate 
-        ? `Clocked in ${lateBy} minutes late`
+        ? `Clocked in ${formatLateTime(lateBy)} late`
         : wasEarly
         ? `Clocked in ${earlyBy} minutes early`
         : "Clocked in on time",

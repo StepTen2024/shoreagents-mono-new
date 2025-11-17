@@ -171,6 +171,9 @@ contextBridge.exposeInMainWorld('electron', {
     
     // Run screenshot diagnostic
     runDiagnostic: () => ipcRenderer.invoke('screenshot:run-diagnostic'),
+    
+    // Set staff user ID directly (called after login)
+    setStaffUserId: (staffUserId) => ipcRenderer.invoke('screenshot:set-staff-user-id', staffUserId),
   },
   
   // Auto-Updater API
@@ -202,6 +205,12 @@ contextBridge.exposeInMainWorld('electron', {
   debug: {
     // Clear all cookies (for fixing auth issues)
     clearCookies: () => ipcRenderer.invoke('clear-cookies'),
+    
+    // Get log file path
+    getLogFilePath: () => ipcRenderer.invoke('get-log-file-path'),
+    
+    // Open log file in default text editor
+    openLogFile: () => ipcRenderer.invoke('open-log-file'),
   },
 })
 

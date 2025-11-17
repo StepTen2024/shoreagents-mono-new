@@ -28,12 +28,25 @@ export function ShiftModal({ isOpen, type, data, onAction, onDismiss }: ShiftMod
     }
   }, [isOpen, type])
   
+  // Format minutes into hours and minutes
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} minute${minutes !== 1 ? 's' : ''}`
+    }
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (mins === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`
+    }
+    return `${hours} hour${hours !== 1 ? 's' : ''} and ${mins} minute${mins !== 1 ? 's' : ''}`
+  }
+  
   const configs = {
     'late-clock-in': {
       title: showLateReasonStep ? 'Why Were You Late?' : 'You Are Late for Your Shift',
       message: showLateReasonStep 
         ? 'Please select a reason for being late. This helps management understand attendance patterns.'
-        : `Your shift started at ${data?.expectedTime ? new Date(data.expectedTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'your scheduled time'}. You are ${data?.lateBy} minutes late.`,
+        : `Your shift started at ${data?.expectedTime ? new Date(data.expectedTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'your scheduled time'}. You are ${formatDuration(data?.lateBy || 0)} late.`,
       icon: AlertCircle,
       iconColor: 'text-red-400',
       bgColor: 'bg-red-500/10',
@@ -42,7 +55,7 @@ export function ShiftModal({ isOpen, type, data, onAction, onDismiss }: ShiftMod
     },
     'early-clock-in': {
       title: '🌅 Amazing! You\'re Early!',
-      message: `Your shift starts at ${data?.expectedTime ? new Date(data.expectedTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'your scheduled time'}. You clocked in ${data?.earlyBy} minutes early! This dedication will be recorded as bonus time. 💪`,
+      message: `Your shift starts at ${data?.expectedTime ? new Date(data.expectedTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'your scheduled time'}. You clocked in ${formatDuration(data?.earlyBy || 0)} early! This dedication will be recorded as bonus time. 💪`,
       icon: Clock,
       iconColor: 'text-emerald-400',
       bgColor: 'bg-emerald-500/10',
@@ -72,7 +85,7 @@ export function ShiftModal({ isOpen, type, data, onAction, onDismiss }: ShiftMod
     'clock-out-early': {
       title: '⚠️ Clocking Out Early',
       message: data?.scheduledEnd 
-        ? `Your shift is scheduled until ${new Date(data.scheduledEnd).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. You are clocking out ${data?.earlyBy} minutes early. Please select a reason.`
+        ? `Your shift is scheduled until ${new Date(data.scheduledEnd).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. You are clocking out ${formatDuration(data?.earlyBy || 0)} early. Please select a reason.`
         : 'You are clocking out before your scheduled shift ends. Please select a reason.',
       icon: AlertCircle,
       iconColor: 'text-amber-400',

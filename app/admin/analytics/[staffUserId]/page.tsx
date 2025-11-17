@@ -53,10 +53,12 @@ export default function StaffAnalyticsDetailPage() {
     }
   }
 
-  function formatTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
+  function formatTime(seconds: number): string {
+    // ⏱️ Database now stores SECONDS (not minutes!)
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours}h ${mins}m ${secs}s`
   }
 
   function getProductivityColor(percentage: number): string {
@@ -378,7 +380,7 @@ export default function StaffAnalyticsDetailPage() {
                   {applications.map((app: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{app.name}</TableCell>
-                      <TableCell>{formatTime(Math.round(app.totalTime / 60))}</TableCell>
+                      <TableCell>{formatTime(app.totalTime)}</TableCell>
                       <TableCell>{app.count} times</TableCell>
                     </TableRow>
                   ))}

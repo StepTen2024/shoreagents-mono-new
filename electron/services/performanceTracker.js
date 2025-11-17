@@ -223,7 +223,7 @@ class PerformanceTracker {
     const now = Date.now()
     const timeSinceLastUpdate = (now - this.metrics.lastUpdated) / 1000 // seconds
 
-    // Update screen time
+    // Update screen time (always increments)
     this.metrics.screenTime += timeSinceLastUpdate
 
     // Active time tracking
@@ -236,8 +236,17 @@ class PerformanceTracker {
       // Only add to active time if user is not idle
       // Idle time will be added by Activity Tracker when inactivity is detected
       this.metrics.activeTime += timeSinceLastUpdate
+      
+      // Log occasionally to verify active time is incrementing
+      if (Math.floor(this.metrics.activeTime) % 10 === 0 && timeSinceLastUpdate > 0) {
+        console.log(`✅ [PerformanceTracker] Active time: ${this.metrics.activeTime.toFixed(1)}s (idle: ${idleSeconds}s)`)
+      }
+    } else {
+      // User is idle
+      if (Math.floor(Date.now() / 5000) !== Math.floor((Date.now() - 1000) / 5000)) {
+        console.log(`⏸️  [PerformanceTracker] User idle: ${idleSeconds}s (waiting for Activity Tracker to record)`)
+      }
     }
-    // If idle, don't add time to either counter yet - wait for Activity Tracker to handle it
 
     // Calculate productivity score
     this.metrics.productivityScore = this.calculateProductivityScore()
@@ -247,19 +256,25 @@ class PerformanceTracker {
 
   /**
    * Get system idle time in seconds
+   * Always uses lastActivityTime (updated by Activity Tracker) for reliability
    */
   getSystemIdleTime() {
+    // ✅ Always use lastActivityTime (updated by Activity Tracker via uiohook-napi)
+    // This is more reliable than @paulcbetts/system-idle-time (especially in installers)
+    const idleSeconds = Math.floor((Date.now() - this.lastActivityTime) / 1000)
+    
+    // Optional: Try system-idle-time as backup (but don't rely on it)
     if (this.systemIdleTime) {
       try {
-        return this.systemIdleTime.getIdleTime()
+        const systemIdleSeconds = this.systemIdleTime.getIdleTime()
+        // Use the smaller value (more conservative = more active time)
+        return Math.min(idleSeconds, systemIdleSeconds)
       } catch (error) {
-        // Fallback: calculate based on last activity
-        return Math.floor((Date.now() - this.lastActivityTime) / 1000)
+        // Ignore errors, use lastActivityTime
       }
     }
     
-    // Fallback: calculate based on last activity
-    return Math.floor((Date.now() - this.lastActivityTime) / 1000)
+    return idleSeconds
   }
 
   /**
@@ -519,9 +534,9 @@ class PerformanceTracker {
     console.log(`🖱️  Mouse Movements: ${apiMetrics.mouseMovements} ${apiMetrics.mouseMovements > 0 ? '✅' : '❌ ZERO'}`)
     console.log(`🖱️  Mouse Clicks: ${apiMetrics.mouseClicks} ${apiMetrics.mouseClicks > 0 ? '✅' : '❌ ZERO'}`)
     console.log(`⌨️  Keystrokes: ${apiMetrics.keystrokes} ${apiMetrics.keystrokes > 0 ? '✅' : '❌ ZERO - NOT TRACKING'}`)
-    console.log(`✅ Active Time: ${apiMetrics.activeTime} min (${Math.round(metrics.activeTime)} sec) ${apiMetrics.activeTime > 0 ? '✅' : '❌ ZERO'}`)
-    console.log(`😴 Idle Time: ${apiMetrics.idleTime} min (${Math.round(metrics.idleTime)} sec) ${apiMetrics.idleTime > 0 ? '✅' : '⚠️ ZERO (expected if active)'}`)
-    console.log(`🖥️  Screen Time: ${apiMetrics.screenTime} min (${Math.round(metrics.screenTime)} sec) ${apiMetrics.screenTime > 0 ? '✅' : '❌ ZERO'}`)
+    console.log(`✅ Active Time: ${apiMetrics.activeTime} sec (${Math.floor(apiMetrics.activeTime / 60)} min) ${apiMetrics.activeTime > 0 ? '✅' : '❌ ZERO - updateMetrics() not running?'}`)
+    console.log(`😴 Idle Time: ${apiMetrics.idleTime} sec (${Math.floor(apiMetrics.idleTime / 60)} min) ${apiMetrics.idleTime > 0 ? '✅' : '⚠️ ZERO (expected if active)'}`)
+    console.log(`🖥️  Screen Time: ${apiMetrics.screenTime} sec (${Math.floor(apiMetrics.screenTime / 60)} min) ${apiMetrics.screenTime > 0 ? '✅' : '❌ ZERO - updateMetrics() not running?'}`)
     console.log(`🌐 URLs Visited Count: ${apiMetrics.urlsVisited} ${apiMetrics.urlsVisited > 0 ? '✅' : '❌ ZERO'}`)
     console.log(`🌐 URLs Array: ${apiMetrics.visitedUrls.length} items ${apiMetrics.visitedUrls.length > 0 ? '✅' : '❌ EMPTY ARRAY'}`)
     if (apiMetrics.visitedUrls.length > 0) {
@@ -618,10 +633,18 @@ class PerformanceTracker {
     console.log('📥 [PerformanceTracker] Local metrics now initialized with database baseline')
     console.log('📥 [PerformanceTracker] New activity will be added on top of these values')
     console.log('📥 [PerformanceTracker] ========================================')
+    
+    // 🔧 CRITICAL: Set sync service baseline to prevent duplicates!
+    // When we load database values, tell sync service "these are already in DB"
+    // So only NEW activity (deltas) will be synced, not the entire baseline again
+    const syncService = require('./syncService')
+    syncService.setBaseline(this.metrics) // Use setBaseline instead of reset
+    console.log('📥 [PerformanceTracker] ✅ Sync service baseline set - will only send deltas')
   }
 
   /**
-   * Reset metrics (called on clock-in or at midnight)
+   * Reset metrics (called ONLY on clock-in)
+   * Note: NO automatic midnight reset - supports night shifts that cross midnight!
    */
   resetMetrics() {
     console.log('🔄 [PerformanceTracker] ========================================')
@@ -647,16 +670,6 @@ class PerformanceTracker {
     
     console.log('🔄 [PerformanceTracker] Metrics reset complete - all counters at zero')
     console.log('🔄 [PerformanceTracker] Activity Tracker will now populate fresh metrics')
-  }
-
-  /**
-   * Check if it's time to reset (midnight)
-   */
-  shouldResetMetrics() {
-    const now = new Date()
-    const lastUpdate = new Date(this.metrics.lastUpdated)
-    
-    return now.getDate() !== lastUpdate.getDate()
   }
 
   /**

@@ -1,5 +1,41 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } = require('electron')
 const path = require('path')
+const fs = require('fs')
+
+// Setup file logging for production debugging
+const logFilePath = path.join(app.getPath('userData'), 'screenshot-debug.log')
+const logStream = fs.createWriteStream(logFilePath, { flags: 'a' })
+
+// Override console.log to also write to file in production
+const originalLog = console.log
+const originalError = console.error
+const originalWarn = console.warn
+
+console.log = function(...args) {
+  const timestamp = new Date().toISOString()
+  const message = `[${timestamp}] ${args.join(' ')}\n`
+  logStream.write(message)
+  originalLog.apply(console, args)
+}
+
+console.error = function(...args) {
+  const timestamp = new Date().toISOString()
+  const message = `[${timestamp}] ERROR: ${args.join(' ')}\n`
+  logStream.write(message)
+  originalError.apply(console, args)
+}
+
+console.warn = function(...args) {
+  const timestamp = new Date().toISOString()
+  const message = `[${timestamp}] WARN: ${args.join(' ')}\n`
+  logStream.write(message)
+  originalWarn.apply(console, args)
+}
+
+console.log('[Main] ============================================')
+console.log('[Main] 📝 Logging initialized')
+console.log('[Main] Log file location:', logFilePath)
+console.log('[Main] ============================================')
 
 // Import services
 const performanceTracker = require('./services/performanceTracker')
@@ -86,8 +122,10 @@ function createWindow() {
         )
         
         if (sessionCookie) {
-          console.log('[Main] 🔄 Updating session token in sync service')
+          console.log('[Main] 🔄 Updating session token in services')
           syncService.setSessionToken(sessionCookie.value)
+          await screenshotService.updateSessionToken(sessionCookie.value)
+          console.log('[Main] ✅ Session token updated in sync and screenshot services')
         }
       } catch (err) {
         console.error('[Main] Error updating session cookie:', err)
@@ -566,7 +604,8 @@ async function initializeTracking() {
       await screenshotService.initialize({
         apiUrl: config.API_BASE_URL
       })
-      console.log('[Main] Screenshot service initialized (waiting for authentication)')
+      await screenshotService.start() // Start without token, will get it after login
+      console.log('[Main] Screenshot service started (waiting for authentication)')
     }
   } catch (err) {
     console.error('[Main] Error starting services:', err)
@@ -575,6 +614,8 @@ async function initializeTracking() {
     await screenshotService.initialize({
       apiUrl: config.API_BASE_URL
     })
+    await screenshotService.start() // Start even without token
+    console.log('[Main] Screenshot service started (fallback mode)')
   }
   
   // Update tray menu with current status
@@ -781,10 +822,35 @@ function setupIPC() {
     return await screenshotService.captureNow()
   })
   
+  ipcMain.handle('screenshot:update-token', async (event, sessionToken) => {
+    console.log('[Main] Updating screenshot service session token via IPC')
+    await screenshotService.updateSessionToken(sessionToken)
+    return { success: true }
+  })
+  
+  // Set staff user ID directly (more reliable than fetching from API)
+  ipcMain.handle('screenshot:set-staff-user-id', async (event, staffUserId) => {
+    console.log('[Main] Setting screenshot service staff user ID via IPC:', staffUserId)
+    screenshotService.setStaffUserId(staffUserId)
+    return { success: true }
+  })
+  
   // Screenshot diagnostic
   ipcMain.handle('screenshot:run-diagnostic', async () => {
     const { runDiagnostic } = require('./utils/screenshotDiagnostic')
     return await runDiagnostic()
+  })
+  
+  // Get log file path
+  ipcMain.handle('get-log-file-path', () => {
+    return logFilePath
+  })
+  
+  // Open log file
+  ipcMain.handle('open-log-file', () => {
+    const { shell } = require('electron')
+    shell.openPath(logFilePath)
+    return { success: true, path: logFilePath }
   })
   
   // Auto-updater handlers

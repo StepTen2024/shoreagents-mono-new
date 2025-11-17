@@ -114,7 +114,7 @@ export async function GET(
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const totalHoursThisMonth = user.performance_metrics
       .filter(m => new Date(m.date) >= startOfMonth)
-      .reduce((sum, m) => sum + m.activeTime, 0) / 60
+      .reduce((sum, m) => sum + m.activeTime, 0) / 3600 // ⏱️ Convert seconds to hours
 
     const currentEntry = user.time_entries[0]
     const isClockedIn = currentEntry && !currentEntry.clockOut
@@ -170,7 +170,7 @@ export async function GET(
     const performanceTrend = last7Days.map(m => ({
       date: m.date,
       score: m.productivityScore,
-      activeTime: Math.round(m.activeTime / 60), // hours
+      activeTime: Math.round(m.activeTime / 3600), // ⏱️ Convert seconds to hours
     }))
 
     const staffDetail = {

@@ -17,6 +17,7 @@ class SyncService {
     this.lastSyncTime = null
     this.syncEnabled = true
     this.lastSyncedMetrics = null // 🔧 Track last synced values for delta calculation
+    this.baselineReady = true // 🔧 Prevent syncing during baseline load
   }
 
   /**
@@ -104,6 +105,12 @@ class SyncService {
    */
   async sync() {
     if (!this.syncEnabled || this.isSyncing) {
+      return
+    }
+
+    // 🔧 Don't sync if baseline is being loaded (prevents race condition)
+    if (!this.baselineReady) {
+      console.log('⏸️  [SyncService] Skipping sync - baseline loading in progress')
       return
     }
 
@@ -324,6 +331,38 @@ class SyncService {
   }
 
   /**
+   * Set baseline metrics (called when loading from database after page refresh)
+   * This prevents duplicate data by setting the "already synced" baseline
+   */
+  setBaseline(metrics) {
+    console.log('📊 [SyncService] ========================================')
+    console.log('📊 [SyncService] SETTING SYNC BASELINE (PAGE REFRESH)')
+    console.log('📊 [SyncService] ========================================')
+    
+    // 🔧 Pause syncing during baseline setup
+    this.baselineReady = false
+    
+    // Set the last synced metrics to the current database values
+    // This tells the sync service: "These values are already in the database"
+    // So only NEW activity (deltas) will be synced
+    this.lastSyncedMetrics = { ...metrics }
+    
+    console.log('📊 [SyncService] Baseline set:')
+    console.log(`   🖱️  Mouse: ${metrics.mouseMovements} movements, ${metrics.mouseClicks} clicks`)
+    console.log(`   ⌨️  Keystrokes: ${metrics.keystrokes}`)
+    console.log(`   ✅ Active Time: ${Math.floor((metrics.activeTime || 0) / 60)} min`)
+    console.log('📊 [SyncService] Next sync will only send NEW activity (delta)')
+    
+    // 🔧 Resume syncing after a brief delay (ensure metrics are fully loaded)
+    setTimeout(() => {
+      this.baselineReady = true
+      console.log('📊 [SyncService] ✅ Baseline ready - syncing resumed')
+    }, 1000) // Wait 1 second
+    
+    console.log('📊 [SyncService] ========================================')
+  }
+
+  /**
    * Reset sync state (called on clock-in to start fresh)
    */
   reset() {
@@ -337,6 +376,7 @@ class SyncService {
     this.lastSyncedMetrics = null
     this.retryCount = 0
     this.lastSyncTime = null
+    this.baselineReady = true // Ready for syncing (no baseline load needed)
     
     // Force an immediate sync after reset to establish new baseline
     console.log('🔄 [SyncService] Scheduling immediate sync in 2 seconds...')

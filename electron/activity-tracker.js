@@ -130,6 +130,14 @@ class ActivityTracker {
 
     // Start uIOhook to listen for keyboard and mouse events
     try {
+      // Safety: Remove any existing listeners first to prevent duplicates
+      console.log('🧹 [ActivityTracker] Cleaning up any existing event listeners...')
+      uIOhook.removeAllListeners('mousemove')
+      uIOhook.removeAllListeners('mousedown')
+      uIOhook.removeAllListeners('wheel')
+      uIOhook.removeAllListeners('keydown')
+      uIOhook.removeAllListeners('keyup')
+      
       console.log('🎯 [ActivityTracker] Setting up uIOhook event listeners...')
       
       // Mouse movement (throttled to avoid overwhelming the system)
@@ -234,6 +242,15 @@ class ActivityTracker {
     this.isTracking = false
 
     try {
+      // Remove ALL event listeners to prevent duplicates on restart
+      console.log('[ActivityTracker] Removing all event listeners...')
+      uIOhook.removeAllListeners('mousemove')
+      uIOhook.removeAllListeners('mousedown')
+      uIOhook.removeAllListeners('wheel')
+      uIOhook.removeAllListeners('keydown')
+      uIOhook.removeAllListeners('keyup')
+      console.log('[ActivityTracker] ✅ Event listeners removed')
+      
       // Stop uIOhook
       uIOhook.stop()
       console.log('[ActivityTracker] uIOhook stopped')
