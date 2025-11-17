@@ -25,9 +25,8 @@ export async function GET(request: NextRequest) {
         avatar: true,
         role: true,
         companyId: true,
-        coverImage: true,
-        bio: true,
-        skills: true
+        coverPhoto: true,
+        active: true
       }
     })
 
