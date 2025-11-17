@@ -1157,3 +1157,37 @@ Error details: {
  ✓ Compiled in 524ms (848 modules)
  GET / 200 in 646ms
  GET / 200 in 607ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 768ms (848 modules)
+ GET / 200 in 315ms
+ ✓ Compiled in 511ms (848 modules)
+ ✓ Compiled in 353ms (848 modules)
+ GET / 200 in 332ms
+ GET / 200 in 587ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 935ms (848 modules)
+ ✓ Compiled in 406ms (848 modules)
+ GET / 200 in 309ms
+ GET / 200 in 293ms
+ ✓ Compiled in 642ms (848 modules)
+ GET / 200 in 377ms
+ ✓ Compiled in 240ms (848 modules)
+ GET / 200 in 249ms
+ ✓ Compiled in 1841ms (1777 modules)
+ GET / 200 in 371ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 1091ms (1777 modules)
+ GET / 200 in 416ms
+ ✓ Compiled in 1476ms (1790 modules)
+ ✓ Compiled in 314ms (853 modules)
+ GET / 200 in 445ms
+ ✓ Compiled /api/time-tracking/status in 194ms (942 modules)
+ ✓ Compiled (949 modules)
+ GET /api/onboarding/status 200 in 1683ms
+ GET / 200 in 1966ms
+ GET /api/profile 200 in 2359ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 2463ms
+ GET /api/time-tracking/status 200 in 2562ms
+ GET /api/time-tracking/status 200 in 1230ms
+ GET /api/time-tracking/status 200 in 1180ms
+ GET /api/time-tracking/status 200 in 1181ms
