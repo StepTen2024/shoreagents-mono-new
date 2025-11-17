@@ -65,7 +65,11 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
 
   const handleUpload = async () => {
     // Validate all documents
+    console.log('[Upload Debug] Documents to upload:', documentsToUpload.map(d => ({ id: d.id, title: d.title, hasFile: !!d.file })))
+    
     const invalidDocs = documentsToUpload.filter(doc => !doc.title || !doc.file)
+    console.log('[Upload Debug] Invalid docs:', invalidDocs.map(d => ({ id: d.id, title: d.title, hasFile: !!d.file })))
+    
     if (invalidDocs.length > 0) {
       setError("Please provide a title and file for all documents.")
       return

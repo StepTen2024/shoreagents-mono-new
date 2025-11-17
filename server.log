@@ -393,3 +393,67 @@ Error details: {
  GET /tasks 200 in 40ms
  ✓ Compiled in 657ms (1357 modules)
  GET /tasks 200 in 44ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 106ms
+ GET /api/auth/session 200 in 36ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /tasks
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /tasks 200 in 161ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: sinn9aqKbuml9X-UAAAP
+ GET /api/auth/session 200 in 73ms
+ GET /api/auth/session 200 in 34ms
+[WebSocket] Client connected: CPWJWCZaHPenm6w0AAAR
+[WebSocket] Client disconnected: sinn9aqKbuml9X-UAAAP
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+ GET /api/onboarding/status 200 in 674ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1060ms
+ GET /api/profile 200 in 977ms
+ GET /api/tasks 200 in 1460ms
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 200 in 1050ms
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 200 in 1054ms
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 200 in 1057ms
+✅ Activity post created: TASK_COMPLETED for Kevin Macabanti
+ PUT /api/tasks/890cb853-7a8a-440c-91ef-82547e26c915 200 in 1261ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled /api/tasks/attachments in 378ms (892 modules)
+✅ staff 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda uploaded 1 task attachment(s) to staff/staff_task
+ POST /api/tasks/attachments 200 in 2049ms
+✅ Staff Kevin Macabanti created self-task "grwehgrh"
+ POST /api/tasks 201 in 911ms
+ GET /api/tasks 200 in 1057ms
+ PUT /api/tasks/cc748475-0cce-4d6b-be39-7b13bbebd294 200 in 1045ms
+ PUT /api/tasks/cc748475-0cce-4d6b-be39-7b13bbebd294 200 in 1086ms
+ PUT /api/tasks/cc748475-0cce-4d6b-be39-7b13bbebd294 200 in 1097ms
+ ○ Compiling /ai-assistant ...
+ ✓ Compiled /ai-assistant in 1594ms (1766 modules)
+ GET /ai-assistant 200 in 1683ms
+ GET /ai-assistant 200 in 33ms
+ GET /ai-assistant 200 in 42ms
+ ○ Compiling /api/documents ...
+ ✓ Compiled /api/documents in 537ms (1823 modules)
+📚 [STAFF] Fetched 0 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 1222ms
+ GET /api/tasks 200 in 1724ms
+📚 [STAFF] Fetched 0 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 527ms
+ GET /api/tasks 200 in 1038ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled /api/auth/[...nextauth] in 285ms (1169 modules)
+ GET /api/auth/session 200 in 376ms
+ GET /api/auth/session 200 in 52ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 1000ms (1524 modules)
+ GET /ai-assistant 200 in 164ms
