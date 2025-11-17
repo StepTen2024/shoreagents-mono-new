@@ -811,3 +811,337 @@ Error details: {
  GET /api/auth/session 200 in 49ms
  GET /api/auth/session 200 in 32ms
 [Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 45ms
+ GET /api/auth/session 200 in 46ms
+[Break Auto-Start] Checking 4 active sessions
+ ○ Compiling /posts ...
+ ✓ Compiled /posts in 1189ms (1850 modules)
+ GET /posts 200 in 1269ms
+ ✓ Compiled /api/posts/feed in 256ms (1852 modules)
+ GET /api/posts/feed?filter=all_staff&page=1&limit=20 200 in 2083ms
+ GET /api/posts/feed?filter=all_staff&page=1&limit=20 200 in 1703ms
+ ✓ Compiled /leaderboard in 467ms (1870 modules)
+ GET /leaderboard 200 in 574ms
+ ✓ Compiled /api/leaderboard in 208ms (1872 modules)
+ GET /api/leaderboard?period=all_time 200 in 637ms
+ GET /api/leaderboard?period=all_time 200 in 402ms
+ ✓ Compiled /performance-reviews in 354ms (1887 modules)
+ GET /performance-reviews 200 in 406ms
+ ✓ Compiled /api/performance-reviews in 382ms (1889 modules)
+ GET /api/performance-reviews 200 in 1315ms
+ GET /api/performance-reviews 200 in 911ms
+ ○ Compiling /tickets ...
+ ✓ Compiled /tickets in 506ms (1996 modules)
+ GET /tickets 200 in 558ms
+ ✓ Compiled /api/tickets in 294ms (1999 modules)
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 1380ms
+ ✓ Compiled /analytics in 477ms (1992 modules)
+ GET /analytics 200 in 532ms
+ ✓ Compiled /api/analytics in 314ms (1994 modules)
+ GET /api/analytics 200 in 1332ms
+ ○ Compiling /time-tracking ...
+ ✓ Compiled /time-tracking in 643ms (2036 modules)
+ GET /time-tracking 200 in 702ms
+ ○ Compiling /api/time-tracking ...
+ GET /api/analytics 200 in 1278ms
+ ✓ Compiled /api/time-tracking in 839ms (2043 modules)
+ GET /api/time-tracking 200 in 1478ms
+ GET /api/breaks/scheduled 200 in 1677ms
+ GET /api/time-tracking/status 200 in 2657ms
+ GET /api/time-tracking 200 in 1171ms
+ GET /api/breaks/scheduled 200 in 1156ms
+ GET /api/time-tracking/status 200 in 1248ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 67ms
+ GET /api/auth/session 200 in 37ms
+ GET /analytics 200 in 57ms
+ GET /api/analytics 200 in 1313ms
+ GET /api/analytics 200 in 857ms
+ GET /time-tracking 200 in 42ms
+ GET /api/time-tracking 200 in 960ms
+ GET /api/breaks/scheduled 200 in 1145ms
+ GET /api/time-tracking/status 200 in 1222ms
+ GET /api/time-tracking 200 in 602ms
+ GET /api/breaks/scheduled 200 in 791ms
+ GET /api/time-tracking/status 200 in 1164ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 66ms
+ GET /api/auth/session 200 in 91ms
+ GET /posts 200 in 67ms
+ GET /api/posts/feed?filter=all_staff&page=1&limit=20 200 in 2136ms
+ GET /api/posts/feed?filter=all_staff&page=1&limit=20 200 in 1673ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1156ms (1827 modules)
+ GET / 200 in 1521ms
+ ✓ Compiled /api/posts in 343ms (1020 modules)
+ ✓ Compiled in 365ms (798 modules)
+ GET /api/leaderboard?period=all_time 200 in 1331ms
+ GET /api/onboarding/status 200 in 1577ms
+ ○ Compiling /api/onboarding ...
+ ✓ Compiled /api/onboarding in 504ms (1834 modules)
+ GET /api/performance-reviews 200 in 2112ms
+ GET /api/tasks 200 in 2344ms
+ GET /api/onboarding/status 200 in 340ms
+ GET /api/posts 200 in 2569ms
+ GET /api/leaderboard?period=all_time 200 in 1011ms
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 2634ms
+ GET /api/onboarding 200 in 1497ms
+ ✓ Compiled /api/welcome in 499ms (1836 modules)
+ ✓ Compiled in 1ms (1038 modules)
+ ✓ Compiled in 0ms (1038 modules)
+ ✓ Compiled in 0ms (1038 modules)
+ GET /api/welcome 400 in 1728ms
+ GET /api/onboarding 200 in 1332ms
+ GET /api/performance-reviews 200 in 1886ms
+ GET /api/posts 200 in 1896ms
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 1919ms
+ GET /api/tasks 200 in 2116ms
+ GET /api/welcome 400 in 650ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 99ms
+ GET /api/auth/session 200 in 80ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/session 200 in 58ms
+ GET /api/auth/session 200 in 75ms
+[Break Auto-Start] Checking 4 active sessions
+ ○ Compiling /profile ...
+ ✓ Compiled /profile in 2.7s (1865 modules)
+ GET /profile 200 in 2830ms
+ ✓ Compiled /api/welcome in 411ms (1055 modules)
+ ✓ Compiled (1057 modules)
+ GET /api/auth/csrf 200 in 47ms
+ POST /api/auth/signout 200 in 27ms
+ ○ Compiling /login/staff ...
+ ✓ Compiled /login/staff in 509ms (1883 modules)
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /login/staff
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: true,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: false
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /api/welcome 400 in 1953ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /api/profile 200 in 1967ms
+[WebSocket] Client disconnected: Kevin Macabanti
+ GET /login/staff 200 in 786ms
+[WebSocket] Client connected: nTswK0NdRLXF9CycAAAv
+ GET /api/auth/session 200 in 91ms
+ GET /api/auth/session 200 in 55ms
+ ○ Compiling /login/admin ...
+ ✓ Compiled /login/admin in 672ms (1890 modules)
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /login/admin
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: true,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: false
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /login/admin 200 in 935ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[WebSocket] Client disconnected: nTswK0NdRLXF9CycAAAv
+[WebSocket] Client connected: bEb_El4IFidrqqEIAAAx
+ GET /api/auth/session 200 in 418ms
+ GET /api/auth/session 200 in 37ms
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/providers 200 in 82ms
+ GET /api/auth/csrf 200 in 32ms
+ POST /api/auth/callback/credentials? 200 in 934ms
+ GET /api/auth/session 200 in 34ms
+[WebSocket] Client disconnected: bEb_El4IFidrqqEIAAAx
+[WebSocket] Client connected: r_RCI7jzsIFeBIy9AAAz
+[WebSocket] User identified: Stephen Atcheler UserID: 97230d67-ff7d-4802-8356-3623c6bee1f2
+[WebSocket] User Stephen Atcheler joined room: user:97230d67-ff7d-4802-8356-3623c6bee1f2
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 1169ms (1850 modules)
+ GET /admin 200 in 2237ms
+ GET /admin 200 in 1211ms
+ ○ Compiling /admin/clients ...
+ ✓ Compiled /admin/clients in 833ms (1861 modules)
+ GET /admin/clients 200 in 922ms
+ ○ Compiling /api/admin/clients ...
+ ✓ Compiled /api/admin/clients in 786ms (1863 modules)
+✅ [ADMIN] Found 1 companies
+   📦 StepTen Inc:
+      - Client Users: 1
+      - Staff Users: 10
+      - Management: No
+         👤 Steve Batcheler (stephen@stepten.io) - OWNER
+ GET /api/admin/clients 200 in 1417ms
+✅ [ADMIN] Found 1 companies
+   📦 StepTen Inc:
+      - Client Users: 1
+      - Staff Users: 10
+      - Management: No
+         👤 Steve Batcheler (stephen@stepten.io) - OWNER
+ GET /api/admin/clients 200 in 639ms
+ ✓ Compiled /admin/profile in 453ms (1883 modules)
+ GET /admin/profile 200 in 834ms
+ ○ Compiling /admin/staff ...
+ ✓ Compiled /admin/staff in 1095ms (1805 modules)
+ GET /admin/staff 200 in 1211ms
+ ○ Compiling /api/admin/management ...
+ ✓ Compiled /api/admin/management in 718ms (1811 modules)
+ GET /api/admin/companies 200 in 1246ms
+ GET /api/admin/management 200 in 1262ms
+ GET /api/admin/staff 200 in 1468ms
+ GET /api/admin/management 200 in 1158ms
+ GET /api/admin/companies 200 in 1216ms
+ GET /api/admin/staff 200 in 1314ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 1532ms (848 modules)
+ ✓ Compiled in 498ms (848 modules)
+ GET /admin/staff 200 in 622ms
+ GET /admin/staff 200 in 316ms
+ ✓ Compiled in 1370ms (848 modules)
+ ✓ Compiled in 341ms (848 modules)
+ GET /admin/staff 200 in 322ms
+ GET /admin/staff 200 in 291ms
+[Break Auto-Start] Checking 4 active sessions
+ GET /admin 200 in 945ms
+ GET /api/auth/csrf 200 in 54ms
+ POST /api/auth/signout 200 in 38ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /login/admin
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: true,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: false
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /login/admin 200 in 208ms
+[WebSocket] Client disconnected: Stephen Atcheler
+[WebSocket] Client connected: AVTNd0hfIPGNaUbMAAA1
+ GET /api/auth/session 200 in 53ms
+ GET /api/auth/session 200 in 45ms
+✅ [LAYOUT-WRAPPER] Pathname loaded: /login/staff
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: true,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: false
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /login/staff 200 in 128ms
+[WebSocket] Client disconnected: AVTNd0hfIPGNaUbMAAA1
+[WebSocket] Client connected: CMr-d9inkP-4w1faAAA3
+ GET /api/auth/session 200 in 32ms
+ GET /api/auth/session 200 in 23ms
+[Break Auto-Start] Checking 4 active sessions
+ GET /api/auth/providers 200 in 27ms
+ GET /api/auth/csrf 200 in 24ms
+ POST /api/auth/callback/credentials? 200 in 1148ms
+ GET /api/auth/session 200 in 23ms
+[WebSocket] Client disconnected: CMr-d9inkP-4w1faAAA3
+[WebSocket] Client connected: fQgEpzX5eJvfSUygAAA5
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+ GET / 200 in 271ms
+ GET / 200 in 301ms
+ ○ Compiling /api/tickets ...
+ ✓ Compiled /api/tickets in 1260ms (943 modules)
+ ✓ Compiled (954 modules)
+ GET /api/onboarding/status 200 in 2231ms
+ ✓ Compiled /api/posts in 274ms (956 modules)
+ GET /api/profile 200 in 2586ms
+ GET /api/performance-reviews 200 in 2866ms
+ ✓ Compiled /api/leaderboard in 206ms (958 modules)
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 2937ms
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 3014ms
+ ✓ Compiled /api/onboarding in 221ms (963 modules)
+ GET /api/leaderboard?period=all_time 200 in 684ms
+ GET /api/tasks 200 in 3344ms
+ GET /api/onboarding/status 200 in 700ms
+ GET /api/onboarding 200 in 1106ms
+ GET /api/posts 200 in 1773ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1022ms
+ GET /api/profile 200 in 1355ms
+ GET /api/leaderboard?period=all_time 200 in 484ms
+ GET /api/performance-reviews 200 in 1191ms
+ ✓ Compiled /api/welcome in 260ms (965 modules)
+ GET /api/onboarding/status 200 in 433ms
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 1128ms
+ ✓ Compiled in 0ms (965 modules)
+ GET /api/tasks 200 in 1184ms
+ ✓ Compiled in 0ms (965 modules)
+ ✓ Compiled in 0ms (965 modules)
+ GET /api/onboarding/status 200 in 1062ms
+ GET /api/onboarding 200 in 1485ms
+ GET /api/welcome 400 in 1627ms
+ GET /api/posts 200 in 1848ms
+ GET /api/welcome 400 in 640ms
+ GET / 200 in 342ms
+ GET / 200 in 256ms
+ ○ Compiling /performance-reviews ...
+ ✓ Compiled /performance-reviews in 706ms (974 modules)
+ GET /performance-reviews 200 in 810ms
+ GET /api/performance-reviews 200 in 943ms
+ GET /api/performance-reviews 200 in 892ms
+ GET /api/onboarding/status 200 in 460ms
+ GET /api/leaderboard?period=all_time 200 in 554ms
+ GET /api/onboarding/status 200 in 337ms
+ GET /api/onboarding 200 in 592ms
+ GET /api/performance-reviews 200 in 1100ms
+ GET /api/tasks 200 in 1176ms
+ GET /api/posts 200 in 1313ms
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 1466ms
+ GET /api/leaderboard?period=all_time 200 in 418ms
+ GET /api/welcome 400 in 627ms
+ GET /api/onboarding 200 in 594ms
+ GET / 200 in 276ms
+ GET /api/performance-reviews 200 in 886ms
+ GET /api/welcome 400 in 708ms
+ GET /api/tasks 200 in 1103ms
+ GET /api/posts 200 in 1114ms
+✅ [TICKETS API] Fetched 2 tickets for staff Kevin Macabanti
+ GET /api/tickets 200 in 1129ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 1410ms (848 modules)
+ ✓ Compiled in 435ms (848 modules)
+ GET / 200 in 605ms
+ GET / 200 in 305ms
+ ✓ Compiled in 617ms (848 modules)
+ ✓ Compiled in 422ms (848 modules)
+ GET / 200 in 518ms
+ GET / 200 in 301ms
+ ✓ Compiled in 1572ms (848 modules)
+ ✓ Compiled in 585ms (848 modules)
+ GET / 200 in 377ms
+ GET / 200 in 288ms

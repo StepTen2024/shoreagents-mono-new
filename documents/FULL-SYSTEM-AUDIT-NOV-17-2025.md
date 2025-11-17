@@ -53,14 +53,15 @@
 
 ### **SEVERITY: HIGH** 🔴
 
-#### 1. **Staff Portal Redirect Loop**
+#### 1. **Staff Dashboard Needs Improvement**
 ```typescript
-// app/staff/page.tsx
-redirect("/onboarding") // Staff home redirects to onboarding
+// app/page.tsx - Uses GamifiedDashboard component
+// app/staff/page.tsx - Redirects to /onboarding
 ```
-- **Impact:** Staff users can't access their dashboard
-- **Fix Needed:** Create proper staff dashboard or redirect to time-tracking
-- **Priority:** HIGH
+- **Impact:** Staff dashboard exists at `/` but may need visual/data improvements
+- **Note:** `/app/staff/page.tsx` redirects to onboarding (intentional during signup flow)
+- **Fix Needed:** Audit GamifiedDashboard for hardcoded data, improve visuals
+- **Priority:** MEDIUM (functional but could be better)
 
 #### 2. **PDF Download Not Implemented**
 ```typescript
@@ -301,10 +302,11 @@ recentStaff = []
     - No push/email integration
     - No notification center UI
 
-18. **Staff Dashboard** ❌
-    - `/app/staff/page.tsx` just redirects
-    - No dedicated staff home
-    - Should show: tasks, time summary, reviews
+18. **Staff Dashboard** ⚠️
+    - `/` uses `GamifiedDashboard` component ✅
+    - Fetches tasks, reviews, tickets, posts, leaderboard
+    - May need visual polish or data verification
+    - `/app/staff/page.tsx` redirects to onboarding (by design)
 
 ---
 
@@ -354,9 +356,10 @@ recentStaff = []
 
 ### **IMMEDIATE (This Week)**
 
-1. ✅ ~~Fix staff portal redirect~~
-   - Create `/app/staff/dashboard/page.tsx`
-   - Show: tasks, time summary, upcoming reviews
+1. ⚠️ ~~Fix staff portal redirect~~ → AUDIT GAMIFIED DASHBOARD
+   - Dashboard exists at `/` (GamifiedDashboard component)
+   - Verify all data is real (not hardcoded)
+   - Polish visuals if needed
 
 2. ✅ Implement PDF download for contracts
    - Use library like `jspdf` or direct file download
