@@ -541,3 +541,45 @@ Error details: {
 [Break Auto-Start] Checking 4 active sessions
  ✓ Compiled in 2.6s (1761 modules)
  GET /ai-assistant 200 in 158ms
+ ✓ Compiled in 915ms (1524 modules)
+ GET /ai-assistant 200 in 122ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 613ms (1091 modules)
+ GET /api/auth/session 200 in 789ms
+ GET /api/auth/session 200 in 34ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /ai-assistant
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+ GET /ai-assistant 200 in 268ms
+[WebSocket] Client disconnected: Kevin Macabanti
+[WebSocket] Client connected: oCvaz9qI7TiZL2urAAAb
+ ✓ Compiled /api/documents in 365ms (1093 modules)
+ ✓ Compiled (1166 modules)
+ GET /api/auth/session 200 in 747ms
+[WebSocket] Client disconnected: oCvaz9qI7TiZL2urAAAb
+ ✓ Compiled /api/onboarding/status in 136ms (1168 modules)
+ ✓ Compiled (1170 modules)
+ GET /api/auth/session 200 in 347ms
+[WebSocket] Client connected: xiIGERZnCky__cx8AAAd
+[WebSocket] User identified: Kevin Macabanti UserID: d619b81b-64b0-46e0-a4bf-15088d798747
+[WebSocket] User Kevin Macabanti joined room: user:d619b81b-64b0-46e0-a4bf-15088d798747
+📚 [STAFF] Fetched 0 documents for staff user 0f6621d1-9a4c-42d2-ab2c-fa5bbec10cda (Kevin Macabanti, Company: StepTen Inc)
+ GET /api/documents 200 in 1676ms
+ GET /api/notifications?unreadOnly=true&limit=1 200 in 1758ms
+ GET /api/onboarding/status 200 in 969ms
+ GET /api/profile 200 in 1282ms
+ GET /api/tasks 200 in 2130ms
+ GET /api/auth/session 200 in 54ms
+ GET /api/auth/session 200 in 89ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 1664ms (1524 modules)
+ GET /ai-assistant 200 in 167ms

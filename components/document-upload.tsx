@@ -205,57 +205,48 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                 </div>
 
                 <div className="grid gap-2">
-                  <label htmlFor={`file-${doc.id}`} className="text-white text-sm font-medium">Document File *</label>
-                  <input
-                    id={`file-${doc.id}`}
-                    type="file"
-                    accept=".pdf,.doc,.docx,.txt,.md"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
-                      console.log('[File Input] Selected file:', file?.name, 'for doc:', doc.id)
-                      updateDocument(doc.id, { file })
-                      console.log('[File Input] Updated document with file')
-                      // Auto-fill title from filename if title is empty
-                      if (file && !doc.title) {
-                        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
-                        updateDocument(doc.id, { title: fileNameWithoutExt })
-                        console.log('[File Input] Auto-filled title:', fileNameWithoutExt)
-                      }
-                    }}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                  <div 
-                    onClick={() => {
-                      console.log('[Click Debug] Div clicked for doc:', doc.id)
-                      const input = document.getElementById(`file-${doc.id}`) as HTMLInputElement
-                      console.log('[Click Debug] Input found:', !!input)
-                      if (input) {
-                        input.click()
-                        console.log('[Click Debug] Input clicked')
-                      }
-                    }}
-                    className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-500 transition-colors cursor-pointer"
-                  >
-                    {doc.file ? (
-                      <div className="space-y-2">
-                        <FileText className="h-8 w-8 text-indigo-600 mx-auto" />
-                        <p className="text-sm font-medium text-white">{doc.file.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(doc.file.size)}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-                        <p className="text-sm font-medium text-white">
-                          Click to upload or drag and drop
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          PDF, DOC, DOCX, TXT, or MD (Max 10MB)
-                        </p>
-                      </div>
-                    )}
+                  <Label htmlFor={`file-${doc.id}`} className="text-white">Document File *</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-500 transition-colors cursor-pointer">
+                    <input
+                      id={`file-${doc.id}`}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.txt,.md"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        console.log('[File Input] Selected file:', file?.name, 'for doc:', doc.id)
+                        updateDocument(doc.id, { file })
+                        console.log('[File Input] Updated document with file')
+                        // Auto-fill title from filename if title is empty
+                        if (file && !doc.title) {
+                          const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
+                          updateDocument(doc.id, { title: fileNameWithoutExt })
+                          console.log('[File Input] Auto-filled title:', fileNameWithoutExt)
+                        }
+                      }}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                    <label htmlFor={`file-${doc.id}`} className="cursor-pointer">
+                      {doc.file ? (
+                        <div className="space-y-2">
+                          <FileText className="h-8 w-8 text-indigo-600 mx-auto" />
+                          <p className="text-sm font-medium text-white">{doc.file.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(doc.file.size)}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="h-8 w-8 text-gray-400 mx-auto" />
+                          <p className="text-sm font-medium text-white">
+                            Click to upload or drag and drop
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            PDF, DOC, DOCX, TXT, or MD (Max 10MB)
+                          </p>
+                        </div>
+                      )}
+                    </label>
                   </div>
                   {index === 0 && (
                     <p className="text-xs text-gray-500">
