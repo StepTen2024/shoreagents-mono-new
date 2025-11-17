@@ -50,9 +50,15 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
   }
 
   const updateDocument = (id: string, updates: Partial<DocumentToUpload>) => {
-    setDocumentsToUpload(documentsToUpload.map(doc => 
-      doc.id === id ? { ...doc, ...updates } : doc
-    ))
+    console.log('[updateDocument] CALLED with id:', id, 'updates:', updates)
+    setDocumentsToUpload(documentsToUpload.map(doc => {
+      if (doc.id === id) {
+        const updated = { ...doc, ...updates }
+        console.log('[updateDocument] Updated doc:', updated)
+        return updated
+      }
+      return doc
+    }))
   }
 
   const resetUploadForm = () => {

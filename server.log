@@ -583,3 +583,20 @@ Error details: {
 [Break Auto-Start] Checking 4 active sessions
  ✓ Compiled in 1664ms (1524 modules)
  GET /ai-assistant 200 in 167ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 902ms (1524 modules)
+ GET /ai-assistant 200 in 108ms
+🔥🔥🔥 [ElectronProvider] FILE LOADED 🔥🔥🔥
+✅ [LAYOUT-WRAPPER] Pathname loaded: /ai-assistant
+🎯 [LAYOUT-WRAPPER] Page type: {
+  isLoginPage: false,
+  isAdminPage: false,
+  isClientPage: false,
+  isStaffPage: true
+}
+[ElectronProvider] 🚀 Component mounted!
+[ElectronProvider] 📊 Render state: { isElectron: false, consentGiven: null }
+[WebSocket] Client disconnected: Kevin Macabanti
+ GET /ai-assistant 200 in 250ms
+[WebSocket] Client connected: d005ddljfw9L_iCMAAAf
+ ✓ Compiled /api/tasks in 217ms (1091 modules)
