@@ -1145,3 +1145,15 @@ Error details: {
  ✓ Compiled in 585ms (848 modules)
  GET / 200 in 377ms
  GET / 200 in 288ms
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 715ms (848 modules)
+ ✓ Compiled in 457ms (848 modules)
+ GET / 200 in 634ms
+ GET / 200 in 300ms
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+[Break Auto-Start] Checking 4 active sessions
+ ✓ Compiled in 953ms (848 modules)
+ ✓ Compiled in 524ms (848 modules)
+ GET / 200 in 646ms
+ GET / 200 in 607ms
