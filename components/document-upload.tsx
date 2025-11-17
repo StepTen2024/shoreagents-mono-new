@@ -51,7 +51,7 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
 
   const updateDocument = (id: string, updates: Partial<DocumentToUpload>) => {
     console.log('[updateDocument] CALLED with id:', id, 'updates:', updates)
-    setDocumentsToUpload(documentsToUpload.map(doc => {
+    setDocumentsToUpload(prevDocs => prevDocs.map(doc => {
       if (doc.id === id) {
         const updated = { ...doc, ...updates }
         console.log('[updateDocument] Updated doc:', updated)
@@ -218,22 +218,16 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                       type="file"
                       accept=".pdf,.doc,.docx,.txt,.md"
                       onChange={(e) => {
-                        console.log('[File Input] onChange FIRED!')
-                        console.log('[File Input] e.target:', e.target)
-                        console.log('[File Input] e.target.files:', e.target.files)
                         const file = e.target.files?.[0] || null
-                        console.log('[File Input] Selected file:', file)
-                        console.log('[File Input] File name:', file?.name)
+                        console.log('[File Input] Selected file:', file?.name, 'Size:', file?.size)
                         updateDocument(doc.id, { file })
-                        console.log('[File Input] Updated document with file')
                         // Auto-fill title from filename if title is empty
                         if (file && !doc.title) {
                           const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
                           updateDocument(doc.id, { title: fileNameWithoutExt })
-                          console.log('[File Input] Auto-filled title:', fileNameWithoutExt)
                         }
                       }}
-                      className="block mb-4 p-2 border-2 border-red-500 bg-white text-black"
+                      className="hidden"
                       disabled={uploading}
                     />
                     <label htmlFor={`file-${doc.id}`} className="cursor-pointer">
