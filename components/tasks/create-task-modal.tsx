@@ -434,11 +434,17 @@ export default function CreateTaskModal({
                           Title <span className="text-red-500">*</span>
                         </label>
                         <input
+                          id={`task-title-${task.id}`}
+                          name={`task-title-${task.id}`}
                           type="text"
                           value={task.title}
-                          onChange={(e) => updateTask(task.id, "title", e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateTask(task.id, "title", e.target.value)
+                          }}
                           onFocus={() => setFocusedField(`bulk-title-${task.id}`)}
                           onBlur={() => setFocusedField(null)}
+                          autoComplete="off"
                           className={`w-full rounded-lg px-4 py-3 outline-none transition-all duration-200 ${
                             isDark
                               ? "bg-gray-700/50 text-white border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
@@ -520,9 +526,15 @@ export default function CreateTaskModal({
                           Description
                         </label>
                         <textarea
+                          id={`task-description-${task.id}`}
+                          name={`task-description-${task.id}`}
                           value={task.description}
-                          onChange={(e) => updateTask(task.id, "description", e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateTask(task.id, "description", e.target.value)
+                          }}
                           rows={3}
+                          autoComplete="off"
                           className={`w-full rounded-lg px-4 py-3 outline-none transition-all duration-200 resize-none ${
                             isDark
                               ? "bg-gray-700/50 text-white border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder-gray-500"
