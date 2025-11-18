@@ -116,18 +116,18 @@ export default function TicketsPage() {
           {/* Header skeleton */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="h-10 w-64 bg-slate-700/50 rounded-lg animate-pulse" />
-              <div className="mt-2 h-4 w-48 bg-slate-700/50 rounded animate-pulse" />
+              <div className="h-10 w-64 bg-slate-800/50 rounded-lg animate-pulse" />
+              <div className="mt-2 h-4 w-48 bg-slate-800/50 rounded animate-pulse" />
             </div>
-            <div className="h-12 w-32 bg-slate-700/50 rounded-2xl animate-pulse" />
+            <div className="h-12 w-32 bg-slate-800/50 rounded-2xl animate-pulse" />
           </div>
 
           {/* Stats skeleton */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="group rounded-2xl bg-slate-900/50 backdrop-blur-xl p-6 ring-1 ring-white/10">
-                <div className="text-3xl font-extrabold bg-slate-700/50 h-8 w-12 rounded animate-pulse" />
-                <div className="text-sm font-medium bg-slate-700/50 h-4 w-20 rounded mt-1 animate-pulse" />
+                <div className="text-3xl font-extrabold bg-slate-800/50 h-8 w-12 rounded animate-pulse" />
+                <div className="text-sm font-medium bg-slate-800/50 h-4 w-20 rounded mt-1 animate-pulse" />
               </div>
             ))}
           </div>
