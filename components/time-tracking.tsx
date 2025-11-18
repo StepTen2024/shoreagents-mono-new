@@ -149,6 +149,13 @@ export default function TimeTracking() {
       }
     }
     
+    const handleShowLateModal = (event: CustomEvent) => {
+      const { lateBy } = event.detail
+      console.log('[Time Tracking] Late modal event received:', lateBy)
+      setLateMinutes(lateBy)
+      setShowLateModal(true)
+    }
+    
     window.addEventListener('show-late-modal', handleShowLateModal as EventListener)
     
     return () => {
