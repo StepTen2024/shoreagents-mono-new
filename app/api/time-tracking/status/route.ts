@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       const clockIn = new Date(activeEntry.clockIn)
       const now = new Date()
       const diffMs = now.getTime() - clockIn.getTime()
-      const hoursElapsed = (diffMs / (1000 * 60 * 60)).toFixed(2)
+      const hoursWorked = diffMs / (1000 * 60 * 60) // Return as number, not string
 
       // Find active break for this time entry (only breaks that have been started but not ended)
       const activeBreak = await prisma.breaks.findFirst({
@@ -52,9 +52,15 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         isClockedIn: true,
+        clockInTime: activeEntry.clockIn.toISOString(),
+        hoursWorked,
+        isOnBreak: !!activeBreak,
+        currentBreakType: activeBreak?.type || null,
+        schedule: null, // TODO: Parse work schedules if needed
+        nextBreak: null, // TODO: Calculate next break if needed
+        // Legacy fields for compatibility
         activeEntry,
         clockedInAt: activeEntry.clockIn,
-        hoursElapsed,
         workSchedules,
         activeBreak,
       })
@@ -62,6 +68,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       isClockedIn: false,
+      clockInTime: null,
+      hoursWorked: 0,
+      isOnBreak: false,
+      currentBreakType: null,
+      schedule: null,
+      nextBreak: null,
+      // Legacy fields for compatibility
       activeEntry: null,
       workSchedules,
     })

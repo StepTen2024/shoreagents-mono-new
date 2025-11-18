@@ -133,7 +133,7 @@ export function TimeTrackingWidget() {
                 <div className="rounded-lg bg-blue-500/20 px-4 py-2 ring-1 ring-blue-500/50">
                   <div className="text-sm text-blue-300">Hours Today</div>
                   <div className="text-3xl font-bold text-blue-400">
-                    {status.hoursWorked.toFixed(1)}h
+                    {(status.hoursWorked ?? 0).toFixed(1)}h
                   </div>
                 </div>
               </div>
