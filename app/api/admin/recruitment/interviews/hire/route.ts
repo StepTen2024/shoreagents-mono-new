@@ -70,6 +70,16 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`📧 [ADMIN] Sending job offer to candidate for position: ${position}`)
+    console.log(`📋 [ADMIN] Offer data received:`, {
+      salary,
+      shiftType,
+      workLocation,
+      hmoIncluded,
+      leaveCredits,
+      workHours,
+      clientPreferredStart,
+      workSchedule
+    })
 
     // Check if interview request exists
     const interviewRequest = await prisma.interview_requests.findUnique({
@@ -124,12 +134,14 @@ export async function POST(request: NextRequest) {
     let workEndTime = "18:00"
     let scheduleTimezone = clientTimezone || "UTC"
     let isDefaultSchedule = true
+    let customHours = null
 
     if (workSchedule) {
       workDays = workSchedule.workDays || workDays
       workStartTime = workSchedule.workStartTime || workStartTime
       isDefaultSchedule = workSchedule.isMonToFri !== false
       scheduleTimezone = workSchedule.clientTimezone || scheduleTimezone
+      customHours = workSchedule.customHours || null
       
       // Calculate end time (start + 9 hours)
       const [startHour, startMinute] = workStartTime.split(':').map(Number)
@@ -141,32 +153,65 @@ export async function POST(request: NextRequest) {
         workStartTime,
         workEndTime,
         scheduleTimezone,
-        isDefaultSchedule
+        isDefaultSchedule,
+        hasCustomHours: !!customHours,
+        customHours
       })
     }
 
     // Create job acceptance record (pending candidate acceptance)
-    const jobAcceptance = await prisma.job_acceptances.create({
-      data: {
-        id: crypto.randomUUID(),
-        interviewRequestId,
-        bpocCandidateId,
-        candidateEmail,
-        candidatePhone: candidatePhone || null,
-        position,
-        salary: salary ? parseFloat(salary) : null,
-        companyId,
-        acceptedByAdminId: managementUser.id,
-        workDays,
-        workStartTime,
-        workEndTime,
-        clientTimezone: scheduleTimezone,
-        isDefaultSchedule,
-        updatedAt: new Date()
-      }
-    })
+    let jobAcceptance
+    try {
+      jobAcceptance = await prisma.job_acceptances.create({
+        data: {
+          id: crypto.randomUUID(),
+          interviewRequestId,
+          bpocCandidateId,
+          candidateEmail,
+          candidatePhone: candidatePhone || null,
+          position,
+          salary: salary ? parseFloat(salary) : null,
+          companyId,
+          acceptedByAdminId: managementUser.id,
+          workDays,
+          workStartTime,
+          workEndTime,
+          clientTimezone: scheduleTimezone,
+          isDefaultSchedule,
+          customHours: customHours || null,
+          // Employment terms from admin form
+          shiftType: shiftType || null,
+          workLocation: workLocation || null,
+          hmoIncluded: Boolean(hmoIncluded),
+          leaveCredits: leaveCredits ? parseInt(String(leaveCredits)) : 12,
+          workHours: workHours || null,
+          preferredStartDate: clientPreferredStart ? new Date(clientPreferredStart) : null,
+          updatedAt: new Date()
+        }
+      })
+    } catch (createError) {
+      console.error('❌ [ADMIN] Error creating job acceptance:', createError)
+      return NextResponse.json(
+        { 
+          error: 'Failed to create job acceptance record',
+          details: createError instanceof Error ? createError.message : 'Unknown error'
+        },
+        { status: 500 }
+      )
+    }
 
     console.log(`✅ [ADMIN] Job offer sent: ${jobAcceptance.id}`)
+    console.log(`💾 [ADMIN] Saved data:`, {
+      id: jobAcceptance.id,
+      salary: jobAcceptance.salary,
+      shiftType: jobAcceptance.shiftType,
+      workLocation: jobAcceptance.workLocation,
+      hmoIncluded: jobAcceptance.hmoIncluded,
+      leaveCredits: jobAcceptance.leaveCredits,
+      workHours: jobAcceptance.workHours,
+      preferredStartDate: jobAcceptance.preferredStartDate,
+      customHours: jobAcceptance.customHours
+    })
 
     // Prepare comprehensive offer details
     const offerDetails = {
