@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { logStaffOnboarded } from "@/lib/activity-generator"
-import { convertTime } from "@/lib/timezone-converter"
-import { randomUUID } from "crypto"
+import crypto from "crypto"
 
 export async function POST(
   req: NextRequest,
@@ -31,7 +30,6 @@ export async function POST(
       companyId,
       employmentStatus,
       startDate,
-      shiftTime,
       currentRole,
       salary,
       hmo
@@ -42,7 +40,6 @@ export async function POST(
       companyId,
       employmentStatus,
       startDate,
-      shiftTime,
       currentRole,
       salary,
       hmo,
@@ -98,291 +95,29 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // 🎯 CHECK IF PROFILE ALREADY EXISTS (from hiring process)
-    if (staffUser.staff_profiles) {
-      console.log("✅ PROFILE ALREADY EXISTS - SYNCING ONBOARDING DATA TO PERSONAL RECORDS:", { 
-        profileId: staffUser.staff_profiles.id,
-        staffUserId: staffUser.id,
-        staffName: staffUser.name,
-        companyId: staffUser.companyId
-      })
-      
-      // Get employment contract URL if it exists
-      let employmentContractUrl = null
-      if (employmentContract && employmentContract.signed) {
-        // Assuming contract is stored as PDF or has a URL field
-        employmentContractUrl = employmentContract.id // Or whatever field stores the URL/reference
-      }
-
-      // UPDATE staff_personal_records with ALL onboarding data
-      const personalRecordData = {
-        staffUserId: staffUser.id,
-        sss: onboarding.sss,
-        tin: onboarding.tin,
-        philhealthNo: onboarding.philhealthNo,
-        pagibigNo: onboarding.pagibigNo,
-        emergencyContactName: onboarding.emergencyContactName,
-        emergencyContactNo: onboarding.emergencyContactNo,
-        emergencyRelationship: onboarding.emergencyRelationship,
-        validIdUrl: onboarding.validIdUrl,
-        birthCertUrl: onboarding.birthCertUrl,
-        nbiClearanceUrl: onboarding.nbiClearanceUrl,
-        policeClearanceUrl: onboarding.policeClearanceUrl,
-        sssDocUrl: onboarding.sssDocUrl,
-        tinDocUrl: onboarding.tinDocUrl,
-        philhealthDocUrl: onboarding.philhealthDocUrl,
-        pagibigDocUrl: onboarding.pagibigDocUrl,
-        birForm2316Url: onboarding.birForm2316Url,
-        idPhotoUrl: onboarding.idPhotoUrl,
-        signatureUrl: onboarding.signatureUrl,
-        certificateEmpUrl: onboarding.certificateEmpUrl,
-        medicalCertUrl: onboarding.medicalCertUrl,
-        resumeUrl: onboarding.resumeUrl,
-        employmentContractUrl: employmentContractUrl,
-        updatedAt: new Date()
-      }
-
-      console.log("📋 UPSERTING PERSONAL RECORDS:", { staffUserId: staffUser.id, hasContract: !!employmentContractUrl })
-      
-      try {
-        await prisma.staff_personal_records.upsert({
-          where: { staffUserId: staffUser.id },
-          update: personalRecordData,
-          create: {
-            id: crypto.randomUUID(),
-            ...personalRecordData
-          }
-        })
-        console.log("✅ PERSONAL RECORDS UPDATED")
-      } catch (error) {
-        console.error("❌ PERSONAL RECORDS UPDATE FAILED:", error)
-        // Continue even if this fails - don't block the whole process
-      }
-
-      // UPDATE staff_profiles with onboarding data + employment details from admin form
-      try {
-        // Build update data object only with non-null values
-        const profileUpdateData: any = {
-          updatedAt: new Date()
-        }
-        
-        // Personal info from onboarding
-        if (onboarding.contactNo) profileUpdateData.phone = onboarding.contactNo
-        if (onboarding.gender) profileUpdateData.gender = onboarding.gender
-        if (onboarding.civilStatus) profileUpdateData.civilStatus = onboarding.civilStatus
-        if (onboarding.dateOfBirth) profileUpdateData.dateOfBirth = onboarding.dateOfBirth
-        
-        // Employment details from admin completion form (body data)
-        if (employmentStatus) profileUpdateData.employmentStatus = employmentStatus
-        if (startDate) {
-          profileUpdateData.startDate = new Date(startDate)
-          // Recalculate days employed
-          const daysEmployed = Math.floor((new Date().getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
-          profileUpdateData.daysEmployed = daysEmployed >= 0 ? daysEmployed : 0
-        }
-        if (currentRole) profileUpdateData.currentRole = currentRole
-        if (salary && salary > 0) profileUpdateData.salary = salary
-        if (hmo !== undefined) profileUpdateData.hmo = hmo
-        
-        await prisma.staff_profiles.update({
-          where: { staffUserId: staffUser.id },
-          data: profileUpdateData
-        })
-        console.log("✅ STAFF PROFILE UPDATED with personal & employment details:", profileUpdateData)
-      } catch (error) {
-        console.error("❌ STAFF PROFILE UPDATE FAILED:", error)
-        // Continue even if this fails
-      }
-
-      // UPDATE work schedule if shiftTime is provided
-      if (shiftTime && staffUser.staff_profiles) {
-        try {
-          // Get job_acceptances to fetch client timezone
-          const jobAcceptance = await prisma.job_acceptances.findFirst({
-            where: { 
-              candidateEmail: staffUser.email,
-              staffUserId: staffUser.id
-            },
-            orderBy: { createdAt: 'desc' }
-          })
-
-          const clientTimezone = jobAcceptance?.clientTimezone || "Australia/Brisbane" // Fallback to Brisbane if not found
-          const staffTimezone = "Asia/Manila" // Staff always work in Manila time
-
-          const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
-          const startTime = shiftParts[0] || "9:00 AM"
-          const endTime = shiftParts[1] || "6:00 PM"
-
-          console.log("🌍 TIMEZONE CONVERSION:", {
-            clientTimezone,
-            staffTimezone,
-            originalStartTime: startTime,
-            originalEndTime: endTime
-          })
-
-          // Convert times from client timezone to Manila timezone
-          const convertedStartTime = convertTime(startTime, clientTimezone, staffTimezone)
-          const convertedEndTime = convertTime(endTime, clientTimezone, staffTimezone)
-
-          console.log("✅ CONVERTED TIMES:", {
-            convertedStartTime,
-            convertedEndTime,
-            offsetInfo: `${clientTimezone} → ${staffTimezone}`
-          })
-
-          // Delete existing schedules and create new ones
-          await prisma.work_schedules.deleteMany({
-            where: { profileId: staffUser.staff_profiles.id }
-          })
-
-          const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-          const schedules = days.map((day: string) => ({
-            id: randomUUID(), // ✅ ADD REQUIRED ID FIELD
-            profileId: staffUser.staff_profiles!.id,
-            dayOfWeek: day,
-            startTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedStartTime, // ✅ USE CONVERTED TIME
-            endTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedEndTime, // ✅ USE CONVERTED TIME
-            timezone: staffTimezone, // Store Manila timezone
-            clientTimezone: clientTimezone, // ✅ STORE ORIGINAL CLIENT TIMEZONE
-            isWorkday: !["Saturday", "Sunday"].includes(day),
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }))
-
-          await prisma.work_schedules.createMany({ data: schedules })
-          console.log("✅ WORK SCHEDULE UPDATED WITH TIMEZONE CONVERSION:", { 
-            profileId: staffUser.staff_profiles.id,
-            schedulesCount: schedules.length,
-            clientTimezone,
-            staffTimezone,
-            originalTimes: `${startTime} - ${endTime}`,
-            convertedTimes: `${convertedStartTime} - ${convertedEndTime}`
-          })
-        } catch (error) {
-          console.error("❌ WORK SCHEDULE UPDATE FAILED:", error)
-          // Continue even if this fails
-        }
-      }
-      
-      // Mark onboarding as complete
-      await prisma.staff_onboarding.update({
-        where: { staffUserId: staffUser.id },
-        data: {
-          isComplete: true,
-          completionPercent: 100,
-          updatedAt: new Date()
-        }
-      })
-
-      console.log("🎉 ONBOARDING COMPLETED & ALL DATA SYNCED TO PERSONAL RECORDS")
-
-      // ✨ Auto-generate activity post
-      try {
-        await logStaffOnboarded(staffUser.id, staffUser.name)
-      } catch (error) {
-        console.error("❌ ACTIVITY LOG FAILED:", error)
-        // Don't block onboarding completion if activity logging fails
-      }
-
+    // 🎯 PROFILE MUST EXIST (created during staff signup)
+    if (!staffUser.staff_profiles) {
       return NextResponse.json({ 
-        success: true,
-        message: `Onboarding completed for ${staffUser.name}. All data synced to personal records.`,
-        profileId: staffUser.staff_profiles.id,
-        companyName: staffUser.company?.companyName || "N/A",
-        staffName: staffUser.name,
-        alreadyExists: true
-      })
-    }
-
-    // Profile doesn't exist - validate employment data
-    if (!companyId) {
-      return NextResponse.json({ 
-        error: "Company ID is required" 
-      }, { status: 400 })
-    }
-
-    if (!currentRole) {
-      return NextResponse.json({ 
-        error: "Role title is required" 
-      }, { status: 400 })
-    }
-
-    if (!salary || salary <= 0) {
-      return NextResponse.json({ 
-        error: "Valid salary is required" 
-      }, { status: 400 })
-    }
-
-    // Verify company exists
-    const company = await prisma.company.findUnique({
-      where: { id: companyId }
-    })
-
-    if (!company) {
-      return NextResponse.json({ 
-        error: "Company not found" 
+        error: "Staff profile not found. Profile should be created during signup process.",
+        details: "Please ensure the staff member completed the signup flow after receiving their job offer."
       }, { status: 404 })
     }
 
-    // Update legal name from onboarding (companyId already assigned during hiring)
-    const fullName = `${onboarding.firstName} ${onboarding.middleName || ''} ${onboarding.lastName}`.trim()
-    await prisma.staff_users.update({
-      where: { id: staffUser.id },
-      data: { 
-        name: fullName // Update with full legal name from onboarding
-      }
+    console.log("✅ PROFILE EXISTS - SYNCING ONBOARDING DATA:", { 
+      profileId: staffUser.staff_profiles.id,
+      staffUserId: staffUser.id,
+      staffName: staffUser.name,
+      companyId: staffUser.companyId
     })
-    console.log("✅ STAFF USER NAME UPDATED:", { 
-      staffUserId: staffUser.id, 
-      fullName,
-      companyName: company.companyName 
-    })
-
-    // Calculate days employed from start date
-    const startDateTime = new Date(startDate)
-    const today = new Date()
-    const daysEmployed = Math.floor((today.getTime() - startDateTime.getTime()) / (1000 * 60 * 60 * 24))
-
-    // Vacation leave: 0 for PROBATION, 12 for REGULAR
-    const vacationLeave = employmentStatus === "PROBATION" ? 0 : 12
-
-    // Create StaffProfile with data from onboarding + management input
-    const profile = await prisma.staff_profiles.create({
-      data: {
-        staffUserId: staffUser.id,
-        phone: onboarding.contactNo || "",
-        location: "Philippines", // Default location
-        gender: onboarding.gender,
-        civilStatus: onboarding.civilStatus,
-        dateOfBirth: onboarding.dateOfBirth,
-        employmentStatus: employmentStatus || "PROBATION",
-        startDate: new Date(startDate),
-        daysEmployed: daysEmployed >= 0 ? daysEmployed : 0,
-        currentRole: currentRole,
-        salary: salary,
-        totalLeave: vacationLeave,
-        usedLeave: 0,
-        vacationUsed: 0,
-        sickUsed: 0,
-        hmo: hmo !== undefined ? hmo : true,
-      }
-    })
-    console.log("✅ PROFILE CREATED:", { 
-      profileId: profile.id, 
-      salary, 
-      currentRole, 
-      employmentStatus,
-      daysEmployed,
-      totalLeave: vacationLeave
-    })
-
+    
     // Get employment contract URL if it exists
     let employmentContractUrl = null
     if (employmentContract && employmentContract.signed) {
-      employmentContractUrl = employmentContract.id // Contract reference/URL
+      // Assuming contract is stored as PDF or has a URL field
+      employmentContractUrl = employmentContract.id // Or whatever field stores the URL/reference
     }
 
-    // Create/Update StaffPersonalRecord with HR data from onboarding
+    // UPDATE staff_personal_records with ALL onboarding data
     const personalRecordData = {
       staffUserId: staffUser.id,
       sss: onboarding.sss,
@@ -409,10 +144,11 @@ export async function POST(
       employmentContractUrl: employmentContractUrl,
       updatedAt: new Date()
     }
-    console.log("🔐 CREATING/UPDATING PERSONAL RECORD:", { staffUserId: staffUser.id, hasContract: !!employmentContractUrl })
+
+    console.log("📋 UPSERTING PERSONAL RECORDS:", { staffUserId: staffUser.id, hasContract: !!employmentContractUrl })
     
     try {
-      const personalRecord = await prisma.staff_personal_records.upsert({
+      await prisma.staff_personal_records.upsert({
         where: { staffUserId: staffUser.id },
         update: personalRecordData,
         create: {
@@ -420,134 +156,65 @@ export async function POST(
           ...personalRecordData
         }
       })
-      console.log("✅ PERSONAL RECORD CREATED/UPDATED:", { 
-        personalRecordId: personalRecord.id,
-        staffUserId: personalRecord.staffUserId
-      })
+      console.log("✅ PERSONAL RECORDS UPDATED")
     } catch (error) {
-      console.error("❌ PERSONAL RECORD CREATION FAILED:", error)
-      throw error
+      console.error("❌ PERSONAL RECORDS UPDATE FAILED:", error)
+      // Continue even if this fails - don't block the whole process
     }
 
-    // Create work schedule based on shift time with timezone conversion
-    // Get job_acceptances to fetch client timezone
-    const jobAcceptance = await prisma.job_acceptances.findFirst({
-      where: { 
-        candidateEmail: staffUser.email,
-        staffUserId: staffUser.id
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-
-    const clientTimezone = jobAcceptance?.clientTimezone || "Australia/Brisbane" // Fallback to Brisbane if not found
-    const staffTimezone = "Asia/Manila" // Staff always work in Manila time
-
-    // Parse shift time (e.g., "9:00 AM - 6:00 PM")
-    const shiftParts = shiftTime.split('-').map((s: string) => s.trim())
-    const startTime = shiftParts[0] || "9:00 AM"
-    const endTime = shiftParts[1] || "6:00 PM"
-
-    console.log("🌍 TIMEZONE CONVERSION FOR NEW PROFILE:", {
-      staffUserId: staffUser.id,
-      clientTimezone,
-      staffTimezone,
-      originalStartTime: startTime,
-      originalEndTime: endTime
-    })
-
-    // Convert times from client timezone to Manila timezone
-    const convertedStartTime = convertTime(startTime, clientTimezone, staffTimezone)
-    const convertedEndTime = convertTime(endTime, clientTimezone, staffTimezone)
-
-    console.log("✅ CONVERTED TIMES FOR NEW PROFILE:", {
-      convertedStartTime,
-      convertedEndTime,
-      offsetInfo: `${clientTimezone} → ${staffTimezone}`
-    })
-
-    const days = [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday"
-    ]
-
-    const schedules = days.map((day: string) => ({
-      id: randomUUID(), // ✅ ADD REQUIRED ID FIELD
-      profileId: profile.id,
-      dayOfWeek: day,
-      startTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedStartTime, // ✅ USE CONVERTED TIME
-      endTime: ["Saturday", "Sunday"].includes(day) ? "" : convertedEndTime, // ✅ USE CONVERTED TIME
-      timezone: staffTimezone, // Store Manila timezone
-      clientTimezone: clientTimezone, // ✅ STORE ORIGINAL CLIENT TIMEZONE
-      isWorkday: !["Saturday", "Sunday"].includes(day),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }))
-
-    await prisma.work_schedules.createMany({ data: schedules })
-    console.log("✅ WORK SCHEDULE CREATED WITH TIMEZONE CONVERSION:", { 
-      profileId: profile.id, 
-      schedulesCount: schedules.length,
-      workdays: schedules.filter((s: { isWorkday: boolean }) => s.isWorkday).length,
-      clientTimezone,
-      staffTimezone,
-      originalTimes: `${startTime} - ${endTime}`,
-      convertedTimes: `${convertedStartTime} - ${convertedEndTime}`
-    })
-
-    // Create empty welcome form record (staff_interests)
+    // UPDATE staff_profiles with onboarding data + employment details from admin form
     try {
-      const interests = await prisma.staff_interests.create({
-        data: {
-          id: randomUUID(),
-          staffUserId: staffUser.id,
-          name: fullName,
-          client: company.companyName,
-          startDate: new Date(startDate).toLocaleDateString(),
-          favoriteFastFood: "", // Empty - to be filled by staff
-          completed: false,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
+      // Build update data object only with non-null values
+      const profileUpdateData: any = {
+        updatedAt: new Date()
+      }
+      
+      // Personal info from onboarding
+      if (onboarding.contactNo) profileUpdateData.phone = onboarding.contactNo
+      if (onboarding.gender) profileUpdateData.gender = onboarding.gender
+      if (onboarding.civilStatus) profileUpdateData.civilStatus = onboarding.civilStatus
+      if (onboarding.dateOfBirth) profileUpdateData.dateOfBirth = onboarding.dateOfBirth
+      
+      // Employment details from admin completion form (body data)
+      if (employmentStatus) profileUpdateData.employmentStatus = employmentStatus
+      if (startDate) {
+        profileUpdateData.startDate = new Date(startDate)
+        // Recalculate days employed
+        const daysEmployed = Math.floor((new Date().getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        profileUpdateData.daysEmployed = daysEmployed >= 0 ? daysEmployed : 0
+      }
+      if (currentRole) profileUpdateData.currentRole = currentRole
+      if (salary && salary > 0) profileUpdateData.salary = salary
+      if (hmo !== undefined) profileUpdateData.hmo = hmo
+      
+      await prisma.staff_profiles.update({
+        where: { staffUserId: staffUser.id },
+        data: profileUpdateData
       })
-      console.log("✅ STAFF INTERESTS RECORD CREATED:", { 
-        interestsId: interests.id,
-        staffUserId: staffUser.id,
-        staffName: fullName
-      })
+      console.log("✅ STAFF PROFILE UPDATED with personal & employment details:", profileUpdateData)
     } catch (error) {
-      console.error("❌ STAFF INTERESTS CREATION FAILED:", error)
-      // Don't fail the entire onboarding process if interests creation fails
+      console.error("❌ STAFF PROFILE UPDATE FAILED:", error)
+      // Continue even if this fails
     }
 
+    // NOTE: work_schedules are already created during staff signup from job_acceptances data
+    // No need to recreate them here - they contain the correct schedule from the hire flow
+    
     // Mark onboarding as complete
     await prisma.staff_onboarding.update({
-      where: { id: onboarding.id },
+      where: { staffUserId: staffUser.id },
       data: {
         isComplete: true,
-        completionPercent: 100
+        completionPercent: 100,
+        updatedAt: new Date()
       }
     })
-    console.log("✅ ONBOARDING MARKED COMPLETE:", { 
-      onboardingId: onboarding.id,
-      staffUserId: staffUser.id 
-    })
 
-    console.log("🎉 ONBOARDING COMPLETION SUCCESS:", {
-      staffName: fullName,
-      company: company.companyName,
-      role: currentRole,
-      salary,
-      profileId: profile.id
-    })
+    console.log("🎉 ONBOARDING COMPLETED & ALL DATA SYNCED TO PERSONAL RECORDS")
 
     // ✨ Auto-generate activity post
     try {
-      await logStaffOnboarded(staffUser.id, fullName)
+      await logStaffOnboarded(staffUser.id, staffUser.name)
     } catch (error) {
       console.error("❌ ACTIVITY LOG FAILED:", error)
       // Don't block onboarding completion if activity logging fails
@@ -555,11 +222,10 @@ export async function POST(
 
     return NextResponse.json({ 
       success: true,
-      message: `Onboarding completed! ${fullName} assigned to ${company.companyName} as ${currentRole}.`,
-      profileId: profile.id,
-      companyName: company.companyName,
-      staffName: fullName,
-      redirectTo: "/welcome" // Redirect staff to welcome form
+      message: `Onboarding completed for ${staffUser.name}. All data synced to personal records.`,
+      profileId: staffUser.staff_profiles.id,
+      companyName: staffUser.company?.companyName || "N/A",
+      staffName: staffUser.name
     })
 
   } catch (error) {

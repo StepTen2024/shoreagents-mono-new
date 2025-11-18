@@ -144,6 +144,8 @@ export default function AdminOnboardingDetailPage() {
   const [staff, setStaff] = useState<any>(null)
   const [onboarding, setOnboarding] = useState<OnboardingData | null>(null)
   const [profile, setProfile] = useState<any>(null)
+  const [jobAcceptance, setJobAcceptance] = useState<any>(null)
+  const [workSchedules, setWorkSchedules] = useState<any[]>([])
   const [feedback, setFeedback] = useState<Record<string, string>>({})
   const [editingFeedback, setEditingFeedback] = useState<Record<string, boolean>>({})
   const [savingFeedback, setSavingFeedback] = useState<Record<string, boolean>>({})
@@ -162,6 +164,63 @@ export default function AdminOnboardingDetailPage() {
     fetchOnboardingDetails()
     fetchCompanies()
   }, [staffUserId])
+
+  // Auto-fill employment data from job acceptance
+  useEffect(() => {
+    if (jobAcceptance && companies.length > 0) {
+      console.log('🔄 [AUTO-FILL] Auto-filling form with job acceptance data:', jobAcceptance)
+      
+      // Auto-fill company (always set from job acceptance if available)
+      if (jobAcceptance.companyId) {
+        setSelectedCompanyId(jobAcceptance.companyId)
+        console.log('✅ [AUTO-FILL] Company:', jobAcceptance.companyId)
+      }
+      
+      // Auto-fill salary (always set from job acceptance if available)
+      if (jobAcceptance.salary) {
+        setSalary(jobAcceptance.salary.toString())
+        console.log('✅ [AUTO-FILL] Salary:', jobAcceptance.salary)
+      }
+      
+      // Auto-fill role from position (always set from job acceptance if available)
+      if (jobAcceptance.position) {
+        setCurrentRole(jobAcceptance.position)
+        console.log('✅ [AUTO-FILL] Role:', jobAcceptance.position)
+      }
+      
+      // Auto-fill HMO (always set from job acceptance if available)
+      if (jobAcceptance.hmoIncluded !== undefined) {
+        setHmo(jobAcceptance.hmoIncluded)
+        console.log('✅ [AUTO-FILL] HMO:', jobAcceptance.hmoIncluded)
+      }
+      
+      // Auto-fill start date (prefer finalStartDate, fallback to preferredStartDate)
+      if (jobAcceptance.finalStartDate || jobAcceptance.preferredStartDate) {
+        const dateToUse = jobAcceptance.finalStartDate || jobAcceptance.preferredStartDate
+        const formattedDate = new Date(dateToUse).toISOString().split('T')[0]
+        setStartDate(formattedDate)
+        console.log('✅ [AUTO-FILL] Start Date:', formattedDate)
+      }
+      
+      // Auto-fill shift time (only if no custom hours)
+      if (!jobAcceptance.customHours && jobAcceptance.workStartTime && jobAcceptance.workEndTime) {
+        // Convert 24-hour to 12-hour format
+        const convertTo12Hour = (time24: string): string => {
+          const [hours, minutes] = time24.split(':').map(Number)
+          const period = hours >= 12 ? 'PM' : 'AM'
+          const hours12 = hours % 12 || 12
+          return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+        }
+        
+        const startTime12h = convertTo12Hour(jobAcceptance.workStartTime)
+        const endTime12h = convertTo12Hour(jobAcceptance.workEndTime)
+        setShiftTime(`${startTime12h} - ${endTime12h}`)
+        console.log('✅ [AUTO-FILL] Shift Time:', `${startTime12h} - ${endTime12h}`)
+      }
+      
+      console.log('✅ [AUTO-FILL] Form auto-fill complete')
+    }
+  }, [jobAcceptance, companies.length])
 
   const fetchCompanies = async () => {
     try {
@@ -209,6 +268,8 @@ export default function AdminOnboardingDetailPage() {
       setStaff(data.staff)
       setOnboarding(data.onboarding)
       setProfile(data.profile)
+      setJobAcceptance(data.jobAcceptance)
+      setWorkSchedules(data.workSchedules || [])
     } catch (err) {
       setError("Failed to load onboarding details")
     } finally {
@@ -333,6 +394,12 @@ export default function AdminOnboardingDetailPage() {
       return
     }
     
+    // Only require shift time if no custom hours exist
+    if (!jobAcceptance?.customHours && !shiftTime) {
+      setError("Please enter a shift time or ensure custom hours are set.")
+      return
+    }
+    
     setConfirmCompleteModal(true)
   }
 
@@ -349,11 +416,16 @@ export default function AdminOnboardingDetailPage() {
     setError("")
     setSuccess("")
     
+    // Use custom hours times if available, otherwise use shiftTime
+    const effectiveShiftTime = jobAcceptance?.customHours 
+      ? "Custom Hours (see work schedule)" // Placeholder since customHours will be used
+      : shiftTime
+
     const employmentData = {
       companyId: selectedCompanyId,
       employmentStatus,
       startDate,
-      shiftTime,
+      shiftTime: effectiveShiftTime,
       currentRole,
       salary: parseFloat(salary),
       hmo
@@ -740,7 +812,7 @@ export default function AdminOnboardingDetailPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   {/* Company Assignment */}
                   <div className="space-y-2">
@@ -797,20 +869,56 @@ export default function AdminOnboardingDetailPage() {
                     />
                   </div>
 
-                  {/* Shift Time */}
-                  <div className="space-y-2">
-                    <Label htmlFor="shiftTime" className="text-white">
-                      Shift Time *
-                    </Label>
-                    <Input
-                      id="shiftTime"
-                      type="text"
-                      value={shiftTime}
-                      onChange={(e) => setShiftTime(e.target.value)}
-                      placeholder="e.g., 9:00 AM - 6:00 PM"
-                      className="bg-slate-800 border-slate-700 text-white"
-                    />
-                  </div>
+                  {/* Shift Time - Hidden when custom hours exist */}
+                  {jobAcceptance?.customHours ? (
+                    <div className="space-y-2">
+                      <Label className="text-white">Work Schedule</Label>
+                      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <p className="text-sm text-blue-300 mb-3 flex items-center gap-2 font-semibold">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Custom Hours Set by Client
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {Object.entries(jobAcceptance.customHours).map(([day, time]: [string, any]) => {
+                            const [hours, minutes] = time.split(':').map(Number)
+                            const endHour = (hours + 9) % 24
+                            const endTime = `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                            return (
+                              <div key={day} className="flex justify-between text-blue-200 bg-blue-900/30 px-3 py-2 rounded border border-blue-500/20">
+                                <span className="font-semibold">{day}:</span>
+                                <span className="font-mono">{time} - {endTime}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <p className="text-xs text-blue-400 mt-3 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          These custom hours will be automatically applied to the work schedule
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="shiftTime" className="text-white">
+                        Shift Time *
+                      </Label>
+                      <Input
+                        id="shiftTime"
+                        type="text"
+                        value={shiftTime}
+                        onChange={(e) => setShiftTime(e.target.value)}
+                        placeholder="e.g., 9:00 AM - 6:00 PM"
+                        className="bg-slate-800 border-slate-700 text-white"
+                      />
+                      <p className="text-xs text-slate-400">
+                        Default schedule will apply to all workdays
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -870,7 +978,7 @@ export default function AdminOnboardingDetailPage() {
 
                 <Button
                   onClick={handleCompleteOnboarding}
-                  disabled={completing || !selectedCompanyId || !currentRole || !salary}
+                  disabled={completing || !selectedCompanyId || !currentRole || !salary || (!jobAcceptance?.customHours && !shiftTime)}
                   className="w-full bg-green-600 hover:bg-green-700"
                 >
                   {completing ? (

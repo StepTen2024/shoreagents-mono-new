@@ -401,3 +401,4 @@ if (jobAcceptance && staffProfile) {
 3. Test the entire recruitment → signup → onboarding flow
 4. Verify data consistency across all tables
 
+

@@ -36,6 +36,24 @@ export function useTimeTrackingWebSocket() {
   
   const [isLoading, setIsLoading] = useState(true)
   const [isWebSocketUpdate, setIsWebSocketUpdate] = useState(false)
+  const [currentStaffUserId, setCurrentStaffUserId] = useState<string | null>(null)
+
+  // Fetch current staff user ID on mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/staff/profile')
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentStaffUserId(data.staffUser?.id || null)
+          console.log('[WebSocket] Current staff user ID:', data.staffUser?.id)
+        }
+      } catch (error) {
+        console.error('[WebSocket] Failed to fetch current user:', error)
+      }
+    }
+    fetchCurrentUser()
+  }, [])
 
   // Clock in/out functions
   const clockIn = useCallback(async () => {
@@ -290,7 +308,7 @@ export function useTimeTrackingWebSocket() {
       setState({
         isClockedIn: statusData.isClockedIn || false,
         activeEntry: statusData.activeEntry || null,
-        timeEntries: (entriesData.entries || []).filter(e => e && e.clockIn),
+        timeEntries: (entriesData.entries || []).filter((e: any) => e && e.clockIn),
         scheduledBreaks: breaksData.breaks || [],
         activeBreak: activeBreak,
         weeklySchedule: statusData.workSchedules || [],
@@ -309,9 +327,23 @@ export function useTimeTrackingWebSocket() {
   const handleClockInSuccess = useCallback(async (data: any) => {
     console.log('[WebSocket] Clock in success:', data)
     
-    // Trigger late/early modal if applicable (only on actual clock-in action)
+    // 🔒 FIX: Only show modal if this event is for the current user
+    const isCurrentUser = currentStaffUserId && data.timeEntry?.staffUserId === currentStaffUserId
+    
+    if (!isCurrentUser) {
+      console.log('[WebSocket] Clock-in event is for another user, skipping modal')
+      // Still update state for real-time dashboard updates
+      setState(prev => ({
+        ...prev,
+        weeklySchedule: data.workSchedules || prev.weeklySchedule,
+      }))
+      return
+    }
+    
+    // Trigger late/early modal if applicable (only on actual clock-in action for THIS user)
     if (data.timeEntry?.wasLate && data.timeEntry?.lateBy) {
       if (typeof window !== 'undefined') {
+        console.log('[WebSocket] Showing late modal for current user')
         const event = new CustomEvent('show-late-modal', { 
           detail: { 
             lateBy: data.timeEntry.lateBy,
@@ -324,6 +356,7 @@ export function useTimeTrackingWebSocket() {
     
     if (data.timeEntry?.wasEarly && data.timeEntry?.earlyBy) {
       if (typeof window !== 'undefined') {
+        console.log('[WebSocket] Showing early modal for current user')
         const event = new CustomEvent('show-early-modal', { 
           detail: { 
             earlyBy: data.timeEntry.earlyBy,
@@ -362,7 +395,7 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error refreshing stats after clock in:', error)
     }
-  }, [])
+  }, [currentStaffUserId])
 
   const handleClockOutSuccess = useCallback(async (data: any) => {
     console.log('[WebSocket] Clock out success:', data)
@@ -578,25 +611,9 @@ export function useTimeTrackingWebSocket() {
   // Request initial data when connection is established (only once)
   useEffect(() => {
     if (isConnected) {
-      console.log('[WebSocket] Connection established, fetching initial time tracking data...')
       requestInitialData()
     }
   }, [isConnected]) // Remove requestInitialData from dependencies to prevent loops
-  
-  // Log active break state changes for debugging
-  useEffect(() => {
-    if (state.activeBreak) {
-      console.log('[WebSocket] Active break detected:', {
-        id: state.activeBreak.id,
-        type: state.activeBreak.type,
-        actualStart: state.activeBreak.actualStart,
-        isPaused: state.activeBreak.isPaused,
-        pausedDuration: state.activeBreak.pausedDuration
-      })
-    } else {
-      console.log('[WebSocket] No active break')
-    }
-  }, [state.activeBreak])
 
   // Reset break scheduler state
   const resetBreakScheduler = useCallback(() => {
