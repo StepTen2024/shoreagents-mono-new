@@ -32,6 +32,8 @@ interface TimeEntry {
   totalHours: number | null
   wasLate: boolean
   lateBy: number | null
+  wasEarly: boolean
+  earlyBy: number | null
   notes: string | null
   createdAt: string
   staff_users: {
@@ -61,15 +63,20 @@ export default function AdminTimeTrackingPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all')
+  const [daysFilter, setDaysFilter] = useState('1') // Default to Today
+  const [sortBy, setSortBy] = useState<'clockIn-desc' | 'clockIn-asc' | 'name-asc' | 'name-desc' | 'duration-desc' | 'duration-asc' | 'company-asc'>('clockIn-desc')
 
   useEffect(() => {
     fetchTimeEntries()
-  }, [])
+  }, [daysFilter])
 
   const fetchTimeEntries = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/admin/time-tracking')
+      const url = daysFilter === '0' 
+        ? '/api/admin/time-tracking' 
+        : `/api/admin/time-tracking?days=${daysFilter}`
+      const response = await fetch(url)
       const data = await response.json()
       setTimeEntries(data.entries || [])
     } catch (error) {
@@ -104,6 +111,42 @@ export default function AdminTimeTrackingPage() {
     }
 
     return true
+  }).sort((a, b) => {
+    // Sorting logic
+    switch (sortBy) {
+      case 'clockIn-desc':
+        return new Date(b.clockIn).getTime() - new Date(a.clockIn).getTime()
+      case 'clockIn-asc':
+        return new Date(a.clockIn).getTime() - new Date(b.clockIn).getTime()
+      case 'name-asc':
+        return a.staff_users.name.localeCompare(b.staff_users.name)
+      case 'name-desc':
+        return b.staff_users.name.localeCompare(a.staff_users.name)
+      case 'duration-desc': {
+        const durationA = a.clockOut 
+          ? new Date(a.clockOut).getTime() - new Date(a.clockIn).getTime()
+          : Date.now() - new Date(a.clockIn).getTime()
+        const durationB = b.clockOut 
+          ? new Date(b.clockOut).getTime() - new Date(b.clockIn).getTime()
+          : Date.now() - new Date(b.clockIn).getTime()
+        return durationB - durationA
+      }
+      case 'duration-asc': {
+        const durationA = a.clockOut 
+          ? new Date(a.clockOut).getTime() - new Date(a.clockIn).getTime()
+          : Date.now() - new Date(a.clockIn).getTime()
+        const durationB = b.clockOut 
+          ? new Date(b.clockOut).getTime() - new Date(b.clockIn).getTime()
+          : Date.now() - new Date(b.clockIn).getTime()
+        return durationA - durationB
+      }
+      case 'company-asc':
+        return (a.staff_users.company?.companyName || '').localeCompare(
+          b.staff_users.company?.companyName || ''
+        )
+      default:
+        return 0
+    }
   })
 
   const stats = {
@@ -111,6 +154,7 @@ export default function AdminTimeTrackingPage() {
     active: timeEntries.filter(e => !e.clockOut).length,
     completed: timeEntries.filter(e => e.clockOut).length,
     lateToday: timeEntries.filter(e => e.wasLate).length,
+    earlyToday: timeEntries.filter(e => e.wasEarly).length,
   }
 
   if (loading) {
@@ -141,7 +185,7 @@ export default function AdminTimeTrackingPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="p-4 border-border bg-card">
           <div className="text-sm text-muted-foreground">Total Entries</div>
           <div className="text-2xl font-semibold text-foreground mt-1">{stats.total}</div>
@@ -158,30 +202,66 @@ export default function AdminTimeTrackingPage() {
           <div className="text-sm text-muted-foreground">Late Clock-Ins</div>
           <div className="text-2xl font-semibold text-amber-500 mt-1">{stats.lateToday}</div>
         </Card>
+        <Card className="p-4 border-border bg-card">
+          <div className="text-sm text-muted-foreground">Early Clock-Ins</div>
+          <div className="text-2xl font-semibold text-emerald-600 mt-1">{stats.earlyToday}</div>
+        </Card>
       </div>
 
       {/* Filters */}
       <Card className="p-4 border-border bg-card">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by staff name, email, or company..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by staff name, email, or company..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={daysFilter} onValueChange={setDaysFilter}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Filter by Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">All Entries</SelectItem>
+                <SelectItem value="1">Today</SelectItem>
+                <SelectItem value="7">Last 7 Days</SelectItem>
+                <SelectItem value="30">Last 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Filter by Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Entries</SelectItem>
+                <SelectItem value="active">Currently Active</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="Filter by Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Entries</SelectItem>
-              <SelectItem value="active">Currently Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
+          
+          {/* Sort Options */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Sort by:</span>
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="clockIn-desc">Newest First</SelectItem>
+                <SelectItem value="clockIn-asc">Oldest First</SelectItem>
+                <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                <SelectItem value="duration-desc">Longest Duration</SelectItem>
+                <SelectItem value="duration-asc">Shortest Duration</SelectItem>
+                <SelectItem value="company-asc">Company (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
@@ -238,6 +318,11 @@ export default function AdminTimeTrackingPage() {
                       Late {entry.lateBy}m
                     </Badge>
                   )}
+                  {entry.wasEarly && (
+                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/50">
+                      Early {entry.earlyBy}m
+                    </Badge>
+                  )}
                 </div>
 
                 {/* Time Details */}
@@ -248,11 +333,9 @@ export default function AdminTimeTrackingPage() {
                       Clock In:
                     </span>
                     <span className="font-medium text-foreground">
-                      {new Date(entry.clockIn).toLocaleTimeString('en-PH', {
-                        timeZone: 'Asia/Manila',
+                      {new Date(entry.clockIn).toLocaleTimeString('en-US', {
                         hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
+                        minute: '2-digit'
                       })}
                     </span>
                   </div>
@@ -263,11 +346,9 @@ export default function AdminTimeTrackingPage() {
                         Clock Out:
                       </span>
                       <span className="font-medium text-foreground">
-                        {new Date(entry.clockOut).toLocaleTimeString('en-PH', {
-                          timeZone: 'Asia/Manila',
+                        {new Date(entry.clockOut).toLocaleTimeString('en-US', {
                           hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
+                          minute: '2-digit'
                         })}
                       </span>
                     </div>

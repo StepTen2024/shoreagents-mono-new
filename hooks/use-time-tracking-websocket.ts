@@ -83,6 +83,17 @@ export function useTimeTrackingWebSocket() {
       if (data.success) {
         console.log('✅ [Clock-In] Clock-in successful, now resetting Electron tracking...')
         
+        // ✅ IMMEDIATELY update local state so UI updates instantly
+        setState(prev => ({
+          ...prev,
+          isClockedIn: true,
+          activeEntry: data.timeEntry || null,
+          showBreakScheduler: data.showBreakScheduler || false,
+          pendingTimeEntryId: data.timeEntry?.id || null
+        }))
+        
+        console.log('✅ [Clock-In] Local state updated immediately')
+        
         // 🔄 Reset local metrics in Electron (start fresh tracking)
         if (typeof window !== 'undefined' && window.electron?.sync?.reset) {
           try {
@@ -434,6 +445,16 @@ export function useTimeTrackingWebSocket() {
   const handleClockOutSuccess = useCallback(async (data: any) => {
     console.log('[WebSocket] Clock out success:', data)
     
+    // ✅ CRITICAL FIX: Only update state if this event is for the current user
+    const isCurrentUser = currentStaffUserId && data.timeEntry?.staffUserId === currentStaffUserId
+    
+    if (!isCurrentUser) {
+      console.log('[WebSocket] Clock-out event is for another user, ignoring. Event user:', data.timeEntry?.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Clock-out event is for current user, updating state')
+    
     // Update state immediately
     setState(prev => ({
       ...prev,
@@ -460,10 +481,18 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error refreshing stats after clock out:', error)
     }
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakStarted = useCallback((data: any) => {
     console.log('[WebSocket] Break started:', data)
+    
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break started for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Break started for current user, updating state')
     setIsWebSocketUpdate(true) // Flag to prevent API override
     
     // Map the break data to match the expected format
@@ -492,10 +521,18 @@ export function useTimeTrackingWebSocket() {
     
     // Don't refresh data immediately - the WebSocket update is sufficient
     // The break modal will show immediately with the updated state
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakEnded = useCallback((data: any) => {
     console.log('[WebSocket] Break ended:', data)
+    
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break ended for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Break ended for current user, updating state')
     setIsWebSocketUpdate(true) // Flag to prevent API override
     setState(prev => {
       console.log('[WebSocket] Setting activeBreak to null, previous state:', prev.activeBreak)
@@ -555,7 +592,7 @@ export function useTimeTrackingWebSocket() {
         })
         .catch(error => console.error('[WebSocket] Fallback: Error refreshing scheduled breaks:', error))
     }, 1000)
-  }, [])
+  }, [currentStaffUserId])
 
   const handleDataUpdate = useCallback((data: any) => {
     console.log('[WebSocket] Data update received:', data)
@@ -567,6 +604,12 @@ export function useTimeTrackingWebSocket() {
   }, [])
 
   const handleBreakPaused = useCallback((data: any) => {
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break paused for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
     setState(prev => ({
       ...prev,
       activeBreak: prev.activeBreak ? { 
@@ -575,9 +618,15 @@ export function useTimeTrackingWebSocket() {
         pausedDuration: data.break?.pausedduration || prev.activeBreak.pausedDuration
       } : null
     }))
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakResumed = useCallback((data: any) => {
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break resumed for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
     setState(prev => ({
       ...prev,
       activeBreak: prev.activeBreak ? { 
@@ -586,13 +635,18 @@ export function useTimeTrackingWebSocket() {
         pausedDuration: data.break?.pausedduration || 0
       } : null
     }))
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakAutoStartTrigger = useCallback(async (data: any) => {
     console.log('[WebSocket] Break auto-start trigger:', data)
     
-    // Only process if it's for this user (check would need staffUserId comparison)
-    // For now, let's auto-start the break via API
+    // ✅ CRITICAL FIX: Only process if it's for this user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break auto-start for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Break auto-start for current user, proceeding...')
     try {
       const response = await fetch('/api/breaks/start', {
         method: 'POST',
@@ -611,7 +665,7 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error auto-starting break:', error)
     }
-  }, [])
+  }, [currentStaffUserId])
 
   // Set up event listeners
   useEffect(() => {

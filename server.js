@@ -411,8 +411,8 @@ function startBreakAutoStartJob(io) {
           if (scheduledTime.hour === currentHour && scheduledTime.minute === currentMinute) {
             console.log(`[Break Auto-Start] Time to start break ${breakItem.type} for user ${entry.staffUserId}`)
             
-            // Emit WebSocket event to trigger break modal
-            io.emit('break:auto-start-trigger', {
+            // ✅ FIX: Emit WebSocket event to SPECIFIC USER ONLY (not broadcast to all)
+            io.to(`user:${entry.staffUserId}`).emit('break:auto-start-trigger', {
               staffUserId: entry.staffUserId,
               breakId: breakItem.id,
               breakType: breakItem.type,
@@ -420,6 +420,7 @@ function startBreakAutoStartJob(io) {
               duration: breakItem.duration,
               timeEntryId: entry.id
             })
+            console.log(`[Break Auto-Start] Emitted auto-start trigger to user:${entry.staffUserId}`)
           }
         }
       }
