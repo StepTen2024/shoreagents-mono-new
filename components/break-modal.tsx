@@ -75,13 +75,27 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
     if (breakData?.pausedDuration && breakData.pausedDuration > 0) {
       // For paused breaks, pausedDuration represents the remaining time when paused
       setLocalRemainingTime(breakData.pausedDuration)
-    } else {
-      // For new breaks, use full duration
-      // AWAY breaks have no time limit (set to 999 minutes = ~16 hours)
+    } else if (breakData?.actualStart) {
+      // ✅ Calculate remaining time based on elapsed time (for refresh scenario)
+      const startTime = new Date(breakData.actualStart).getTime()
+      const now = Date.now()
+      const elapsedSec = Math.floor((now - startTime) / 1000)
+      
+      // Get full duration based on break type
       let fullDuration = 900 // Default 15 minutes
       if (breakData?.type === 'LUNCH') fullDuration = 3600 // 60 minutes
       if (breakData?.type === 'AWAY') fullDuration = 999 * 60 // ~16 hours (essentially unlimited)
-      setLocalRemainingTime(fullDuration)
+      
+      // Calculate remaining time
+      const remainingSec = Math.max(0, fullDuration - elapsedSec)
+      setLocalRemainingTime(remainingSec)
+      
+      console.log('[Break Modal] Calculated remaining time on load:', {
+        fullDuration,
+        elapsedSec,
+        remainingSec,
+        remainingMin: Math.floor(remainingSec / 60)
+      })
     }
   }, [breakData?.pausedDuration, breakData?.type, breakData?.actualStart])
   
@@ -152,25 +166,13 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
   
   const theme = breakColors[breakData?.type || 'MORNING'] || breakColors.MORNING
   
-  // Reset initialization state when break data changes
+  // Initialize timer with correct elapsed time when break data loads
   useEffect(() => {
     if (breakData) {
-      // Always reset when break data changes to ensure fresh start
       setIsInitializing(true)
-      setOriginalStartTime(null) // Reset to force recalculation
-      setElapsedSeconds(0) // Reset elapsed time
-      // Don't reset totalPausedDuration here - let it be set by the pausedDuration useEffect
-      setElapsedWhenPaused(0) // Reset paused state
-      // Always sync hasUsedPause with breakData.pauseUsed
-      setHasUsedPause(breakData.pauseUsed || false)
-    }
-  }, [breakData?.id]) // Reset when break ID changes
-
-  // Lock in the original start time when break first starts
-  useEffect(() => {
-    if (breakData && !originalStartTime) {
+      
       // Use the actual break start time from the database to calculate correct elapsed time
-      // This ensures the timer continues from where it should be, even after page reload
+      // This ensures the timer shows the correct time immediately on refresh
       const startTime = new Date(breakData.actualStart).getTime()
       setOriginalStartTime(startTime)
       
@@ -178,6 +180,12 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
       const now = Date.now()
       const actualElapsed = Math.floor((now - startTime) / 1000)
       setElapsedSeconds(Math.max(0, actualElapsed)) // Ensure it's never negative
+      
+      // Reset paused state if this is a new break
+      setElapsedWhenPaused(0)
+      
+      // Always sync hasUsedPause with breakData.pauseUsed
+      setHasUsedPause(breakData.pauseUsed || false)
       
       console.log('[Break Modal] Initialized break timer:', {
         breakId: breakData.id,
@@ -193,7 +201,7 @@ export function BreakModal({ isOpen, breakData, onEnd, onEndDirect, onPause, onC
       
       setIsInitializing(false) // Timer is ready to start
     }
-  }, [breakData, originalStartTime])
+  }, [breakData?.id]) // Only run when break ID changes
   
   // Timer effect
   useEffect(() => {
