@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { 
   Briefcase, 
@@ -108,7 +108,7 @@ interface InterviewRequest {
   } | null
 }
 
-type TabType = 'talent-pool' | 'job-requests' | 'interviews'
+type TabType = 'talent-pool' | 'job-requests' | 'applications' | 'interviews'
 
 // Helper function to convert 24-hour time to 12-hour format with AM/PM
 const convertTo12Hour = (time24: string): string => {
@@ -125,7 +125,7 @@ export default function RecruitmentPage() {
   
   // Initialize activeTab from URL or default to 'talent-pool'
   const tabFromUrl = searchParams.get('tab') as TabType | null
-  const initialTab = (tabFromUrl && ['talent-pool', 'job-requests', 'interviews'].includes(tabFromUrl)) 
+  const initialTab = (tabFromUrl && ['talent-pool', 'job-requests', 'applications', 'interviews'].includes(tabFromUrl)) 
     ? tabFromUrl 
     : 'talent-pool'
   
@@ -142,12 +142,19 @@ export default function RecruitmentPage() {
   const [jobRequests, setJobRequests] = useState<JobRequest[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedJobRequest, setSelectedJobRequest] = useState<JobRequest | null>(null)
+  const [jobDetailsModalOpen, setJobDetailsModalOpen] = useState(false)
   
   // Talent Pool State
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [candidatesLoading, setCandidatesLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Applications State
+  const [applications, setApplications] = useState<any[]>([])
+  const [applicationsLoading, setApplicationsLoading] = useState(true)
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('ALL')
   
   // Interviews State
   const [interviews, setInterviews] = useState<InterviewRequest[]>([])
@@ -232,6 +239,13 @@ export default function RecruitmentPage() {
     }
   }, [activeTab, searchQuery, selectedSkills, location, minExperience, selectedDiscTypes, minCulturalFit])
 
+  // Fetch applications
+  useEffect(() => {
+    if (activeTab === 'applications') {
+      fetchApplications()
+    }
+  }, [activeTab])
+
   // Fetch interviews
   useEffect(() => {
     if (activeTab === 'interviews') {
@@ -297,6 +311,20 @@ export default function RecruitmentPage() {
       console.error('Failed to fetch candidates:', error)
     } finally {
       setCandidatesLoading(false)
+    }
+  }
+
+  async function fetchApplications() {
+    try {
+      setApplicationsLoading(true)
+      const response = await fetch("/api/client/applications")
+      if (!response.ok) throw new Error("Failed to fetch")
+      const data = await response.json()
+      setApplications(data || [])
+    } catch (error) {
+      console.error('Failed to fetch applications:', error)
+    } finally {
+      setApplicationsLoading(false)
     }
   }
 
@@ -620,6 +648,22 @@ export default function RecruitmentPage() {
         </button>
         <button
           onClick={() => {
+            changeTab('applications')
+          }}
+          className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
+            activeTab === 'applications'
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+              : 'text-slate-600 hover:bg-gradient-to-r hover:from-blue-100 hover:to-purple-100 hover:text-purple-700'
+          }`}
+        >
+          <FileText className="w-5 h-5" />
+          Applications
+          {applications.length > 0 && (
+            <Badge className={activeTab === 'applications' ? 'bg-white/30 text-white border border-white/50' : 'bg-blue-100 text-blue-700 border border-blue-200'}>{applications.length}</Badge>
+          )}
+        </button>
+        <button
+          onClick={() => {
             changeTab('interviews')
           }}
           className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-all rounded-lg ${
@@ -675,6 +719,19 @@ export default function RecruitmentPage() {
             addArrayItem={addArrayItem}
             removeArrayItem={removeArrayItem}
             updateArrayItem={updateArrayItem}
+            selectedJobRequest={selectedJobRequest}
+            setSelectedJobRequest={setSelectedJobRequest}
+            jobDetailsModalOpen={jobDetailsModalOpen}
+            setJobDetailsModalOpen={setJobDetailsModalOpen}
+          />
+        )}
+
+        {activeTab === 'applications' && (
+          <ApplicationsTab
+            applications={applications}
+            loading={applicationsLoading}
+            statusFilter={applicationStatusFilter}
+            setStatusFilter={setApplicationStatusFilter}
           />
         )}
 
@@ -1097,17 +1154,21 @@ function JobRequestsTab({
   handleSubmit,
   addArrayItem,
   removeArrayItem,
-  updateArrayItem
+  updateArrayItem,
+  selectedJobRequest,
+  setSelectedJobRequest,
+  jobDetailsModalOpen,
+  setJobDetailsModalOpen
 }: any) {
   if (showForm) {
     return (
-                  <div className="bg-white shadow rounded-lg text-gray-900">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Create Job Request</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Fill out the details below to post your job request
-              </p>
-            </div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-lg text-gray-900">
+        <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <h2 className="text-2xl font-bold text-gray-900">Create Job Request</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Fill out the details below to post your job request
+          </p>
+        </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-8">
               {/* Basic Information */}
@@ -1586,40 +1647,34 @@ function JobRequestsTab({
   // Job Requests List
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-6">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-xl border shadow-sm p-6 animate-pulse">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1 space-y-3">
-                {/* Title */}
-                <div className="h-6 w-64 bg-gray-200 rounded" />
-                
-                {/* Badges */}
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-20 bg-gray-200 rounded-full" />
-                  <div className="h-6 w-32 bg-gray-200 rounded-full" />
-                  <div className="h-6 w-28 bg-gray-200 rounded-full" />
-                </div>
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse">
+            {/* Gradient Header */}
+            <div className="h-32 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600" />
+            
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Title */}
+              <div className="h-6 w-64 bg-gray-200 rounded" />
+              
+              {/* Badges */}
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-20 bg-gray-200 rounded-full" />
+                <div className="h-6 w-32 bg-gray-200 rounded-full" />
+                <div className="h-6 w-28 bg-gray-200 rounded-full" />
               </div>
               
-              {/* Date */}
-              <div className="h-5 w-32 bg-gray-200 rounded" />
-            </div>
-            
-            {/* Description */}
-            <div className="space-y-2 mb-4">
-              <div className="h-4 w-full bg-gray-200 rounded" />
-              <div className="h-4 w-5/6 bg-gray-200 rounded" />
-              <div className="h-4 w-4/6 bg-gray-200 rounded" />
-            </div>
-            
-            {/* Footer with requirements */}
-            <div className="border-t border-gray-100 pt-4 space-y-2">
-              <div className="h-4 w-48 bg-gray-200 rounded" />
-              <div className="flex flex-wrap gap-2">
-                <div className="h-6 w-24 bg-gray-200 rounded" />
-                <div className="h-6 w-20 bg-gray-200 rounded" />
-                <div className="h-6 w-28 bg-gray-200 rounded" />
+              {/* Description */}
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-gray-200 rounded" />
+                <div className="h-4 w-5/6 bg-gray-200 rounded" />
+              </div>
+              
+              {/* Footer */}
+              <div className="flex items-center gap-6 pt-2">
+                <div className="h-4 w-24 bg-gray-200 rounded" />
+                <div className="h-4 w-32 bg-gray-200 rounded" />
               </div>
             </div>
           </div>
@@ -1630,16 +1685,16 @@ function JobRequestsTab({
 
   if (jobRequests.length === 0) {
     return (
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border border-gray-200 shadow-sm">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-200/30 to-teal-200/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-teal-200/30 to-cyan-200/30 rounded-full blur-3xl" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border border-gray-200 shadow-sm">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-200/30 to-blue-200/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-200/30 to-cyan-200/30 rounded-full blur-3xl" />
         
         <div className="relative py-16 px-8 text-center">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 mb-6">
-            <Briefcase className="h-12 w-12 text-emerald-600" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 mb-6">
+            <Briefcase className="h-12 w-12 text-indigo-600" />
           </div>
           
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent mb-3">
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent mb-3">
             No Job Requests Yet
           </h3>
           
@@ -1649,7 +1704,7 @@ function JobRequestsTab({
           
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-semibold transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-semibold transition-all"
           >
             <Plus className="h-4 w-4" />
             Create Job Request
@@ -1660,56 +1715,534 @@ function JobRequestsTab({
   }
 
   return (
-          <div className="space-y-4">
-      {jobRequests.map((job: JobRequest) => (
-              <Card key={job.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">{job.job_title}</h3>
-                    <div className="flex items-center gap-3 mb-4 flex-wrap">
-                      <Badge className={
-                        job.status === 'active' ? 'bg-green-100 text-green-800' :
-                        job.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }>
-                        {job.status.toUpperCase()}
-                      </Badge>
-                      <span className="flex items-center gap-1 text-sm text-gray-600">
-                        <Briefcase className="h-4 w-4" />
-                        {job.work_type}
-                      </span>
-                      <span className="flex items-center gap-1 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        {job.work_arrangement}
-                      </span>
-                      <span className="flex items-center gap-1 text-sm text-gray-600">
-                        <Target className="h-4 w-4" />
-                        {job.experience_level}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-6 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {job.applicants} applicants
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {new Date(job.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
+    <>
+      <div className="space-y-6">
+        {jobRequests.map((job: JobRequest) => (
+          <div
+            key={job.id}
+            className="relative bg-white rounded-2xl shadow-sm transition-all duration-300 cursor-pointer border border-gray-100 hover:border-transparent hover:-translate-y-1 overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl blur-sm -z-10"></div>
+            
+            {/* Gradient Header */}
+            <div className="relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 p-6 text-white overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+              
+              <div className="relative z-10 flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold tracking-tight mb-3 drop-shadow-md text-white">{job.job_title}</h3>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge className={
+                      job.status === 'active' ? 'bg-white/25 backdrop-blur-md text-white border border-white/40 font-semibold' :
+                      job.status === 'pending' ? 'bg-yellow-400/30 backdrop-blur-md text-white border border-yellow-300/50 font-semibold' :
+                      'bg-white/25 backdrop-blur-md text-white border border-white/40 font-semibold'
+                    }>
+                      {job.status.toUpperCase()}
+                    </Badge>
+                    <span className="flex items-center gap-1.5 text-sm text-white font-medium">
+                      <Briefcase className="h-4 w-4" />
+                      {job.work_type}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-sm text-white font-medium">
+                      <MapPin className="h-4 w-4" />
+                      {job.work_arrangement}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-sm text-white font-medium">
+                      <Target className="h-4 w-4" />
+                      {job.experience_level}
+                    </span>
                   </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
                 </div>
-              </Card>
-            ))}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 bg-white">
+              <div className="mb-4">
+                {job.job_description && (
+                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-2 mb-4">
+                    {job.job_description}
+                  </p>
+                )}
+                
+                <div className="flex items-center gap-6 text-sm text-gray-700">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    {job.applicants || 0} applicants
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    Posted {new Date(job.created_at).toLocaleDateString()}
+                  </span>
+                  {job.views !== undefined && (
+                    <span className="flex items-center gap-1.5">
+                      <TrendingUp className="h-4 w-4 text-gray-500" />
+                      {job.views || 0} views
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Skills Preview */}
+              {job.skills && Array.isArray(job.skills) && job.skills.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 mb-4">
+                  {job.skills.slice(0, 5).map((skill: string, idx: number) => (
+                    <Badge 
+                      key={idx} 
+                      variant="secondary" 
+                      className="text-xs bg-blue-50 text-blue-700 border border-blue-300 font-medium"
+                    >
+                      {skill}
+                    </Badge>
+                  ))}
+                  {job.skills.length > 5 && (
+                    <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700 border border-gray-300 font-medium">
+                      +{job.skills.length - 5} more
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* View Details Button - Bottom Right */}
+              <div className="flex justify-end">
+                <Button 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedJobRequest(job)
+                    setJobDetailsModalOpen(true)
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
+                >
+                  View Details
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Job Details Modal */}
+      {selectedJobRequest && (
+        <Dialog open={jobDetailsModalOpen} onOpenChange={setJobDetailsModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 border-blue-400">
+            <DialogHeader>
+              <DialogTitle className="text-3xl font-bold text-white drop-shadow-md">
+                {selectedJobRequest.job_title}
+              </DialogTitle>
+              <div className="flex items-center gap-3 mt-3 flex-wrap">
+                <Badge className={
+                  selectedJobRequest.status === 'active' ? 'bg-green-500/90 text-white border-green-400 font-semibold' :
+                  selectedJobRequest.status === 'pending' ? 'bg-yellow-500/90 text-white border-yellow-400 font-semibold' :
+                  'bg-gray-500/90 text-white border-gray-400 font-semibold'
+                }>
+                  {selectedJobRequest.status.toUpperCase()}
+                </Badge>
+                <span className="flex items-center gap-1.5 text-sm text-white font-medium bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/30">
+                  <Briefcase className="h-4 w-4" />
+                  {selectedJobRequest.work_type}
+                </span>
+                <span className="flex items-center gap-1.5 text-sm text-white font-medium bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/30">
+                  <MapPin className="h-4 w-4" />
+                  {selectedJobRequest.work_arrangement}
+                </span>
+                <span className="flex items-center gap-1.5 text-sm text-white font-medium bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/30">
+                  <Target className="h-4 w-4" />
+                  {selectedJobRequest.experience_level}
+                </span>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6 mt-6">
+              {/* Job Description */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Job Description
+                </h3>
+                <p className="text-white leading-relaxed whitespace-pre-wrap">{selectedJobRequest.job_description}</p>
+              </div>
+
+              {/* Work Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
+                    <Briefcase className="h-4 w-4" />
+                    Department
+                  </h4>
+                  <p className="text-white">{selectedJobRequest.department || 'N/A'}</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
+                    <Briefcase className="h-4 w-4" />
+                    Industry
+                  </h4>
+                  <p className="text-white">{selectedJobRequest.industry || 'N/A'}</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" />
+                    Shift
+                  </h4>
+                  <p className="text-white capitalize">{selectedJobRequest.shift}</p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
+                    <Target className="h-4 w-4" />
+                    Priority
+                  </h4>
+                  <p className="text-white capitalize">{selectedJobRequest.priority}</p>
+                </div>
+              </div>
+
+              {/* Salary Information */}
+              {(selectedJobRequest.salary_min || selectedJobRequest.salary_max) && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Salary Range
+                  </h3>
+                  <p className="text-white text-lg font-medium">
+                    {selectedJobRequest.currency} {selectedJobRequest.salary_min?.toLocaleString()} - {selectedJobRequest.salary_max?.toLocaleString()} 
+                    <span className="text-white/70 text-sm ml-2">({selectedJobRequest.salary_type})</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Requirements */}
+              {selectedJobRequest.requirements && selectedJobRequest.requirements.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Requirements
+                  </h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    {selectedJobRequest.requirements.map((req: string, idx: number) => (
+                      <li key={idx} className="text-white leading-relaxed">{req}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Responsibilities */}
+              {selectedJobRequest.responsibilities && selectedJobRequest.responsibilities.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <Briefcase className="h-5 w-5" />
+                    Responsibilities
+                  </h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    {selectedJobRequest.responsibilities.map((resp: string, idx: number) => (
+                      <li key={idx} className="text-white leading-relaxed">{resp}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Benefits */}
+              {selectedJobRequest.benefits && selectedJobRequest.benefits.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <Star className="h-5 w-5" />
+                    Benefits
+                  </h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    {selectedJobRequest.benefits.map((benefit: string, idx: number) => (
+                      <li key={idx} className="text-white leading-relaxed">{benefit}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Skills */}
+              {selectedJobRequest.skills && selectedJobRequest.skills.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Required Skills
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedJobRequest.skills.map((skill: string, idx: number) => (
+                      <Badge key={idx} className="text-sm bg-white/25 text-white border-white/40 font-medium backdrop-blur-sm">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Application Deadline */}
+              {selectedJobRequest.application_deadline && (
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Application Deadline
+                  </h3>
+                  <p className="text-white text-lg font-medium">
+                    {new Date(selectedJobRequest.application_deadline).toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+              )}
+
+              {/* Stats */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                <div className="grid grid-cols-3 gap-6 text-center">
+                  <div>
+                    <p className="text-3xl font-bold text-white mb-1">{selectedJobRequest.views || 0}</p>
+                    <p className="text-sm text-white/80 font-medium">Views</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-white mb-1">{selectedJobRequest.applicants || 0}</p>
+                    <p className="text-sm text-white/80 font-medium">Applicants</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-white mb-1">
+                      {Math.floor((Date.now() - new Date(selectedJobRequest.created_at).getTime()) / (1000 * 60 * 60 * 24))}
+                    </p>
+                    <p className="text-sm text-white/80 font-medium">Days Posted</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => setJobDetailsModalOpen(false)}
+                className="bg-white/20 backdrop-blur-sm text-white border-white/40 hover:bg-white/30 font-medium"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  )
+}
+
+// ============================================================================
+// TAB 3: APPLICATIONS
+// ============================================================================
+
+function ApplicationsTab({
+  applications,
+  loading,
+  statusFilter,
+  setStatusFilter
+}: any) {
+  // Group applications by job title
+  const groupedApplications = applications.reduce((acc: any, app: any) => {
+    const jobTitle = app.job_title || 'Unknown Job'
+    if (!acc[jobTitle]) {
+      acc[jobTitle] = []
+    }
+    acc[jobTitle].push(app)
+    return acc
+  }, {})
+
+  // Get status counts
+  const statusCounts = applications.reduce((acc: any, app: any) => {
+    acc[app.status] = (acc[app.status] || 0) + 1
+    return acc
+  }, {})
+
+  // Filter applications by status
+  const filteredApplications = statusFilter === 'ALL' 
+    ? applications 
+    : applications.filter((app: any) => app.status === statusFilter)
+
+  // Status options
+  const statusOptions = [
+    { value: 'ALL', label: 'All Applications', count: applications.length },
+    { value: 'submitted', label: 'Submitted', count: statusCounts.submitted || 0 },
+    { value: 'qualified', label: 'Qualified', count: statusCounts.qualified || 0 },
+    { value: 'for verification', label: 'For Verification', count: statusCounts['for verification'] || 0 },
+    { value: 'verified', label: 'Verified', count: statusCounts.verified || 0 },
+    { value: 'initial interview', label: 'Initial Interview', count: statusCounts['initial interview'] || 0 },
+    { value: 'final interview', label: 'Final Interview', count: statusCounts['final interview'] || 0 },
+    { value: 'passed', label: 'Passed', count: statusCounts.passed || 0 },
+    { value: 'hired', label: 'Hired', count: statusCounts.hired || 0 },
+    { value: 'rejected', label: 'Rejected', count: statusCounts.rejected || 0 },
+  ]
+
+  const getStatusBadgeColor = (status: string) => {
+    const statusLower = status.toLowerCase()
+    if (statusLower === 'hired' || statusLower === 'passed') return 'bg-green-500/90 text-white border-green-400 font-semibold'
+    if (statusLower === 'rejected' || statusLower === 'not qualified' || statusLower === 'failed') return 'bg-red-500/90 text-white border-red-400 font-semibold'
+    if (statusLower === 'qualified' || statusLower === 'verified') return 'bg-blue-500/90 text-white border-blue-400 font-semibold'
+    if (statusLower.includes('interview')) return 'bg-purple-500/90 text-white border-purple-400 font-semibold'
+    return 'bg-yellow-500/90 text-white border-yellow-400 font-semibold'
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="p-6 animate-pulse bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+            <div className="h-4 bg-gradient-to-r from-blue-200 to-purple-200 rounded w-1/4 mb-4"></div>
+            <div className="h-4 bg-gradient-to-r from-blue-200 to-indigo-200 rounded w-1/2"></div>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (applications.length === 0) {
+    return (
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border border-gray-200 shadow-sm">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-200/30 to-blue-200/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-200/30 to-cyan-200/30 rounded-full blur-3xl" />
+        
+        <div className="relative py-16 px-8 text-center">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 mb-6">
+            <FileText className="h-12 w-12 text-indigo-600" />
+          </div>
+          
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent mb-3">
+            No Applications Yet
+          </h3>
+          
+          <p className="text-slate-600 text-base max-w-md mx-auto mb-6 leading-relaxed">
+            Applications from candidates will appear here once they apply to your job requests.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Status Filter */}
+      <div className="flex flex-wrap gap-2">
+        {statusOptions.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setStatusFilter(option.value)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              statusFilter === option.value
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+          >
+            {option.label} ({option.count})
+          </button>
+        ))}
+      </div>
+
+      {filteredApplications.length === 0 ? (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50 border border-gray-200 shadow-sm">
+          <div className="relative py-16 px-8 text-center">
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent mb-3">
+              No {statusFilter !== 'ALL' ? statusFilter.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) : ''} Applications
+            </h3>
+            <p className="text-slate-600 text-base max-w-md mx-auto mb-6 leading-relaxed">
+              No applications match the selected filter.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Group by Job Title */}
+          {Object.entries(groupedApplications).map(([jobTitle, jobApps]: [string, any]) => {
+            const filteredJobApps = statusFilter === 'ALL' 
+              ? jobApps 
+              : jobApps.filter((app: any) => app.status === statusFilter)
+            
+            if (filteredJobApps.length === 0) return null
+
+            return (
+              <div key={jobTitle} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Briefcase className="h-5 w-5 text-indigo-600" />
+                  <h2 className="text-xl font-bold text-gray-900">{jobTitle}</h2>
+                  <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-300 font-medium">{filteredJobApps.length} {filteredJobApps.length === 1 ? 'application' : 'applications'}</Badge>
+                </div>
+                
+                <div className="space-y-3">
+                  {filteredJobApps.map((app: any) => (
+                    <Card key={app.id} className="p-6 hover:shadow-lg transition-all hover:-translate-y-0.5 border-blue-100 bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          {/* Avatar */}
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white font-semibold text-lg flex-shrink-0">
+                            {app.avatar_url ? (
+                              <img src={app.avatar_url} alt={app.full_name} className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              <span>{app.first_name?.[0] || app.full_name?.[0] || 'U'}</span>
+                            )}
+                          </div>
+
+                          {/* Candidate Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {app.full_name || `${app.first_name} ${app.last_name}`}
+                              </h3>
+                              <Badge className={getStatusBadgeColor(app.status)}>
+                                {app.status.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
+                              {app.email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-4 w-4 text-blue-600" />
+                                  {app.email}
+                                </span>
+                              )}
+                              {app.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4 text-blue-600" />
+                                  {app.location}
+                                </span>
+                              )}
+                              {app.user_position && (
+                                <span className="flex items-center gap-1">
+                                  <Briefcase className="h-4 w-4 text-blue-600" />
+                                  {app.user_position}
+                                </span>
+                              )}
+                            </div>
+
+                            {app.bio && (
+                              <p className="text-sm text-gray-600 line-clamp-2 mt-2">{app.bio}</p>
+                            )}
+
+                            <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-indigo-600" />
+                                Applied {new Date(app.created_at).toLocaleDateString()}
+                              </span>
+                              {app.resume_slug && (
+                                <span className="flex items-center gap-1">
+                                  <FileText className="h-3 w-3 text-indigo-600" />
+                                  Resume Available
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 // ============================================================================
-// TAB 3: INTERVIEWS
+// TAB 4: INTERVIEWS
 // ============================================================================
 
 function InterviewsTab({ 
