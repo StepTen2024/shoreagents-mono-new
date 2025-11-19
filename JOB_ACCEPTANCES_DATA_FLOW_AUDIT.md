@@ -402,3 +402,4 @@ if (jobAcceptance && staffProfile) {
 4. Verify data consistency across all tables
 
 
+
