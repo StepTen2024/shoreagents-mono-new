@@ -7,11 +7,12 @@ import {
   Download, Upload, Wifi, Copy, FileText, Globe, Eye,
   TrendingUp, AlertCircle, BarChart3, Calendar, Filter,
   RefreshCw, Download as DownloadIcon, Settings, Users,
-  Target, Zap, Award, CheckCircle, XCircle, AlertTriangle
+  Target, Zap, Award, CheckCircle, XCircle, AlertTriangle, Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -118,6 +119,7 @@ export default function ClientMonitoringPage() {
   const [sortBy, setSortBy] = useState<'name' | 'productivity' | 'activity' | 'lastActivity'>('productivity')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'no-data'>('all')
   const [showFilters, setShowFilters] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Use real-time monitoring hook
   const { data, loading, error, lastUpdate, refresh, isConnected, isUpdating } = useRealtimeMonitoring(selectedDays)
@@ -185,6 +187,16 @@ export default function ClientMonitoringPage() {
     if (!data) return []
     
     let filtered = data.staff
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(staff => 
+        staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        staff.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        staff.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        staff.department.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
     
     // Apply status filter
     if (filterStatus !== 'all') {
@@ -387,6 +399,16 @@ export default function ClientMonitoringPage() {
             {showFilters && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex flex-wrap items-center gap-6">
+                  <div className="flex items-center gap-2 flex-1 max-w-sm">
+                    <Search className="h-4 w-4 text-gray-600" />
+                    <Input
+                      placeholder="Search staff by name, email, position..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-gray-600" />
                     <label className="text-sm font-medium text-gray-700">Filter by Status:</label>

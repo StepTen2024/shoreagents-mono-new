@@ -40,13 +40,15 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Get date range (last 7 days by default, or today if specified)
+    // Get date range (default to Today)
     const url = new URL(req.url)
-    const days = parseInt(url.searchParams.get('days') || '7')
+    const days = parseInt(url.searchParams.get('days') || '1')
     const endDate = new Date()
     endDate.setHours(23, 59, 59, 999)
     const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
+    // For "Today" (days=1), we want today's data, not yesterday's
+    // So subtract (days - 1) instead of days
+    startDate.setDate(startDate.getDate() - (days - 1))
     startDate.setHours(0, 0, 0, 0)
 
     // Fetch all staff with their user info and performance metrics
@@ -171,8 +173,6 @@ export async function GET(req: NextRequest) {
     const staffWithMetrics = staffMembers.map(staff => {
       const staffMetrics = metricsByStaff.get(staff.id) || []
       const latestMetric = staffMetrics[0] // Most recent metric
-      // Use the productivity score from the database instead of recalculating
-      const productivityScore = latestMetric?.productivityScore || 0
       
       // Calculate totals across all metrics
       const totals = staffMetrics.reduce((acc: { mouseMovements: any; mouseClicks: any; keystrokes: any; activeTime: any; idleTime: any; screenTime: any; downloads: any; uploads: any; bandwidth: any; clipboardActions: any; filesAccessed: any; urlsVisited: any; tabsSwitched: any }, metric: { mouseMovements: any; mouseClicks: any; keystrokes: any; activeTime: any; idleTime: any; screenTime: any; downloads: any; uploads: any; bandwidth: any; clipboardActions: any; filesAccessed: any; urlsVisited: any; tabsSwitched: any }) => {
@@ -205,6 +205,10 @@ export async function GET(req: NextRequest) {
         urlsVisited: 0,
         tabsSwitched: 0
       })
+      
+      // Calculate productivity percentage like admin does (active time / total time)
+      const totalTime = totals.activeTime + totals.idleTime
+      const productivityScore = totalTime > 0 ? Math.round((totals.activeTime / totalTime) * 100) : 0
       
       return {
         id: staff.id,

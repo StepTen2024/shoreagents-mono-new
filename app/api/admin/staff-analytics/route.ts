@@ -22,13 +22,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const searchQuery = searchParams.get("search") || ""
     const companyFilter = searchParams.get("company") || "all"
-    const days = parseInt(searchParams.get("days") || "7")
+    const days = parseInt(searchParams.get("days") || "1") // Default to Today
 
     // Calculate date range
     const endDate = new Date()
     endDate.setHours(23, 59, 59, 999)
     const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
+    // For "Today" (days=1), we want today's data, not yesterday's
+    // So subtract (days - 1) instead of days
+    startDate.setDate(startDate.getDate() - (days - 1))
     startDate.setHours(0, 0, 0, 0)
 
     const where: any = {}
