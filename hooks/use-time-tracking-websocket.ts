@@ -188,6 +188,29 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (response.ok) {
+        // ✅ IMMEDIATELY update local state so modal shows instantly
+        const breakData = {
+          id: data.break.id,
+          type: data.break.type,
+          startTime: data.break.actualStart,
+          actualStart: data.break.actualStart,
+          duration: data.break.type === 'LUNCH' ? 60 : 15,
+          awayReason: data.break.awayReason,
+          isPaused: false,
+          pausedDuration: 0,
+          pauseUsed: false
+        }
+        
+        setState(prev => ({
+          ...prev,
+          activeBreak: breakData,
+          scheduledBreaks: prev.scheduledBreaks.map(b => 
+            b.id === data.break.id ? { ...b, actualStart: data.break.actualStart } : b
+          )
+        }))
+        
+        console.log('[WebSocket] ✅ Break started, state updated immediately:', breakData)
+        
         // Pause activity tracking in Electron
         if (typeof window !== 'undefined' && (window as any).electron?.breaks?.start) {
           console.log('[WebSocket] Calling Electron to pause activity tracking for', breakType, 'break')
@@ -230,6 +253,17 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (response.ok) {
+        // ✅ IMMEDIATELY update local state so modal closes instantly
+        setState(prev => ({
+          ...prev,
+          activeBreak: null,
+          scheduledBreaks: prev.scheduledBreaks.map(b => 
+            b.id === data.break?.id ? { ...b, actualEnd: data.break?.actualEnd } : b
+          )
+        }))
+        
+        console.log('[WebSocket] ✅ Break ended, state updated immediately')
+        
         // Resume activity tracking in Electron
         if (typeof window !== 'undefined' && (window as any).electron?.breaks?.end) {
           console.log('[WebSocket] Calling Electron to resume activity tracking')
