@@ -2,6 +2,7 @@
 
 import { Calendar, Clock, Coffee } from 'lucide-react'
 import { useDashboardTimeTracking } from '@/hooks/use-dashboard-time-tracking'
+import { convertTo12Hour } from '@/lib/utils'
 
 export function ScheduleWidget() {
   const { status, loading } = useDashboardTimeTracking()
@@ -28,7 +29,7 @@ export function ScheduleWidget() {
           <div>
             <div className="text-sm text-slate-400">Shift Hours</div>
             <div className="text-lg font-semibold text-white">
-              {schedule.startTime} - {schedule.endTime}
+              {convertTo12Hour(schedule.startTime)} - {convertTo12Hour(schedule.endTime)}
             </div>
             <div className="text-xs text-slate-500">{schedule.timezone}</div>
           </div>
