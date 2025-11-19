@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import DocumentViewerModal from "@/components/document-viewer-modal"
+import { convertTo12Hour } from "@/lib/utils"
 
 interface ProfileData {
   user: {
@@ -679,9 +680,9 @@ export default function ProfileView() {
                   <div className="mt-2 text-sm">
                     {schedule.isWorkday ? (
                       <>
-                        <div className="text-emerald-300 font-semibold">💼 {schedule.startTime}</div>
+                        <div className="text-emerald-300 font-semibold">💼 {convertTo12Hour(schedule.startTime)}</div>
                         <div className="text-slate-400">-</div>
-                        <div className="text-emerald-300 font-semibold">{schedule.endTime}</div>
+                        <div className="text-emerald-300 font-semibold">{convertTo12Hour(schedule.endTime)}</div>
                       </>
                     ) : (
                       <div className="text-blue-300 font-semibold text-lg">🎉 Off</div>

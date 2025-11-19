@@ -63,7 +63,12 @@ export async function GET(req: NextRequest) {
             id: true,
             name: true,
             email: true,
-            avatar: true
+            avatar: true,
+            staff_profiles: {
+              select: {
+                startDate: true
+              }
+            }
           }
         }
       },

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { convertTo12Hour } from "@/lib/utils"
 import { 
   Building2, 
   Mail, 
@@ -80,6 +81,14 @@ async function getStaffUser(id: string) {
         staff_personal_records: true,
       },
     })
+
+    // Sort work schedules by day of week (Monday to Sunday)
+    if (staffUser?.staff_profiles?.work_schedules) {
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      staffUser.staff_profiles.work_schedules.sort((a, b) => 
+        dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek)
+      )
+    }
 
     return staffUser
   } catch (error) {
@@ -424,7 +433,7 @@ export default async function StaffDetailPage({
                         <>
                           <Badge variant="outline" className="text-xs">{schedule.shiftType || 'DAY_SHIFT'}</Badge>
                           <div className="text-sm text-muted-foreground">
-                            {schedule.startTime} - {schedule.endTime}
+                            {convertTo12Hour(schedule.startTime)} - {convertTo12Hour(schedule.endTime)}
                           </div>
                           <Badge variant="secondary" className="text-xs">
                             {schedule.timezone || 'Asia/Manila'}

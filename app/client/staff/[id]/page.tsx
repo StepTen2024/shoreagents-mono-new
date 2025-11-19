@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { convertTo12Hour } from "@/lib/utils"
 import {
   ArrowLeft,
   Mail,
@@ -329,8 +330,8 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                   <p className="text-xs font-semibold text-gray-900 mb-1">{schedule.dayOfWeek.slice(0, 3)}</p>
                   {schedule.isWorkday ? (
                     <>
-                      <p className="text-xs text-gray-600">{schedule.startTime}</p>
-                      <p className="text-xs text-gray-600">{schedule.endTime}</p>
+                      <p className="text-xs text-gray-600">{convertTo12Hour(schedule.startTime)}</p>
+                      <p className="text-xs text-gray-600">{convertTo12Hour(schedule.endTime)}</p>
                     </>
                   ) : (
                     <p className="text-xs text-gray-400">Off</p>

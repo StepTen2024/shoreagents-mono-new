@@ -5,6 +5,7 @@ import { Clock, LogIn, LogOut, Coffee, Loader2, AlertCircle, CheckCircle } from 
 import { useDashboardTimeTracking } from '@/hooks/use-dashboard-time-tracking'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
+import { convertTo12Hour } from '@/lib/utils'
 
 export function TimeTrackingWidget() {
   const { status, loading, error, handleClockIn, handleClockOut, handleStartBreak } = useDashboardTimeTracking()
@@ -166,7 +167,7 @@ export function TimeTrackingWidget() {
                 <div className="text-white">
                   <div className="text-sm text-slate-400">Today's Schedule</div>
                   <div className="text-lg font-semibold">
-                    {status.schedule.startTime} - {status.schedule.endTime}
+                    {convertTo12Hour(status.schedule.startTime)} - {convertTo12Hour(status.schedule.endTime)}
                   </div>
                   <div className="text-xs text-slate-400">{status.schedule.timezone}</div>
                 </div>

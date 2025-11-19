@@ -20,6 +20,8 @@ import {
   getReviewTypeBadge, 
   formatReviewDate,
   getDueDateText,
+  getDueDateStatus,
+  getDueDateStatusColor,
   isReviewOverdue
 } from "@/lib/review-utils"
 
@@ -35,6 +37,9 @@ interface Review {
     name: string
     email: string
     avatar?: string
+    staff_profiles?: {
+      startDate: string
+    } | null
   }
 }
 
@@ -239,20 +244,26 @@ export default function ClientReviewsPage() {
                             <Calendar className="h-3.5 w-3.5" />
                             <span className="text-xs font-medium">Due Date</span>
                           </div>
-                          <p className={`font-semibold text-xs ${
-                            getDueDateText(review.dueDate) === "Due tomorrow" || 
-                            getDueDateText(review.dueDate) === "Due today" ||
-                            getDueDateText(review.dueDate).includes("overdue")
-                              ? "text-red-600" 
-                              : "text-gray-900"
-                          }`}>{getDueDateText(review.dueDate)}</p>
+                          <p className="font-semibold text-gray-900 text-xs">
+                            {formatReviewDate(review.dueDate)}
+                          </p>
+                          {getDueDateStatus(review.dueDate) && (
+                            <p className={`text-[10px] font-medium mt-1 ${getDueDateStatusColor(review.dueDate)}`}>
+                              {getDueDateStatus(review.dueDate)}
+                            </p>
+                          )}
                         </div>
                         <div className="bg-gray-50 rounded-lg p-3">
                           <div className="flex items-center gap-1.5 text-gray-500 mb-1">
                             <Clock className="h-3.5 w-3.5" />
                             <span className="text-xs font-medium">Period</span>
                           </div>
-                          <p className="font-semibold text-gray-900 text-xs">{review.evaluationPeriod}</p>
+                          {review.staff_users.staff_profiles?.startDate && (
+                            <p className="font-semibold text-gray-900 text-xs">
+                              {formatReviewDate(review.staff_users.staff_profiles.startDate)}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-gray-600 mt-1">{review.evaluationPeriod}</p>
                         </div>
                       </div>
 

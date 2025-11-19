@@ -211,7 +211,12 @@ export async function GET(
         vacationUsed: user.staff_profiles.vacationUsed,
         sickUsed: user.staff_profiles.sickUsed,
         hmo: user.staff_profiles.hmo,
-        work_schedules: user.staff_profiles.work_schedules,
+        work_schedules: (() => {
+          const schedules = user.staff_profiles.work_schedules || []
+          // Sort by day of week: Monday to Sunday
+          const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+          return schedules.sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek))
+        })(),
       } : null,
 
       // Current status

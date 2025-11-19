@@ -30,7 +30,12 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    const workSchedules = staffUserWithProfile?.staff_profiles?.work_schedules || []
+    const workSchedules = (() => {
+      const schedules = staffUserWithProfile?.staff_profiles?.work_schedules || []
+      // Sort by day of week: Monday to Sunday
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+      return schedules.sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek))
+    })()
 
     if (activeEntry) {
       const clockIn = new Date(activeEntry.clockIn)

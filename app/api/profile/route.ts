@@ -74,7 +74,12 @@ export async function GET(req: NextRequest) {
         hmo: staffUser.staff_profiles.hmo,
       } : null,
       personalRecords: staffUser.staff_personal_records || null,
-      workSchedules: staffUser.staff_profiles?.work_schedules || [],
+      workSchedules: (() => {
+        const schedules = staffUser.staff_profiles?.work_schedules || []
+        // Sort by day of week: Monday to Sunday
+        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        return schedules.sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek))
+      })(),
       onboarding: staffUser.staff_onboarding ? {
         isComplete: staffUser.staff_onboarding.isComplete,
         completionPercent: staffUser.staff_onboarding.completionPercent
