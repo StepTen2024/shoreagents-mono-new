@@ -102,8 +102,8 @@ export function useTimeTrackingWebSocket() {
           console.warn('⚠️ [Clock-In] window.electron:', typeof window !== 'undefined' ? window.electron : 'undefined')
         }
         
-        // Emit WebSocket event for real-time updates
-        emit('time:clockin', data)
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('time:clockin', { ...data, staffUserId: currentStaffUserId })
       } else {
         console.error('Clock in failed - API error:', data)
         throw new Error(data.error || 'Clock in failed')
@@ -112,7 +112,7 @@ export function useTimeTrackingWebSocket() {
       console.error('Clock in error:', error)
       throw error // Re-throw so component can handle it
     }
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   const clockOut = useCallback((reason?: string, notes?: string) => {
     if (!isConnected) {
@@ -136,8 +136,8 @@ export function useTimeTrackingWebSocket() {
       })
       
       if (response.ok && data.success) {
-        // Emit WebSocket event for real-time updates
-        emit('time:clockout', data)
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('time:clockout', { ...data, staffUserId: currentStaffUserId })
       } else {
         const errorMsg = data.details || data.error || 'Unknown error'
         console.error('❌ Clock out failed:', {
@@ -168,7 +168,7 @@ export function useTimeTrackingWebSocket() {
         window.dispatchEvent(event)
       }
     })
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   // Break functions
   const startBreak = useCallback(async (breakType: string, awayReason?: string) => {
@@ -203,15 +203,15 @@ export function useTimeTrackingWebSocket() {
           console.log('[WebSocket] Electron API not available (running in browser)')
         }
         
-        // Emit WebSocket event for real-time updates
-        emit('break:start', data)
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('break:start', { ...data, staffUserId: currentStaffUserId })
       } else {
         console.error('Start break failed:', data)
       }
     } catch (error) {
       console.error('Start break error:', error)
     }
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   const endBreak = useCallback(async (breakId: string) => {
     if (!isConnected) {
@@ -239,15 +239,15 @@ export function useTimeTrackingWebSocket() {
           console.log('[WebSocket] Electron API not available (running in browser)')
         }
         
-        // Emit WebSocket event for real-time updates
-        emit('break:end', data)
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('break:end', { ...data, staffUserId: currentStaffUserId })
       } else {
         console.error('End break failed:', data)
       }
     } catch (error) {
       console.error('End break error:', error)
     }
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   const pauseBreak = useCallback(async (breakId: string) => {
     console.warn('[WebSocket] Pause break not implemented in backend')
