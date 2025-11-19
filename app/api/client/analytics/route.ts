@@ -102,71 +102,25 @@ export async function GET(req: NextRequest) {
       metricsByStaff.get(metric.staffUserId).push(metric)
     })
 
-    // Calculate productivity score
+    // Calculate productivity score (same as admin: active time / total time)
     const calculateProductivityScore = (metrics: any[]) => {
       if (!metrics || metrics.length === 0) return 0
       
       // Calculate totals across all metrics
       const totals = metrics.reduce((acc, metric) => {
-        acc.mouseMovements += metric.mouseMovements
-        acc.mouseClicks += metric.mouseClicks
-        acc.keystrokes += metric.keystrokes
         acc.activeTime += metric.activeTime
         acc.idleTime += metric.idleTime
-        acc.screenTime += metric.screenTime
-        acc.downloads += metric.downloads
-        acc.uploads += metric.uploads
-        acc.bandwidth += metric.bandwidth
-        acc.clipboardActions += metric.clipboardActions
-        acc.filesAccessed += metric.filesAccessed
-        acc.urlsVisited += metric.urlsVisited
-        acc.tabsSwitched += metric.tabsSwitched
         return acc
       }, {
-        mouseMovements: 0,
-        mouseClicks: 0,
-        keystrokes: 0,
         activeTime: 0,
-        idleTime: 0,
-        screenTime: 0,
-        downloads: 0,
-        uploads: 0,
-        bandwidth: 0,
-        clipboardActions: 0,
-        filesAccessed: 0,
-        urlsVisited: 0,
-        tabsSwitched: 0
+        idleTime: 0
       })
 
-      // Calculate individual component scores
-      const keystrokesScore = Math.min((totals.keystrokes / 1000) * 100, 100) // Reduced threshold
-      const clicksScore = Math.min((totals.mouseClicks / 100) * 100, 100) // Reduced threshold
-      const movementsScore = Math.min((totals.mouseMovements / 500) * 100, 100) // Added mouse movements
-      const urlsScore = Math.min((totals.urlsVisited / 10) * 100, 100) // Added URL visits
-      const clipboardScore = Math.min((totals.clipboardActions / 5) * 100, 100) // Added clipboard actions
-      
-      // Time-based score (only if there's actual time data)
-      let timeScore = 0
+      // Calculate productivity percentage (active time / total time) - same as admin
       const totalTime = totals.activeTime + totals.idleTime
-      if (totalTime > 0) {
-        const activePercent = (totals.activeTime / totalTime) * 100
-        timeScore = activePercent
-      } else {
-        // If no time data, give a small score based on activity indicators
-        timeScore = Math.min((totals.mouseClicks + totals.keystrokes + totals.mouseMovements) / 10, 20)
-      }
+      const productivityScore = totalTime > 0 ? Math.round((totals.activeTime / totalTime) * 100) : 0
       
-      // Calculate weighted average (time is most important, then activity)
-      const productivityScore = Math.round(
-        (timeScore * 0.3) + 
-        (keystrokesScore * 0.2) + 
-        (clicksScore * 0.2) + 
-        (movementsScore * 0.15) + 
-        (urlsScore * 0.1) + 
-        (clipboardScore * 0.05)
-      )
-      
-      return Math.min(productivityScore, 100)
+      return productivityScore
     }
 
     // Combine staff data with their metrics
