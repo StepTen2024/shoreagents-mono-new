@@ -221,13 +221,16 @@ export default async function TimeEntryDetailPage({
                 </span>
                 <div className="text-right">
                   <div className="font-semibold text-foreground">
-                    {new Date(entry.clockIn).toLocaleTimeString('en-US', {
+                    {new Date(entry.clockIn).toLocaleTimeString('en-PH', {
+                      timeZone: 'Asia/Manila',
                       hour: '2-digit',
-                      minute: '2-digit'
+                      minute: '2-digit',
+                      hour12: true
                     })}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(entry.clockIn).toLocaleDateString('en-US', {
+                    {new Date(entry.clockIn).toLocaleDateString('en-PH', {
+                      timeZone: 'Asia/Manila',
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric'
@@ -244,13 +247,16 @@ export default async function TimeEntryDetailPage({
                   </span>
                   <div className="text-right">
                     <div className="font-semibold text-foreground">
-                      {new Date(entry.clockOut).toLocaleTimeString('en-US', {
+                      {new Date(entry.clockOut).toLocaleTimeString('en-PH', {
+                        timeZone: 'Asia/Manila',
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
+                        hour12: true
                       })}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(entry.clockOut).toLocaleDateString('en-US', {
+                      {new Date(entry.clockOut).toLocaleDateString('en-PH', {
+                        timeZone: 'Asia/Manila',
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -313,9 +319,11 @@ export default async function TimeEntryDetailPage({
                           <div>
                             <div className="text-xs text-muted-foreground">Start</div>
                             <div className="font-medium text-foreground">
-                              {new Date(brk.actualStart).toLocaleTimeString('en-US', {
+                              {new Date(brk.actualStart).toLocaleTimeString('en-PH', {
+                                timeZone: 'Asia/Manila',
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                hour12: true
                               })}
                             </div>
                           </div>
@@ -324,9 +332,11 @@ export default async function TimeEntryDetailPage({
                           <div>
                             <div className="text-xs text-muted-foreground">End</div>
                             <div className="font-medium text-foreground">
-                              {new Date(brk.actualEnd).toLocaleTimeString('en-US', {
+                              {new Date(brk.actualEnd).toLocaleTimeString('en-PH', {
+                                timeZone: 'Asia/Manila',
                                 hour: '2-digit',
-                                minute: '2-digit'
+                                minute: '2-digit',
+                                hour12: true
                               })}
                             </div>
                           </div>
@@ -388,7 +398,12 @@ export default async function TimeEntryDetailPage({
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Created</div>
                 <div className="text-xs text-foreground">
-                  {new Date(entry.createdAt).toLocaleDateString()}
+                  {new Date(entry.createdAt).toLocaleDateString('en-PH', {
+                    timeZone: 'Asia/Manila',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
                 </div>
               </div>
               <div>

@@ -248,9 +248,11 @@ export default function AdminTimeTrackingPage() {
                       Clock In:
                     </span>
                     <span className="font-medium text-foreground">
-                      {new Date(entry.clockIn).toLocaleTimeString('en-US', {
+                      {new Date(entry.clockIn).toLocaleTimeString('en-PH', {
+                        timeZone: 'Asia/Manila',
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
+                        hour12: true
                       })}
                     </span>
                   </div>
@@ -261,9 +263,11 @@ export default function AdminTimeTrackingPage() {
                         Clock Out:
                       </span>
                       <span className="font-medium text-foreground">
-                        {new Date(entry.clockOut).toLocaleTimeString('en-US', {
+                        {new Date(entry.clockOut).toLocaleTimeString('en-PH', {
+                          timeZone: 'Asia/Manila',
                           hour: '2-digit',
-                          minute: '2-digit'
+                          minute: '2-digit',
+                          hour12: true
                         })}
                       </span>
                     </div>
@@ -290,7 +294,8 @@ export default function AdminTimeTrackingPage() {
                 <div className="mt-4 pt-4 border-t border-border">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    {new Date(entry.clockIn).toLocaleDateString('en-US', {
+                    {new Date(entry.clockIn).toLocaleDateString('en-PH', {
+                      timeZone: 'Asia/Manila',
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric'

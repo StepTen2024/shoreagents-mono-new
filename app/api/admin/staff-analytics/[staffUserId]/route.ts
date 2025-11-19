@@ -28,14 +28,19 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get("days") || "1") // Default to Today
 
-    // Calculate date range
-    const endDate = new Date()
-    endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    // For "Today" (days=1), we want today's data, not yesterday's
-    // So subtract (days - 1) instead of days
+    // Calculate date range based on Philippines timezone
+    // ✅ FIX: Calculate date range based on Philippines timezone (UTC+8)
+    const nowUTC = new Date()
+    const nowInPH = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+    
+    // Get midnight today in PH time, then convert to UTC
+    const startOfTodayPH = new Date(nowInPH)
+    startOfTodayPH.setHours(0, 0, 0, 0)
+    
+    const startDate = new Date(startOfTodayPH.getTime() - (8 * 60 * 60 * 1000))
     startDate.setDate(startDate.getDate() - (days - 1))
-    startDate.setHours(0, 0, 0, 0)
+    
+    const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Current time + 1hr buffer
 
     // Fetch staff with ALL tracking data
     const staffMember = await prisma.staff_users.findUnique({
@@ -58,13 +63,13 @@ export async function GET(
         },
         performance_metrics: {
           where: {
-            shiftDate: {
+            date: {
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            shiftDate: "desc",
+            date: "desc",
           },
         },
         time_entries: {
@@ -118,7 +123,7 @@ export async function GET(
         allVisitedUrls.push(
           ...metric.visitedurls.map((urlData: any) => ({
             ...urlData,
-            date: metric.shiftDate,
+            date: metric.date,
           }))
         )
       }
@@ -158,7 +163,7 @@ export async function GET(
         allApplications.push(
           ...metric.applicationsused.map((appData: any) => ({
             ...appData,
-            date: metric.shiftDate,
+            date: metric.date,
           }))
         )
       }
@@ -198,7 +203,7 @@ export async function GET(
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
 
-      const dayMetrics = metrics.filter((m) => m.shiftDate >= date && m.shiftDate <= dayEnd)
+      const dayMetrics = metrics.filter((m) => m.date >= date && m.date <= dayEnd)
       const dayEntries = timeEntries.filter((e) => e.clockIn >= date && e.clockIn <= dayEnd)
 
       const dayStats = {
@@ -226,7 +231,7 @@ export async function GET(
         allScreenshots.push(
           ...screenshots.map((url: string) => ({
             url: url,
-            date: metric.shiftDate,
+            date: metric.date,
           }))
         )
       }

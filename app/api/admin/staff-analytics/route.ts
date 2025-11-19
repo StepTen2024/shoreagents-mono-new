@@ -24,14 +24,26 @@ export async function GET(request: NextRequest) {
     const companyFilter = searchParams.get("company") || "all"
     const days = parseInt(searchParams.get("days") || "1") // Default to Today
 
-    // Calculate date range
-    const endDate = new Date()
-    endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    // For "Today" (days=1), we want today's data, not yesterday's
-    // So subtract (days - 1) instead of days
+    // Calculate date range based on Philippines timezone
+    // ✅ FIX: Calculate date range based on Philippines timezone (UTC+8)
+    const nowUTC = new Date()
+    const nowInPH = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+    
+    // Get midnight today in PH time, then convert to UTC
+    const startOfTodayPH = new Date(nowInPH)
+    startOfTodayPH.setHours(0, 0, 0, 0)
+    
+    const startDate = new Date(startOfTodayPH.getTime() - (8 * 60 * 60 * 1000))
     startDate.setDate(startDate.getDate() - (days - 1))
-    startDate.setHours(0, 0, 0, 0)
+    
+    const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Current time + 1hr buffer
+    
+    console.log(`[Staff Analytics] Date range for ${days} days:`, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      startDatePH: new Date(startDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
+      endDatePH: new Date(endDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
+    })
 
     const where: any = {}
 
@@ -65,13 +77,13 @@ export async function GET(request: NextRequest) {
         },
         performance_metrics: {
           where: {
-            shiftDate: {
+            date: {
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            shiftDate: "desc",
+            date: "desc",
           },
         },
         time_entries: {
@@ -146,7 +158,7 @@ export async function GET(request: NextRequest) {
         avatar: staffMember.avatar,
         role: staffMember.role,
         company: staffMember.company,
-        currentRole: staffMember.profile?.currentRole,
+        currentRole: staffMember.staff_profiles?.currentRole,
         isClockedIn,
         stats: {
           productivityScore: latestProductivity,
@@ -160,7 +172,7 @@ export async function GET(request: NextRequest) {
           hasSuspiciousActivity,
           suspiciousUrlCount: suspiciousUrls.length,
         },
-        lastActivity: metrics[0]?.shiftDate || timeEntries[0]?.clockIn || null,
+        lastActivity: metrics[0]?.date || timeEntries[0]?.clockIn || null,
       }
     })
 
