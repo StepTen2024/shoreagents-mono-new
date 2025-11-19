@@ -26,13 +26,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized - Admin access required" }, { status: 403 })
     }
 
-    // Get date range (last 30 days by default, or custom range)
+    // Get date range (default to Today)
     const url = new URL(req.url)
-    const days = parseInt(url.searchParams.get('days') || '30')
+    const days = parseInt(url.searchParams.get('days') || '1')
     const endDate = new Date()
     endDate.setHours(23, 59, 59, 999)
     const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
+    // For "Today" (days=1), we want today's data, not yesterday's
+    // So subtract (days - 1) instead of days
+    startDate.setDate(startDate.getDate() - (days - 1))
     startDate.setHours(0, 0, 0, 0)
 
     // Get all staff users

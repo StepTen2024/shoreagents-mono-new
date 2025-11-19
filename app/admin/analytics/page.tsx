@@ -46,7 +46,7 @@ export default function StaffAnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [companyFilter, setCompanyFilter] = useState("all")
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(1) // Default to Today
 
   useEffect(() => {
     fetchStaff()
@@ -225,6 +225,7 @@ export default function StaffAnalyticsPage() {
             <SelectItem value="1">Today</SelectItem>
             <SelectItem value="7">Last 7 Days</SelectItem>
             <SelectItem value="30">Last 30 Days</SelectItem>
+            <SelectItem value="90">Last 90 Days</SelectItem>
           </SelectContent>
         </Select>
       </div>
