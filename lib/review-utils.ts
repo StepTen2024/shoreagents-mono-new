@@ -128,14 +128,18 @@ export function getReviewTypeBadge(type: ReviewType): {
 }
 
 /**
- * Format date for display
+ * Format date for display with month names
  */
 export function formatReviewDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ]
+  const month = months[d.getMonth()]
+  const day = d.getDate()
   const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${month}/${day}/${year}`
+  return `${month} ${day}, ${year}`
 }
 
 /**
@@ -160,24 +164,51 @@ export function isReviewOverdue(dueDate: Date | string): boolean {
 }
 
 /**
- * Get days until/since due date
+ * Get days until/since due date (timezone-safe)
  */
 export function getDaysUntilDue(dueDate: Date | string): number {
   const due = typeof dueDate === "string" ? new Date(dueDate) : dueDate
   const now = new Date()
-  const diffTime = due.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  // Normalize both dates to start of day (midnight) in local timezone
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate())
+  const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  const diffTime = dueDay.getTime() - nowDay.getTime()
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
   return diffDays
 }
 
 /**
- * Get due date display text
+ * Get due date display text with actual date and overdue info
  */
 export function getDueDateText(dueDate: Date | string): string {
   const days = getDaysUntilDue(dueDate)
+  const formattedDate = formatReviewDate(dueDate)
   
   if (days < 0) {
-    return `${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""} overdue`
+    const overdueDays = Math.abs(days)
+    return `${formattedDate} (${overdueDays} day${overdueDays !== 1 ? "s" : ""} overdue)`
+  } else if (days === 0) {
+    return `${formattedDate} (Due today)`
+  } else if (days === 1) {
+    return `${formattedDate} (Due tomorrow)`
+  } else if (days <= 7) {
+    return `${formattedDate} (Due in ${days} days)`
+  } else {
+    return formattedDate
+  }
+}
+
+/**
+ * Get due date status text (separate from date)
+ */
+export function getDueDateStatus(dueDate: Date | string): string | null {
+  const days = getDaysUntilDue(dueDate)
+  
+  if (days < 0) {
+    const overdueDays = Math.abs(days)
+    return `${overdueDays} day${overdueDays !== 1 ? "s" : ""} overdue`
   } else if (days === 0) {
     return "Due today"
   } else if (days === 1) {
@@ -185,17 +216,39 @@ export function getDueDateText(dueDate: Date | string): string {
   } else if (days <= 7) {
     return `Due in ${days} days`
   } else {
-    return `Due ${formatReviewDate(dueDate)}`
+    return null
   }
 }
 
 /**
- * Calculate days since start date
+ * Get color class for due date status
+ */
+export function getDueDateStatusColor(dueDate: Date | string): string {
+  const days = getDaysUntilDue(dueDate)
+  
+  if (days < 0) {
+    return "text-red-600"
+  } else if (days === 0 || days === 1) {
+    return "text-orange-600"
+  } else if (days <= 7) {
+    return "text-yellow-600"
+  } else {
+    return "text-gray-600"
+  }
+}
+
+/**
+ * Calculate days since start date (timezone-safe)
  */
 export function getDaysSinceStart(startDate: Date | string): number {
   const start = typeof startDate === "string" ? new Date(startDate) : startDate
   const now = new Date()
-  const diffTime = now.getTime() - start.getTime()
+  
+  // Normalize both dates to start of day (midnight) in local timezone
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  const diffTime = nowDay.getTime() - startDay.getTime()
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
   return diffDays
 }
