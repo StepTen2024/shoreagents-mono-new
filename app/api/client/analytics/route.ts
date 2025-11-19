@@ -173,8 +173,6 @@ export async function GET(req: NextRequest) {
     const staffWithMetrics = staffMembers.map(staff => {
       const staffMetrics = metricsByStaff.get(staff.id) || []
       const latestMetric = staffMetrics[0] // Most recent metric
-      // Use the productivity score from the database instead of recalculating
-      const productivityScore = latestMetric?.productivityScore || 0
       
       // Calculate totals across all metrics
       const totals = staffMetrics.reduce((acc: { mouseMovements: any; mouseClicks: any; keystrokes: any; activeTime: any; idleTime: any; screenTime: any; downloads: any; uploads: any; bandwidth: any; clipboardActions: any; filesAccessed: any; urlsVisited: any; tabsSwitched: any }, metric: { mouseMovements: any; mouseClicks: any; keystrokes: any; activeTime: any; idleTime: any; screenTime: any; downloads: any; uploads: any; bandwidth: any; clipboardActions: any; filesAccessed: any; urlsVisited: any; tabsSwitched: any }) => {
@@ -207,6 +205,10 @@ export async function GET(req: NextRequest) {
         urlsVisited: 0,
         tabsSwitched: 0
       })
+      
+      // Calculate productivity percentage like admin does (active time / total time)
+      const totalTime = totals.activeTime + totals.idleTime
+      const productivityScore = totalTime > 0 ? Math.round((totals.activeTime / totalTime) * 100) : 0
       
       return {
         id: staff.id,
