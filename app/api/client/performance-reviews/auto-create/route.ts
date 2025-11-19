@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       console.log(`   Start Date: ${startDate.toLocaleDateString()}`)
       console.log(`   Days Since Start: ${daysSinceStart}`)
       
-      // Check each review type to see if it should be created (7 days before due)
+      // Check each review type to see if it should be created (from 7 days before due, including overdue)
       const reviewTypes: ReviewType[] = ["MONTH_1", "MONTH_3", "MONTH_5"]
       let reviewType: ReviewType | null = null
       let recurringDueDate: Date | null = null
@@ -82,9 +82,10 @@ export async function POST(req: NextRequest) {
         console.log(`     Create Date: ${createDate.toLocaleDateString()}`)
         console.log(`     Today: ${now.toLocaleDateString()}`)
         
-        // Check if today is on or after the create date AND before the due date
-        const shouldCreate = now >= createDate && now < dueDate
-        console.log(`     Should Create: ${shouldCreate}`)
+        // Check if today is on or after the create date (allows overdue reviews to be created)
+        const shouldCreate = now >= createDate
+        const isOverdue = now >= dueDate
+        console.log(`     Should Create: ${shouldCreate}${isOverdue ? ' (OVERDUE)' : ''}`)
         
         if (shouldCreate) {
           // Check if this review type already exists
@@ -100,18 +101,15 @@ export async function POST(req: NextRequest) {
           
           if (!exists) {
             reviewType = type
-            console.log(`📅 ${staff.name}: ${type} review ready for creation!`)
+            const overdueMsg = isOverdue ? ' (OVERDUE - will create)' : ''
+            console.log(`📅 ${staff.name}: ${type} review ready for creation!${overdueMsg}`)
             break // Only create one review at a time
           } else {
             console.log(`⏭️  ${staff.name}: ${type} review already exists`)
           }
         } else {
           const daysUntilCreate = Math.ceil((createDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-          if (daysUntilCreate > 0) {
-            console.log(`⏳ ${staff.name}: ${type} review will be created in ${daysUntilCreate} days`)
-          } else {
-            console.log(`⏭️  ${staff.name}: ${type} review due date has passed`)
-          }
+          console.log(`⏳ ${staff.name}: ${type} review will be created in ${daysUntilCreate} days`)
         }
       }
       
@@ -143,16 +141,18 @@ export async function POST(req: NextRequest) {
         createDate.setDate(createDate.getDate() - 7)
         
         const now = new Date()
-        const shouldCreate = now >= createDate && now < recurringDueDate
+        const shouldCreate = now >= createDate
+        const isOverdue = now >= recurringDueDate
         
         console.log(`     Recurring #${recurringNumber}:`)
         console.log(`     Due Date: ${recurringDueDate.toLocaleDateString()} (day ${daysUntilDue})`)
         console.log(`     Create Date: ${createDate.toLocaleDateString()}`)
-        console.log(`     Should Create: ${shouldCreate}`)
+        console.log(`     Should Create: ${shouldCreate}${isOverdue ? ' (OVERDUE)' : ''}`)
         
         if (shouldCreate) {
           reviewType = "RECURRING"
-          console.log(`📅 ${staff.name}: RECURRING review #${recurringNumber} ready for creation!`)
+          const overdueMsg = isOverdue ? ' (OVERDUE - will create)' : ''
+          console.log(`📅 ${staff.name}: RECURRING review #${recurringNumber} ready for creation!${overdueMsg}`)
         }
       }
       

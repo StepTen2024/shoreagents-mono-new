@@ -812,7 +812,7 @@ export function getReviewDueDate(startDate: Date, type: ReviewType): Date {
 }
 
 /**
- * Check if review should be created (7 days before due date)
+ * Check if review should be created (from 7 days before due date, including overdue)
  */
 export function shouldCreateReview(startDate: Date, type: ReviewType): boolean {
   const now = new Date()
@@ -820,8 +820,8 @@ export function shouldCreateReview(startDate: Date, type: ReviewType): boolean {
   const createDate = new Date(dueDate)
   createDate.setDate(createDate.getDate() - 7) // 7 days before due
   
-  // Check if today is on or after the create date AND before the due date
-  return now >= createDate && now < dueDate
+  // Check if today is on or after the create date (allows overdue reviews to be created)
+  return now >= createDate
 }
 
 /**
