@@ -237,18 +237,40 @@ Generate a professional productivity analysis report that the client can use to 
 
     console.log('🤖 [AI Report] Calling Claude for analysis...')
 
-    // Call Claude API
+    // Call Claude API with retry logic for 529 errors
     const anthropic = new Anthropic({ apiKey })
     
-    const response = await anthropic.messages.create({
-      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{
-        role: 'user',
-        content: userPrompt
-      }]
-    })
+    let response
+    let retries = 0
+    const maxRetries = 3
+    
+    while (retries <= maxRetries) {
+      try {
+        response = await anthropic.messages.create({
+          model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
+          max_tokens: 2048,
+          system: systemPrompt,
+          messages: [{
+            role: 'user',
+            content: userPrompt
+          }]
+        })
+        break // Success!
+      } catch (error: any) {
+        if (error?.status === 529 && retries < maxRetries) {
+          retries++
+          const waitTime = Math.pow(2, retries) * 1000 // Exponential backoff: 2s, 4s, 8s
+          console.log(`⚠️ [AI Report] Claude overloaded (529), retry ${retries}/${maxRetries} in ${waitTime}ms...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+        } else {
+          throw error // Re-throw if not 529 or max retries reached
+        }
+      }
+    }
+
+    if (!response) {
+      throw new Error('Claude API is currently overloaded. Please try again in a few moments.')
+    }
 
     const aiReport = response.content[0].type === 'text' 
       ? response.content[0].text 

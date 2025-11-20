@@ -1241,16 +1241,38 @@ export default function ClientMonitoringPage() {
               </div>
             ) : aiReportError ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+                <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
                 <p className="text-lg font-medium text-gray-900 mb-2">Unable to Generate Report</p>
-                <p className="text-sm text-gray-600">{aiReportError}</p>
-                <Button
-                  onClick={() => setShowAIReport(false)}
-                  variant="outline"
-                  className="mt-4"
-                >
-                  Close
-                </Button>
+                <p className="text-sm text-gray-600 mb-4">{aiReportError}</p>
+                {aiReportError.includes('529') || aiReportError.includes('Overloaded') || aiReportError.includes('overloaded') ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 max-w-md">
+                    <p className="text-sm text-amber-800">
+                      <strong>⚠️ Claude AI is temporarily overloaded.</strong><br />
+                      This is a temporary issue with Anthropic's servers. Please wait 30 seconds and try again.
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={(e) => {
+                      setShowAIReport(false)
+                      // Auto-retry if selected staff is available
+                      const selectedStaffForRetry = data?.staff.find(s => aiReportError.includes(s.name))
+                      if (selectedStaffForRetry) {
+                        setTimeout(() => generateAIReport(selectedStaffForRetry), 1000)
+                      }
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    Try Again
+                  </Button>
+                  <Button
+                    onClick={() => setShowAIReport(false)}
+                    variant="outline"
+                  >
+                    Close
+                  </Button>
+                </div>
               </div>
             ) : aiReportData ? (
               <div className="space-y-6">
