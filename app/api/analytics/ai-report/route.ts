@@ -94,6 +94,8 @@ export async function POST(request: NextRequest) {
     console.log(`📊 [AI Report] Found ${metrics.length} metrics records`)
 
     if (metrics.length === 0) {
+      console.log(`❌ [AI Report] No metrics found for ${staffUser.name} (${staffId})`)
+      console.log(`   Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`)
       return NextResponse.json({ 
         error: 'No data available',
         message: `No performance data found for ${staffUser.name} in the last ${days} days.`
@@ -269,9 +271,11 @@ Generate a professional productivity analysis report that the client can use to 
 
   } catch (error) {
     console.error('❌ [AI Report] Error:', error)
+    console.error('❌ [AI Report] Error stack:', error instanceof Error ? error.stack : 'No stack')
     return NextResponse.json(
       { 
         error: 'Failed to generate AI report',
+        message: error instanceof Error ? error.message : String(error),
         details: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }

@@ -183,7 +183,8 @@ export default function ClientMonitoringPage() {
       
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Failed to generate report')
+        console.error('❌ AI Report API Error:', error)
+        throw new Error(error.message || error.error || 'Failed to generate report')
       }
       
       const data = await response.json()
