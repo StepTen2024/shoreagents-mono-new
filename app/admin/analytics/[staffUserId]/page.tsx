@@ -383,7 +383,7 @@ export default function StaffAnalyticsDetailPage() {
                             {urlData.reason && ` • Flagged: ${urlData.reason}`}
                           </p>
                         </div>
-                        <Badge variant="destructive">{urlData.reason || "suspicious"}</Badge>
+                          <Badge variant="destructive">{urlData.reason || "suspicious"}</Badge>
                       </div>
                     )
                   })}
@@ -525,7 +525,7 @@ export default function StaffAnalyticsDetailPage() {
                             View Full Size
                           </div>
                         </a>
-                      </div>
+                    </div>
                     )
                   })}
                 </div>

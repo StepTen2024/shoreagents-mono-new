@@ -136,7 +136,7 @@ export async function GET(
             allVisitedUrls.push({
               url: urlData.url || urlData.title || 'Unknown',
               title: urlData.title || urlData.url,
-              date: metric.date,
+            date: metric.date,
               ...urlData
             })
           }

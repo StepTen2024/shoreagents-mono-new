@@ -290,7 +290,7 @@ export default function StaffAnalyticsPage() {
                     <p className="text-muted-foreground">Keystrokes</p>
                     <p className="font-semibold">{staffMember.stats.totalKeystrokes.toLocaleString()}</p>
                   </div>
-                  <div>
+          <div>
                     <p className="text-muted-foreground">Mouse Clicks</p>
                     <p className="font-semibold">{staffMember.stats.totalMouseClicks.toLocaleString()}</p>
                   </div>

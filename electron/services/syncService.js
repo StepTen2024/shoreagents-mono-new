@@ -260,8 +260,34 @@ class SyncService {
             }
             resolve(true)
           } else {
-            console.error(`❌ [SyncService] API returned error: ${response.statusCode}`)
+            // 🚨 CRITICAL ERROR LOGGING
+            console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+            console.error(`🚨 [SyncService] API ERROR: ${response.statusCode}`)
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
             console.error(`Response body: ${data}`)
+            
+            // 🔥 SPECIAL HANDLING FOR 400 (NOT CLOCKED IN)
+            if (response.statusCode === 400) {
+              try {
+                const parsed = JSON.parse(data)
+                if (parsed.message && parsed.message.includes('Not clocked in')) {
+                  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+                  console.error('🚨 CRITICAL: STAFF IS NOT CLOCKED IN!')
+                  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+                  console.error('📋 The server says: "Not clocked in - performance not tracked"')
+                  console.error('')
+                  console.error('✅ SOLUTION: Staff must CLOCK IN first!')
+                  console.error('   1. Go to Time Tracking page')
+                  console.error('   2. Click "Clock In"')
+                  console.error('   3. Performance tracking will then work')
+                  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+                }
+              } catch (e) {
+                // Not JSON or different error
+              }
+            }
+            
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
             resolve(false)
           }
         })

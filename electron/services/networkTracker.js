@@ -24,13 +24,21 @@ class NetworkTracker {
    */
   start(mainWindow) {
     if (this.isTracking) {
-      this.log('Network tracker already running')
+      console.log('[NetworkTracker] ⚠️  Network tracker already running')
       return
     }
 
     this.isTracking = true
     this.mainWindow = mainWindow
-    this.log('Starting network tracking...')
+    
+    // 🔥 CRITICAL LOGS - ALWAYS SHOW (even in production)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('🌐 [NetworkTracker] STARTING NETWORK TRACKING')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('   📥 Downloads tracking: ENABLED')
+    console.log('   📤 Uploads tracking: ENABLED')
+    console.log('   📊 Bandwidth tracking: ENABLED')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
     // Track downloads
     this.startDownloadTracking()
@@ -38,7 +46,7 @@ class NetworkTracker {
     // Track bandwidth (uploads + downloads)
     this.startBandwidthTracking()
 
-    this.log('Network tracking started')
+    console.log('✅ [NetworkTracker] Network tracking started successfully')
   }
 
   /**
@@ -71,30 +79,37 @@ class NetworkTracker {
    */
   startDownloadTracking() {
     this.downloadListener = (event, item, webContents) => {
-      this.log(`📥 Download started: ${item.getFilename()}`)
+      // 🔥 ALWAYS LOG (even in production)
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+      console.log(`📥 [NetworkTracker] DOWNLOAD DETECTED`)
+      console.log(`   File: ${item.getFilename()}`)
+      console.log(`   URL: ${item.getURL()}`)
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
       
       // Increment download count immediately
       this.downloads++
+      console.log(`📊 [NetworkTracker] Total downloads: ${this.downloads}`)
       
       // Track bandwidth when download completes
       item.once('done', (event, state) => {
         if (state === 'completed') {
           const size = item.getTotalBytes()
           this.bandwidth += size
-          this.log(`✅ Download completed: ${item.getFilename()} (${this.formatBytes(size)})`)
-          this.log(`📊 Total downloads: ${this.downloads}, Bandwidth: ${this.formatBytes(this.bandwidth)}`)
+          console.log(`✅ [NetworkTracker] Download COMPLETED: ${item.getFilename()}`)
+          console.log(`   Size: ${this.formatBytes(size)}`)
+          console.log(`   Total Bandwidth: ${this.formatBytes(this.bandwidth)}`)
         } else if (state === 'cancelled') {
-          this.log(`❌ Download cancelled: ${item.getFilename()}`)
+          console.log(`❌ [NetworkTracker] Download CANCELLED: ${item.getFilename()}`)
           // Still count as download attempt
         } else if (state === 'interrupted') {
-          this.log(`⚠️ Download interrupted: ${item.getFilename()}`)
+          console.log(`⚠️  [NetworkTracker] Download INTERRUPTED: ${item.getFilename()}`)
           // Still count as download attempt
         }
       })
     }
 
     session.defaultSession.on('will-download', this.downloadListener)
-    this.log('✅ Download tracking enabled')
+    console.log('✅ [NetworkTracker] Download listener registered on session.defaultSession')
   }
 
   /**
@@ -124,7 +139,15 @@ class NetworkTracker {
           // Count as upload if it's a POST/PUT/PATCH with significant data
           if (this.isUploadRequest(details, requestSize)) {
             this.uploads++
-            this.log(`📤 Upload detected: ${details.method} to ${new URL(details.url).hostname} (${this.formatBytes(requestSize)})`)
+            // 🔥 ALWAYS LOG UPLOADS (even in production)
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+            console.log(`📤 [NetworkTracker] UPLOAD DETECTED`)
+            console.log(`   Method: ${details.method}`)
+            console.log(`   Host: ${new URL(details.url).hostname}`)
+            console.log(`   Size: ${this.formatBytes(requestSize)}`)
+            console.log(`   Total Uploads: ${this.uploads}`)
+            console.log(`   Total Bandwidth: ${this.formatBytes(this.bandwidth)}`)
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
           }
         }
       }
@@ -257,11 +280,21 @@ class NetworkTracker {
    * Get current metrics
    */
   getMetrics() {
-    return {
+    const metrics = {
       downloads: this.downloads,
       uploads: this.uploads,
       bandwidth: this.bandwidth
     }
+    
+    // 🔥 LOG EVERY TIME METRICS ARE REQUESTED (helps debug sync issues)
+    if (this.downloads > 0 || this.uploads > 0 || this.bandwidth > 0) {
+      console.log(`📊 [NetworkTracker] getMetrics() called:`)
+      console.log(`   📥 Downloads: ${metrics.downloads}`)
+      console.log(`   📤 Uploads: ${metrics.uploads}`)
+      console.log(`   📊 Bandwidth: ${this.formatBytes(metrics.bandwidth)}`)
+    }
+    
+    return metrics
   }
 
   /**
