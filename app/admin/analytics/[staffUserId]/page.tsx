@@ -9,16 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { formatAdminDate, formatAdminDateTime } from "@/lib/utils"
 import {
   ArrowLeft,
@@ -32,10 +22,6 @@ import {
   TrendingUp,
   TrendingDown,
   Coffee,
-  Trash2,
-  Loader2,
-  CheckSquare,
-  Square,
 } from "lucide-react"
 
 export default function StaffAnalyticsDetailPage() {
@@ -46,11 +32,6 @@ export default function StaffAnalyticsDetailPage() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(1)  // ✅ Default to "Today"
-  const [deletingScreenshot, setDeletingScreenshot] = useState<string | null>(null)
-  const [screenshotToDelete, setScreenshotToDelete] = useState<string | null>(null)
-  const [selectedScreenshots, setSelectedScreenshots] = useState<Set<string>>(new Set())
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
 
   useEffect(() => {
     if (staffUserId) {
@@ -65,7 +46,6 @@ export default function StaffAnalyticsDetailPage() {
       const result = await res.json()
       if (result.success) {
         setData(result)
-        setSelectedScreenshots(new Set()) // Clear selection when data refreshes
       }
     } catch (error) {
       console.error("Error fetching staff detail:", error)
@@ -87,104 +67,6 @@ export default function StaffAnalyticsDetailPage() {
     if (percentage >= 60) return "text-blue-600"
     if (percentage >= 40) return "text-yellow-600"
     return "text-red-600"
-  }
-
-  function toggleScreenshotSelection(url: string) {
-    setSelectedScreenshots((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(url)) {
-        newSet.delete(url)
-      } else {
-        newSet.add(url)
-      }
-      return newSet
-    })
-  }
-
-  function toggleSelectAll() {
-    if (selectedScreenshots.size === screenshots.length) {
-      setSelectedScreenshots(new Set())
-    } else {
-      setSelectedScreenshots(new Set(screenshots.map((s: any) => s.url)))
-    }
-  }
-
-  async function confirmDeleteScreenshot() {
-    if (!screenshotToDelete) return
-
-    try {
-      setDeletingScreenshot(screenshotToDelete)
-      
-      const res = await fetch(
-        `/api/admin/screenshots/delete?url=${encodeURIComponent(screenshotToDelete)}&staffUserId=${staffUserId}`,
-        { method: "DELETE" }
-      )
-
-      const result = await res.json()
-
-      if (result.success) {
-        // Remove the screenshot from local state
-        setData((prevData: any) => ({
-          ...prevData,
-          screenshots: prevData.screenshots.filter((s: any) => s.url !== screenshotToDelete)
-        }))
-      } else {
-        alert(`Failed to delete screenshot: ${result.error}`)
-      }
-    } catch (error) {
-      console.error("Error deleting screenshot:", error)
-      alert("Failed to delete screenshot. Please try again.")
-    } finally {
-      setDeletingScreenshot(null)
-      setScreenshotToDelete(null)
-    }
-  }
-
-  async function confirmBulkDelete() {
-    if (selectedScreenshots.size === 0) return
-
-    setIsDeleting(true)
-    setShowBulkDeleteDialog(false)
-    const urlsToDelete = Array.from(selectedScreenshots)
-    let successCount = 0
-    let failCount = 0
-
-    for (const url of urlsToDelete) {
-      try {
-        const res = await fetch(
-          `/api/admin/screenshots/delete?url=${encodeURIComponent(url)}&staffUserId=${staffUserId}`,
-          { method: "DELETE" }
-        )
-
-        const result = await res.json()
-
-        if (result.success) {
-          successCount++
-        } else {
-          failCount++
-          console.error(`Failed to delete ${url}:`, result.error)
-        }
-      } catch (error) {
-        failCount++
-        console.error(`Error deleting ${url}:`, error)
-      }
-    }
-
-    // Refresh the data to get the latest state
-    if (successCount > 0) {
-      await fetchStaffDetail()
-    }
-
-    // Clear selection
-    setSelectedScreenshots(new Set())
-    setIsDeleting(false)
-
-    // Show result
-    if (failCount === 0) {
-      alert(`Successfully deleted ${successCount} screenshot(s)`)
-    } else {
-      alert(`Deleted ${successCount} screenshot(s). Failed to delete ${failCount} screenshot(s).`)
-    }
   }
 
   // ✅ Admin displays dates in Philippines timezone using utility functions
@@ -587,106 +469,21 @@ export default function StaffAnalyticsDetailPage() {
         <TabsContent value="screenshots" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Screenshots</CardTitle>
-                  <CardDescription>Captured screenshots during work hours (for future analysis)</CardDescription>
-                </div>
-                {screenshots.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={toggleSelectAll}
-                      className="gap-2"
-                    >
-                      {selectedScreenshots.size === screenshots.length ? (
-                        <>
-                          <CheckSquare className="h-4 w-4" />
-                          Deselect All
-                        </>
-                      ) : (
-                        <>
-                          <Square className="h-4 w-4" />
-                          Select All
-                        </>
-                      )}
-                    </Button>
-                    {selectedScreenshots.size > 0 && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setShowBulkDeleteDialog(true)}
-                        disabled={isDeleting}
-                        className="gap-2"
-                      >
-                        {isDeleting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4" />
-                            Delete Selected ({selectedScreenshots.size})
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+              <CardTitle>Screenshots</CardTitle>
+              <CardDescription>Captured screenshots during work hours (for future analysis)</CardDescription>
             </CardHeader>
             <CardContent>
               {screenshots.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {screenshots.map((screenshot: any, index: number) => {
-                    const isSelected = selectedScreenshots.has(screenshot.url)
-                    return (
-                      <div 
-                        key={index} 
-                        className={`border rounded-lg p-2 relative group transition-all ${
-                          isSelected ? 'ring-2 ring-blue-500 border-blue-500' : ''
-                        }`}
-                      >
-                        {/* Selection Checkbox - Always visible when any screenshot is selected */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`absolute top-3 left-3 h-8 w-8 p-0 shadow-lg bg-white ${
-                            selectedScreenshots.size > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                          } transition-opacity z-10`}
-                          onClick={() => toggleScreenshotSelection(screenshot.url)}
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="h-4 w-4 text-blue-600" />
-                          ) : (
-                            <Square className="h-4 w-4" />
-                          )}
-                        </Button>
-
-                        <img src={screenshot.url} alt={`Screenshot ${index + 1}`} className="w-full h-auto rounded" />
-                        <p className="text-xs text-muted-foreground mt-1">{formatAdminDateTime(screenshot.date)}</p>
-                        
-                        {/* Delete Single Button - Shows on hover when no selection mode */}
-                        {selectedScreenshots.size === 0 && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                            onClick={() => setScreenshotToDelete(screenshot.url)}
-                            disabled={deletingScreenshot === screenshot.url}
-                          >
-                            {deletingScreenshot === screenshot.url ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {screenshots.map((screenshot: any, index: number) => (
+                    <div 
+                      key={index} 
+                      className="border rounded-lg p-2"
+                    >
+                      <img src={screenshot.url} alt={`Screenshot ${index + 1}`} className="w-full h-auto rounded" />
+                      <p className="text-xs text-muted-foreground mt-1">{formatAdminDateTime(screenshot.date)}</p>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground py-8">No screenshots available for this period.</p>
@@ -695,64 +492,6 @@ export default function StaffAnalyticsDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Delete Single Screenshot Confirmation Dialog */}
-      <AlertDialog open={!!screenshotToDelete} onOpenChange={(open) => !open && setScreenshotToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Screenshot?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this screenshot? This action cannot be undone and will permanently remove the screenshot from storage and the database.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={!!deletingScreenshot}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteScreenshot}
-              disabled={!!deletingScreenshot}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deletingScreenshot ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog open={showBulkDeleteDialog} onOpenChange={(open) => !open && setShowBulkDeleteDialog(false)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedScreenshots.size} Screenshot(s)?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {selectedScreenshots.size} selected screenshot(s)? This action cannot be undone and will permanently remove the screenshots from storage and the database.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting {selectedScreenshots.size} screenshot(s)...
-                </>
-              ) : (
-                <>Delete {selectedScreenshots.size} Screenshot(s)</>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
