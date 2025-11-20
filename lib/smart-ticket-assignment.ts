@@ -10,6 +10,7 @@
 import { prisma } from "@/lib/prisma"
 import { TicketCategory } from "@prisma/client"
 import { mapCategoryToDepartment, type Department } from "./category-department-map"
+import { isNightShift, getNightShiftManager } from "./night-shift-handler"
 
 // Keywords that indicate software/development issues → NERDS_DEPARTMENT
 const SOFTWARE_KEYWORDS = [
@@ -198,7 +199,27 @@ export async function smartAssignTicket(
   console.log(`   Category: ${category}`)
   console.log(`   Title: ${title}`)
   
-  // Step 1: Determine department
+  // PRIORITY CHECK: Night Shift Override
+  // If it's night shift (10 PM - 6 AM Manila) and night shift managers available,
+  // route ALL tickets to them regardless of category
+  if (isNightShift()) {
+    const nightShiftManager = await getNightShiftManager()
+    
+    if (nightShiftManager) {
+      console.log(`🌙 [NIGHT SHIFT] Overriding normal routing - All tickets go to night shift manager`)
+      console.log(`✅ [NIGHT SHIFT] Assigned to: ${nightShiftManager.managerName}`)
+      
+      return {
+        department: nightShiftManager.department,
+        managementUserId: nightShiftManager.managerId,
+        assignedToName: nightShiftManager.managerName
+      }
+    } else {
+      console.log(`🌙 [NIGHT SHIFT] Night shift active but no managers available - Using normal routing`)
+    }
+  }
+  
+  // Step 1: Determine department (normal day routing)
   const department = getSmartDepartment(category, title, description)
   
   if (!department) {
