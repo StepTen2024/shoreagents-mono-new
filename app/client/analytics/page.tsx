@@ -859,57 +859,148 @@ export default function ClientMonitoringPage() {
       {/* Detailed Performance Dialog */}
       <Dialog open={!!selectedStaff} onOpenChange={() => setSelectedStaff(null)}>
          <DialogContent 
-           className="max-h-[80vh] overflow-y-auto bg-white dialog-scrollbar"
+           className="max-h-[85vh] overflow-y-auto bg-gradient-to-br from-white to-purple-50 dialog-scrollbar"
            style={{ 
-             width: '50vw', 
+             width: '55vw', 
              maxWidth: 'none',
              scrollbarWidth: 'thin',
              scrollbarColor: '#d1d5db #f3f4f6'
            }}
          >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 border-2 border-blue-200">
-                <AvatarImage src={selectedStaff?.avatar || undefined} alt={selectedStaff?.name} />
-                <AvatarFallback className="bg-blue-100 text-blue-700 text-lg font-bold">
-                  {selectedStaff?.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{selectedStaff?.name}</div>
-                <div className="text-sm text-gray-600 font-normal">{selectedStaff?.position} • {selectedStaff?.department}</div>
+          <DialogHeader className="border-b border-purple-200 pb-4">
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-14 w-14 border-2 border-purple-200">
+                  <AvatarImage src={selectedStaff?.avatar || undefined} alt={selectedStaff?.name} />
+                  <AvatarFallback className="bg-purple-100 text-purple-700 text-xl font-bold">
+                    {selectedStaff?.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="text-2xl font-bold text-gray-900">{selectedStaff?.name}</div>
+                  <div className="text-sm text-gray-600 font-normal">{selectedStaff?.position} • {selectedStaff?.department}</div>
+                </div>
               </div>
             </DialogTitle>
           </DialogHeader>
 
-          {selectedStaff?.metrics ? (
-            <div className="space-y-8 py-6">
-              {/* Performance Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-center">
+          {selectedStaff?.metrics && selectedStaff?.enhancedScore ? (
+            <div className="space-y-6 py-6">
+              {/* Enhanced Productivity Score - Detailed Breakdown */}
+              <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl p-6 text-white shadow-lg">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <div className="text-2xl font-bold text-blue-900">
-                      {viewMode === 'latest' && selectedStaff.metrics.latest
-                        ? selectedStaff.metrics.latest.mouseClicks + selectedStaff.metrics.latest.keystrokes
-                        : selectedStaff.metrics.totals.mouseClicks + selectedStaff.metrics.totals.keystrokes}
+                    <div className="text-sm font-medium text-purple-100 mb-1">Overall Productivity Score</div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-6xl font-bold">{selectedStaff.enhancedScore.overallScore}</div>
+                      <div className="text-2xl text-purple-100">/100</div>
                     </div>
-                    <div className="text-sm text-blue-700">Total Interactions</div>
+                    <Badge className="mt-2 bg-white text-purple-600 font-semibold">
+                      {getProductivityRating(selectedStaff.enhancedScore.overallScore).rating}
+                    </Badge>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-purple-900">
-                      {viewMode === 'latest' && selectedStaff.metrics.latest
-                        ? selectedStaff.metrics.latest.urlsVisited
-                        : selectedStaff.metrics.totals.urlsVisited}
+                  <div className="text-right">
+                    <div className="p-4 bg-white/20 backdrop-blur-sm rounded-xl border-2 border-white/30">
+                      <TrendingUp className="h-12 w-12" />
                     </div>
-                    <div className="text-sm text-purple-700">Web Pages Visited</div>
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-emerald-900">
-                      {formatTime(viewMode === 'latest' && selectedStaff.metrics.latest
-                        ? selectedStaff.metrics.latest.activeTime
-                        : selectedStaff.metrics.totals.activeTime)}
-                    </div>
-                    <div className="text-sm text-emerald-700">Active Time</div>
+                </div>
+              </div>
+              
+              {/* Score Breakdown Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Time Efficiency */}
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-5 border-2 border-emerald-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-5 w-5 text-emerald-600" />
+                    <div className="text-xs font-semibold text-emerald-700 uppercase">Time Efficiency</div>
+                  </div>
+                  <div className="text-4xl font-bold text-emerald-900 mb-1">
+                    {selectedStaff.enhancedScore.timeEfficiencyScore}
+                  </div>
+                  <div className="text-sm text-emerald-600 font-medium mb-2">out of 30 points</div>
+                  <div className="text-xs text-emerald-700 space-y-1">
+                    <div>Active: {selectedStaff.enhancedScore.timeEfficiency.activePercentage}%</div>
+                    <div>Rating: {selectedStaff.enhancedScore.timeEfficiency.rating.toUpperCase()}</div>
+                  </div>
+                </div>
+                
+                {/* Activity Level */}
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 border-2 border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="h-5 w-5 text-blue-600" />
+                    <div className="text-xs font-semibold text-blue-700 uppercase">Activity Level</div>
+                  </div>
+                  <div className="text-4xl font-bold text-blue-900 mb-1">
+                    {selectedStaff.enhancedScore.activityLevelScore}
+                  </div>
+                  <div className="text-sm text-blue-600 font-medium mb-2">out of 20 points</div>
+                  <div className="text-xs text-blue-700 space-y-1">
+                    <div>Interactions: {selectedStaff.enhancedScore.activityLevel.totalInteractions.toLocaleString()}</div>
+                    <div>Rating: {selectedStaff.enhancedScore.activityLevel.rating.toUpperCase()}</div>
+                  </div>
+                </div>
+                
+                {/* Work Focus */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-5 w-5 text-purple-600" />
+                    <div className="text-xs font-semibold text-purple-700 uppercase">Work Focus</div>
+                  </div>
+                  <div className="text-4xl font-bold text-purple-900 mb-1">
+                    {selectedStaff.enhancedScore.workFocusScore}
+                  </div>
+                  <div className="text-sm text-purple-600 font-medium mb-2">out of 25 points</div>
+                  <div className="text-xs text-purple-700 space-y-1">
+                    <div>Productive: {selectedStaff.enhancedScore.workFocus.productivePercentage}%</div>
+                    <div>Distractions: {selectedStaff.enhancedScore.workFocus.distractionPercentage}%</div>
+                  </div>
+                </div>
+                
+                {/* Task Completion */}
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 border-2 border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="h-5 w-5 text-amber-600" />
+                    <div className="text-xs font-semibold text-amber-700 uppercase">Task Completion</div>
+                  </div>
+                  <div className="text-4xl font-bold text-amber-900 mb-1">
+                    {selectedStaff.enhancedScore.taskCompletionScore}
+                  </div>
+                  <div className="text-sm text-amber-600 font-medium mb-2">out of 15 points</div>
+                  <div className="text-xs text-amber-700 space-y-1">
+                    <div>Files: {selectedStaff.enhancedScore.taskCompletion.fileActivity}</div>
+                    <div>Rating: {selectedStaff.enhancedScore.taskCompletion.rating.toUpperCase()}</div>
+                  </div>
+                </div>
+                
+                {/* Distractions */}
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-5 border-2 border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                    <div className="text-xs font-semibold text-red-700 uppercase">Distractions</div>
+                  </div>
+                  <div className="text-4xl font-bold text-red-900 mb-1">
+                    -{selectedStaff.enhancedScore.distractionPenalty}
+                  </div>
+                  <div className="text-sm text-red-600 font-medium mb-2">penalty points</div>
+                  <div className="text-xs text-red-700 space-y-1">
+                    <div>Count: {selectedStaff.enhancedScore.distractions.distractionCount}</div>
+                    <div>Tab switches: {selectedStaff.enhancedScore.distractions.excessiveTabSwitching ? 'High' : 'Normal'}</div>
+                  </div>
+                </div>
+                
+                {/* Final Score */}
+                <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl p-5 border-2 border-purple-300 shadow-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award className="h-5 w-5 text-white" />
+                    <div className="text-xs font-semibold text-white uppercase">Final Score</div>
+                  </div>
+                  <div className="text-4xl font-bold text-white mb-1">
+                    {selectedStaff.enhancedScore.overallScore}
+                  </div>
+                  <div className="text-sm text-purple-100 font-medium mb-2">out of 100 points</div>
+                  <div className="text-xs text-white space-y-1">
+                    <div>Performance: {getProductivityRating(selectedStaff.enhancedScore.overallScore).rating}</div>
                   </div>
                 </div>
               </div>
