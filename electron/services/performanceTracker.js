@@ -503,6 +503,10 @@ class PerformanceTracker {
   getMetricsForAPI() {
     const metrics = this.metrics
     
+    // Get network metrics from network tracker
+    const networkTracker = require('./networkTracker')
+    const networkMetrics = networkTracker.getMetrics()
+    
     const apiMetrics = {
       mouseMovements: metrics.mouseMovements,
       mouseClicks: metrics.mouseClicks,
@@ -512,11 +516,11 @@ class PerformanceTracker {
       activeTime: Math.round(metrics.activeTime),
       idleTime: Math.round(metrics.idleTime),
       screenTime: Math.round(metrics.screenTime),
-      downloads: metrics.downloads,
-      uploads: metrics.uploads,
-      bandwidth: metrics.bandwidth,
+      downloads: networkMetrics.downloads, // From network tracker
+      uploads: networkMetrics.uploads, // From network tracker
+      bandwidth: networkMetrics.bandwidth, // From network tracker
       clipboardActions: metrics.clipboardActions,
-      filesAccessed: metrics.filesAccessed,
+      filesAccessed: 0, // Not implemented (privacy concerns)
       urlsVisited: metrics.urlsVisited,
       tabsSwitched: metrics.tabsSwitched,
       productivityScore: metrics.productivityScore,
@@ -549,6 +553,9 @@ class PerformanceTracker {
     console.log(`🔄 Tab Switches: ${apiMetrics.tabsSwitched} ${apiMetrics.tabsSwitched > 0 ? '✅' : '⚠️ ZERO'}`)
     console.log(`📊 Productivity Score: ${apiMetrics.productivityScore}`)
     console.log(`📋 Clipboard Actions: ${apiMetrics.clipboardActions}`)
+    console.log(`📥 Downloads: ${apiMetrics.downloads} ${apiMetrics.downloads > 0 ? '✅' : '⚠️ ZERO'}`)
+    console.log(`📤 Uploads: ${apiMetrics.uploads} ${apiMetrics.uploads > 0 ? '✅' : '⚠️ ZERO'}`)
+    console.log(`📊 Bandwidth: ${this.formatBytes(apiMetrics.bandwidth)} ${apiMetrics.bandwidth > 0 ? '✅' : '⚠️ ZERO'}`)
     console.log(`═══════════════════════════════════════════════════════\n`)
     
     return apiMetrics
@@ -633,6 +640,10 @@ class PerformanceTracker {
     console.log('📥 [PerformanceTracker] Local metrics now initialized with database baseline')
     console.log('📥 [PerformanceTracker] New activity will be added on top of these values')
     console.log('📥 [PerformanceTracker] ========================================')
+    
+    // Load network metrics into network tracker
+    const networkTracker = require('./networkTracker')
+    networkTracker.loadFromDatabase(databaseMetrics)
     
     // 🔧 CRITICAL: Set sync service baseline to prevent duplicates!
     // When we load database values, tell sync service "these are already in DB"
@@ -723,6 +734,17 @@ class PerformanceTracker {
       console.error('[PerformanceTracker] Error checking URL:', error)
       return false // Default to allowing tracking if we can't determine
     }
+  }
+
+  /**
+   * Format bytes to human-readable string
+   */
+  formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
   }
 
   log(message) {
