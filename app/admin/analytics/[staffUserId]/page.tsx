@@ -476,7 +476,10 @@ export default function StaffAnalyticsDetailPage() {
               {screenshots.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {screenshots.map((screenshot: any, index: number) => (
-                    <div key={index} className="border rounded-lg p-2">
+                    <div 
+                      key={index} 
+                      className="border rounded-lg p-2"
+                    >
                       <img src={screenshot.url} alt={`Screenshot ${index + 1}`} className="w-full h-auto rounded" />
                       <p className="text-xs text-muted-foreground mt-1">{formatAdminDateTime(screenshot.date)}</p>
                     </div>

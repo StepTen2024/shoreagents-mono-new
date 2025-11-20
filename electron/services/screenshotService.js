@@ -1,7 +1,7 @@
 /**
  * Screenshot Service
  * Automatically captures screenshots:
- * - Every 1 minute (scheduled)
+ * - Every 2 minutes (scheduled)
  * - When user is inactive for 30+ seconds
  */
 
@@ -17,7 +17,7 @@ class ScreenshotService {
     this.screenshotCount = 0
     this.captureInterval = null
     this.isProcessing = false
-    this.captureIntervalMs = 60000 // 1 minute
+    this.captureIntervalMs = 120000 // 2 minutes
   }
 
   /**
@@ -156,17 +156,17 @@ class ScreenshotService {
     console.log('[ScreenshotService] 📸 Capturing initial screenshot...')
     await this.captureAllScreens('initial')
 
-    // Set up scheduled capture every 1 minute
+    // Set up scheduled capture every 2 minutes
     this.captureInterval = setInterval(async () => {
       if (this.isEnabled) {
-        console.log('[ScreenshotService] ⏰ Scheduled capture triggered (1 minute interval)')
+        console.log('[ScreenshotService] ⏰ Scheduled capture triggered (2 minute interval)')
         await this.captureAllScreens('scheduled')
       }
     }, this.captureIntervalMs)
 
     console.log('[ScreenshotService] ============================================')
     console.log('[ScreenshotService] ✅ Screenshot capture enabled:')
-    console.log('   📅 Scheduled: Every 1 minute')
+    console.log('   📅 Scheduled: Every 2 minutes')
     console.log('   ⚠️  Inactivity: When idle for 30+ seconds')
     console.log(`   🔑 Staff User ID: ${this.staffUserId || 'Not set (will rely on session cookie)'}`)
     console.log(`   🌐 Upload URL: ${this.apiUrl}/api/screenshots`)
@@ -464,7 +464,7 @@ class ScreenshotService {
   getStatus() {
     return {
       isEnabled: this.isEnabled,
-      mode: 'hybrid', // Scheduled (1 min) + Inactivity (30+ sec)
+      mode: 'hybrid', // Scheduled (2 min) + Inactivity (30+ sec)
       scheduledInterval: `${this.captureIntervalMs / 1000} seconds`,
       inactivityTrigger: '30+ seconds',
       screenshotCount: this.screenshotCount,
