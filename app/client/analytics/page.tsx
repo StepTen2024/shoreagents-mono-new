@@ -160,6 +160,70 @@ export default function ClientMonitoringPage() {
     })
   }
   
+  // Format AI Report into sections
+  const formatAIReport = (report: string) => {
+    const sections = report.split(/##\s+\d+\.\s+/).filter(Boolean)
+    const formattedSections = []
+    
+    // First section is the header/overview
+    if (sections.length > 0) {
+      const overview = sections[0].replace(/#+\s+PRODUCTIVITY ANALYSIS REPORT/i, '').trim()
+      if (overview) {
+        formattedSections.push({
+          title: 'Performance Overview',
+          icon: TrendingUp,
+          color: 'from-blue-500 to-cyan-500',
+          bgColor: 'from-blue-50 to-cyan-50',
+          content: overview
+        })
+      }
+    }
+    
+    // Parse remaining sections
+    for (let i = 1; i < sections.length; i++) {
+      const section = sections[i]
+      const lines = section.split('\n')
+      const title = lines[0].replace(/[*#]/g, '').trim()
+      const content = lines.slice(1).join('\n').trim()
+      
+      let icon = FileText
+      let color = 'from-gray-500 to-gray-600'
+      let bgColor = 'from-gray-50 to-gray-100'
+      
+      if (title.toLowerCase().includes('strength')) {
+        icon = CheckCircle
+        color = 'from-emerald-500 to-green-500'
+        bgColor = 'from-emerald-50 to-green-50'
+      } else if (title.toLowerCase().includes('improvement') || title.toLowerCase().includes('areas for')) {
+        icon = AlertTriangle
+        color = 'from-amber-500 to-orange-500'
+        bgColor = 'from-amber-50 to-orange-50'
+      } else if (title.toLowerCase().includes('pattern') || title.toLowerCase().includes('trend')) {
+        icon = BarChart3
+        color = 'from-purple-500 to-pink-500'
+        bgColor = 'from-purple-50 to-pink-50'
+      } else if (title.toLowerCase().includes('recommendation')) {
+        icon = Target
+        color = 'from-blue-500 to-indigo-500'
+        bgColor = 'from-blue-50 to-indigo-50'
+      } else if (title.toLowerCase().includes('outlook')) {
+        icon = Zap
+        color = 'from-cyan-500 to-teal-500'
+        bgColor = 'from-cyan-50 to-teal-50'
+      }
+      
+      formattedSections.push({
+        title,
+        icon,
+        color,
+        bgColor,
+        content
+      })
+    }
+    
+    return formattedSections
+  }
+  
   // Generate AI Report
   const generateAIReport = async (staff: StaffMember) => {
     setShowAIReport(true)
@@ -1219,10 +1283,12 @@ export default function ClientMonitoringPage() {
       
       {/* AI Report Modal */}
       <Dialog open={showAIReport} onOpenChange={setShowAIReport}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-2xl">
-              <Brain className="h-6 w-6 text-purple-600" />
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-purple-50">
+          <DialogHeader className="border-b border-purple-200 pb-4">
+            <DialogTitle className="flex items-center gap-3 text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <div className="p-3 bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl">
+                <Sparkles className="h-7 w-7 text-purple-600" />
+              </div>
               AI Productivity Analysis
             </DialogTitle>
           </DialogHeader>
@@ -1277,100 +1343,154 @@ export default function ClientMonitoringPage() {
             ) : aiReportData ? (
               <div className="space-y-6">
                 {/* Report Header */}
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border border-purple-200">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl p-6 text-white shadow-lg">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">{aiReportData.data.staffName}</h3>
-                      <p className="text-sm text-gray-600">
-                        Analysis Period: {aiReportData.data.period} • {aiReportData.data.recordCount} shift records
+                      <h3 className="text-2xl font-bold mb-1">{aiReportData.data.staffName}</h3>
+                      <p className="text-purple-100 text-sm">
+                        {aiReportData.data.period} analysis • {aiReportData.data.recordCount} shifts recorded
                       </p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-bold text-purple-600">
+                    <div className="text-center bg-white/20 backdrop-blur-sm rounded-xl p-4 border-2 border-white/30">
+                      <div className="text-5xl font-bold">
                         {aiReportData.data.productivityScore}
                       </div>
-                      <div className="text-sm text-gray-600">Productivity Score</div>
+                      <div className="text-sm font-medium mt-1 text-purple-100">Overall Score</div>
+                      <Badge className="mt-2 bg-white text-purple-600 font-semibold">
+                        {aiReportData.data.rating}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-purple-600 text-white">
-                      {aiReportData.data.rating}
-                    </Badge>
-                    <span className="text-sm text-gray-600">•</span>
-                    <span className="text-sm text-gray-600">
-                      Generated {new Date().toLocaleString()}
-                    </span>
+                  <div className="mt-4 flex items-center gap-2 text-purple-100 text-xs">
+                    <Sparkles className="h-3 w-3" />
+                    <span>AI-Powered Analysis Generated {new Date().toLocaleString()}</span>
                   </div>
                 </div>
                 
-                {/* AI Report Content */}
-                <div className="prose max-w-none">
-                  <div className="bg-white rounded-lg p-6 border border-gray-200">
-                    <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                      {aiReportData.report}
-                    </div>
-                  </div>
+                {/* AI Report Content - Formatted Sections */}
+                <div className="space-y-4">
+                  {formatAIReport(aiReportData.report).map((section, index) => {
+                    const IconComponent = section.icon
+                    return (
+                      <div key={index} className={`bg-gradient-to-r ${section.bgColor} rounded-xl p-6 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow`}>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className={`p-3 bg-gradient-to-br ${section.color} rounded-lg`}>
+                            <IconComponent className="h-6 w-6 text-white" />
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-900">{section.title}</h3>
+                        </div>
+                        <div className="text-gray-700 leading-relaxed space-y-2">
+                          {section.content.split('\n').map((line, i) => {
+                            if (!line.trim()) return null
+                            const cleanLine = line.replace(/^\*+\s*/, '').replace(/\*\*/g, '')
+                            if (line.trim().startsWith('*') || line.trim().startsWith('-')) {
+                              return (
+                                <div key={i} className="flex items-start gap-2 ml-4">
+                                  <div className={`mt-2 h-1.5 w-1.5 rounded-full bg-gradient-to-r ${section.color} flex-shrink-0`} />
+                                  <p className="flex-1">{cleanLine}</p>
+                                </div>
+                              )
+                            }
+                            return <p key={i} className="font-medium">{cleanLine}</p>
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
                 
                 {/* Score Breakdown */}
-                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-purple-600" />
-                    Score Breakdown
+                <div className="bg-white rounded-xl p-6 border-2 border-purple-200 shadow-sm">
+                  <h4 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg">
+                      <BarChart3 className="h-5 w-5 text-purple-600" />
+                    </div>
+                    Detailed Score Breakdown
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <div className="text-2xl font-bold text-gray-900">
-                        {aiReportData.data.breakdown.timeEfficiencyScore}/30
+                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-5 border-2 border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4 text-emerald-600" />
+                        <div className="text-xs font-semibold text-emerald-700 uppercase">Time Efficiency</div>
                       </div>
-                      <div className="text-sm text-gray-600">Time Efficiency</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <div className="text-2xl font-bold text-gray-900">
-                        {aiReportData.data.breakdown.activityLevelScore}/20
+                      <div className="text-3xl font-bold text-emerald-900">
+                        {aiReportData.data.breakdown.timeEfficiencyScore}
                       </div>
-                      <div className="text-sm text-gray-600">Activity Level</div>
+                      <div className="text-sm text-emerald-600 font-medium">out of 30 points</div>
                     </div>
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <div className="text-2xl font-bold text-gray-900">
-                        {aiReportData.data.breakdown.workFocusScore}/25
+                    
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 border-2 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Activity className="h-4 w-4 text-blue-600" />
+                        <div className="text-xs font-semibold text-blue-700 uppercase">Activity Level</div>
                       </div>
-                      <div className="text-sm text-gray-600">Work Focus</div>
-                    </div>
-                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                      <div className="text-2xl font-bold text-gray-900">
-                        {aiReportData.data.breakdown.taskCompletionScore}/15
+                      <div className="text-3xl font-bold text-blue-900">
+                        {aiReportData.data.breakdown.activityLevelScore}
                       </div>
-                      <div className="text-sm text-gray-600">Task Completion</div>
+                      <div className="text-sm text-blue-600 font-medium">out of 20 points</div>
                     </div>
-                    <div className="bg-white rounded-lg p-4 border border-red-200">
-                      <div className="text-2xl font-bold text-red-600">
+                    
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="h-4 w-4 text-purple-600" />
+                        <div className="text-xs font-semibold text-purple-700 uppercase">Work Focus</div>
+                      </div>
+                      <div className="text-3xl font-bold text-purple-900">
+                        {aiReportData.data.breakdown.workFocusScore}
+                      </div>
+                      <div className="text-sm text-purple-600 font-medium">out of 25 points</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 border-2 border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="h-4 w-4 text-amber-600" />
+                        <div className="text-xs font-semibold text-amber-700 uppercase">Task Completion</div>
+                      </div>
+                      <div className="text-3xl font-bold text-amber-900">
+                        {aiReportData.data.breakdown.taskCompletionScore}
+                      </div>
+                      <div className="text-sm text-amber-600 font-medium">out of 15 points</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-5 border-2 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <div className="text-xs font-semibold text-red-700 uppercase">Distractions</div>
+                      </div>
+                      <div className="text-3xl font-bold text-red-900">
                         -{aiReportData.data.breakdown.distractionPenalty}
                       </div>
-                      <div className="text-sm text-gray-600">Distraction Penalty</div>
+                      <div className="text-sm text-red-600 font-medium">penalty points</div>
                     </div>
-                    <div className="bg-purple-100 rounded-lg p-4 border border-purple-200">
-                      <div className="text-2xl font-bold text-purple-900">
-                        {aiReportData.data.productivityScore}/100
+                    
+                    <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl p-5 border-2 border-purple-300 shadow-lg hover:shadow-xl transition-shadow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Award className="h-4 w-4 text-white" />
+                        <div className="text-xs font-semibold text-white uppercase">Final Score</div>
                       </div>
-                      <div className="text-sm text-purple-700 font-medium">Overall Score</div>
+                      <div className="text-3xl font-bold text-white">
+                        {aiReportData.data.productivityScore}
+                      </div>
+                      <div className="text-sm text-purple-100 font-medium">out of 100 points</div>
                     </div>
                   </div>
                 </div>
                 
                 {/* Actions */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 pt-4 border-t border-purple-200">
                   <Button
                     onClick={() => window.print()}
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 border-2 border-purple-300 hover:bg-purple-50 hover:border-purple-400 font-semibold"
+                    size="lg"
                   >
-                    <Report className="h-4 w-4 mr-2" />
+                    <Report className="h-5 w-5 mr-2" />
                     Print Report
                   </Button>
                   <Button
                     onClick={() => setShowAIReport(false)}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg"
+                    size="lg"
                   >
                     Close
                   </Button>
