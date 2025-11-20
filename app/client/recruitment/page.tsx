@@ -1149,10 +1149,10 @@ function JobRequestsTab({
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 text-gray-900">
         <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Create Job Request</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Create Job Request</h2>
             <p className="mt-1 text-sm text-gray-600">
               Fill out the details below to post your job request to the BPOC talent pool
-            </p>
+              </p>
           </div>
           <button
             onClick={() => setShowForm(false)}
@@ -1160,7 +1160,7 @@ function JobRequestsTab({
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>
-        </div>
+            </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-8">
               {/* Basic Information */}
@@ -1714,7 +1714,7 @@ function JobRequestsTab({
 
   // Loading State
   if (loading) {
-    return (
+  return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
@@ -1769,60 +1769,60 @@ function JobRequestsTab({
       </div>
 
       {/* Job Cards */}
-      <div className="space-y-4">
-        {jobRequests.map((job: JobRequest) => (
+          <div className="space-y-4">
+      {jobRequests.map((job: JobRequest) => (
           <Card key={job.id} className="p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.job_title}</h3>
-                <div className="flex items-center gap-3 mb-4 flex-wrap">
-                  <Badge className={
+                    <div className="flex items-center gap-3 mb-4 flex-wrap">
+                      <Badge className={
                     job.status === 'active' ? 'bg-green-100 text-green-800 border border-green-200' :
                     job.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
                     'bg-gray-100 text-gray-800 border border-gray-200'
-                  }>
-                    {job.status.toUpperCase()}
-                  </Badge>
+                      }>
+                        {job.status.toUpperCase()}
+                      </Badge>
                   <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                    <Briefcase className="h-4 w-4" />
-                    {job.work_type}
-                  </span>
+                        <Briefcase className="h-4 w-4" />
+                        {job.work_type}
+                      </span>
                   <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    {job.work_arrangement}
-                  </span>
+                        <MapPin className="h-4 w-4" />
+                        {job.work_arrangement}
+                      </span>
                   <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                    <Target className="h-4 w-4" />
-                    {job.experience_level}
-                  </span>
-                </div>
-                <div className="flex items-center gap-6 text-sm text-gray-500">
+                        <Target className="h-4 w-4" />
+                        {job.experience_level}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm text-gray-500">
                   <span className="flex items-center gap-1.5">
-                    <Users className="h-4 w-4" />
+                        <Users className="h-4 w-4" />
                     <span className="font-medium">{job.applicants}</span> applicants
-                  </span>
+                      </span>
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-4 w-4" />
                     Posted {new Date(job.created_at).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
-                      timeZone: clientTimezone
-                    })}
-                  </span>
-                </div>
-              </div>
+                          timeZone: clientTimezone
+                        })}
+                      </span>
+                    </div>
+                  </div>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => viewJobDetails(job)}
                 className="border-gray-300 hover:bg-gray-50"
               >
-                View Details
-              </Button>
-            </div>
-          </Card>
-        ))}
+                    View Details
+                  </Button>
+                </div>
+              </Card>
+            ))}
       </div>
 
       {/* Job Details Modal */}

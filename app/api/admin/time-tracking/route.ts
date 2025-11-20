@@ -68,8 +68,8 @@ export async function GET(req: NextRequest) {
             avatar: true,
             role: true,
             company: true,
-          },
-        },
+              },
+            },
         work_schedules: true,
         breaks: {
           orderBy: {
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
       },
       take: 100,
     })
-    
+
     console.log(`✅ [ADMIN] Found ${entries.length} time entries`)
 
     // ✨ NEW: Add real-time calculations for active entries

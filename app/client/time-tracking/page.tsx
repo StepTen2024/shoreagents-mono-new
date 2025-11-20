@@ -675,13 +675,13 @@ export default function ClientTimeTrackingPage() {
                           </div>
                         )}
                         
-                        <div className="grid grid-cols-3 gap-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
-                          <div>
-                            <p className="text-xs text-gray-600 mb-1">Clock In</p>
-                            <div className="flex items-center gap-2">
-                              <Play className="h-4 w-4 text-green-600" />
-                              <p className="font-semibold text-green-600">{formatTime(staffEntry.currentEntry.clockIn)}</p>
-                            </div>
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Clock In</p>
+                        <div className="flex items-center gap-2">
+                          <Play className="h-4 w-4 text-green-600" />
+                          <p className="font-semibold text-green-600">{formatTime(staffEntry.currentEntry.clockIn)}</p>
+                        </div>
                             {/* Late/Early Badges */}
                             {staffEntry.currentEntry.wasLate && staffEntry.currentEntry.lateBy && (
                               <Badge className="bg-red-100 text-red-700 border-red-200 text-xs mt-1">
@@ -693,25 +693,25 @@ export default function ClientTimeTrackingPage() {
                                 ✨ {staffEntry.currentEntry.earlyBy}m early
                               </Badge>
                             )}
-                          </div>
+                      </div>
 
-                          <div>
-                            <p className="text-xs text-gray-600 mb-1">Breaks</p>
-                            <div className="flex items-center gap-2">
-                              <Coffee className="h-4 w-4 text-orange-600" />
-                              <p className="font-semibold text-gray-900">
-                                {staffEntry.currentEntry.breaks.length} breaks
-                              </p>
-                            </div>
-                          </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Breaks</p>
+                        <div className="flex items-center gap-2">
+                          <Coffee className="h-4 w-4 text-orange-600" />
+                          <p className="font-semibold text-gray-900">
+                            {staffEntry.currentEntry.breaks.length} breaks
+                          </p>
+                        </div>
+                      </div>
 
-                          <div>
-                            <p className="text-xs text-gray-600 mb-1">Status</p>
-                            {staffEntry.isOnBreak ? (
-                              <p className="font-semibold text-yellow-600">On Break</p>
-                            ) : (
-                              <p className="font-semibold text-green-600">Working</p>
-                            )}
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">Status</p>
+                        {staffEntry.isOnBreak ? (
+                          <p className="font-semibold text-yellow-600">On Break</p>
+                        ) : (
+                          <p className="font-semibold text-green-600">Working</p>
+                        )}
                           </div>
                         </div>
                       </div>
@@ -820,7 +820,7 @@ export default function ClientTimeTrackingPage() {
                         {/* Accountability Badges */}
                         {selectedStaff.currentEntry.wasLate && selectedStaff.currentEntry.lateBy && (
                           <Badge className="bg-red-100 text-red-700 border-red-200 text-xs mt-2">
-                            <AlertCircle className="h-3 w-3 mr-1" />
+                                  <AlertCircle className="h-3 w-3 mr-1" />
                             ⚠️ {selectedStaff.currentEntry.lateBy}m late
                             {selectedStaff.currentEntry.lateReason && ` (${selectedStaff.currentEntry.lateReason})`}
                           </Badge>
@@ -828,9 +828,9 @@ export default function ClientTimeTrackingPage() {
                         {selectedStaff.currentEntry.wasEarly && selectedStaff.currentEntry.earlyBy && (
                           <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs mt-2">
                             ✨ {selectedStaff.currentEntry.earlyBy}m early
-                          </Badge>
-                        )}
-                      </div>
+                                </Badge>
+                              )}
+                            </div>
                       <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
                         <p className="text-sm text-gray-600 mb-1">Hours Worked</p>
                         <p className="text-2xl font-bold text-green-900">{selectedStaff.currentEntry.currentHours.toFixed(2)}h</p>

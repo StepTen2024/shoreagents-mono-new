@@ -107,6 +107,11 @@ export async function GET(
     const totalIdleTime = metrics.reduce((sum, m) => sum + m.idleTime, 0)
     const totalScreenTime = metrics.reduce((sum, m) => sum + m.screenTime, 0)
     const totalUrlsVisited = metrics.reduce((sum, m) => sum + m.urlsVisited, 0)
+    const totalTabsSwitched = metrics.reduce((sum, m) => sum + m.tabsSwitched, 0)
+    const totalClipboardActions = metrics.reduce((sum, m) => sum + m.clipboardActions, 0)
+    const totalDownloads = metrics.reduce((sum, m) => sum + m.downloads, 0)
+    const totalUploads = metrics.reduce((sum, m) => sum + m.uploads, 0)
+    const totalBandwidth = metrics.reduce((sum, m) => sum + m.bandwidth, 0)
 
     // Calculate productivity
     const totalTime = totalActiveTime + totalIdleTime
@@ -257,7 +262,13 @@ export async function GET(
         totalIdleTime,
         totalScreenTime,
         totalUrlsVisited,
+        totalTabsSwitched,
+        totalClipboardActions,
+        totalDownloads,
+        totalUploads,
+        totalBandwidth,
         productivityPercentage,
+        productivityScore: metrics[0]?.productivityScore || 0,
         totalBreakTime,
         lateBreakCount: lateBreaks.length,
         dateRange: {

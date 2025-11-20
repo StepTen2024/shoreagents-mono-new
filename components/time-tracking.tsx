@@ -423,21 +423,21 @@ export default function TimeTracking() {
     
     // Show the shift end reminder modal
     setShowShiftEndModal(true)
-    setShowShiftEndWarning(false)
-    setShowFinalWarning(false)
+        setShowShiftEndWarning(false)
+        setShowFinalWarning(false)
   }
-  
+        
   // Handle clock out from shift end modal
   const handleClockOutFromModal = async () => {
     setShowShiftEndModal(false)
-    
+        
     if (activeBreak) {
-      toast({
+        toast({
         title: "End Your Break First",
         description: "Please end your active break before clocking out.",
         variant: "destructive",
-        duration: 5000
-      })
+          duration: 5000
+        })
       return
     }
     
@@ -454,18 +454,18 @@ export default function TimeTracking() {
   // Submit continue working reason
   const handleSubmitContinueReason = () => {
     if (!continueWorkingReason) {
-      toast({
+        toast({
         title: "Reason Required",
         description: "Please select why you're continuing to work.",
-        variant: "destructive",
+          variant: "destructive",
         duration: 3000
-      })
+        })
       return
-    }
+      }
     
     console.log("✅ Staff continuing work:", continueWorkingReason)
     
-    toast({
+      toast({
       title: "Shift Extended",
       description: `You're now working overtime. Don't forget to clock out when done!`,
       duration: 6000
@@ -480,9 +480,9 @@ export default function TimeTracking() {
         toast({
           title: "⏰ Reminder",
           description: "Don't forget to clock out when you're finished!",
-          duration: 5000
-        })
-      }
+        duration: 5000
+      })
+    }
     }, 30 * 60 * 1000) // 30 minutes
   }
   

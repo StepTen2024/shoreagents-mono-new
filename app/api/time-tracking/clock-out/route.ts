@@ -98,25 +98,25 @@ export async function POST(request: NextRequest) {
     
     // Now calculate early/overtime based on expected clock-out
     if (expectedClockOutCalculated) {
-      console.log(`⏰ Clock-out check:`, {
+        console.log(`⏰ Clock-out check:`, {
         expectedClockOut: expectedClockOutCalculated.toISOString(),
-        actualClockOut: clockOut.toISOString()
-      })
-      
+          actualClockOut: clockOut.toISOString()
+        })
+        
       // Calculate time difference
       const diffMs = clockOut.getTime() - expectedClockOutCalculated.getTime()
-      const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
-      
+        const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
+        
       if (diffMs < 0) {
-        // Clocking out BEFORE shift end = EARLY
-        wasEarlyClockOut = true
-        earlyClockOutBy = diffMinutes
-        console.log(`⏰ EARLY CLOCK-OUT by ${diffMinutes} minutes`)
+          // Clocking out BEFORE shift end = EARLY
+          wasEarlyClockOut = true
+          earlyClockOutBy = diffMinutes
+          console.log(`⏰ EARLY CLOCK-OUT by ${diffMinutes} minutes`)
       } else if (diffMs > 0) {
         // Clocking out AFTER shift end = OVERTIME
         overtimeMinutes = diffMinutes
         console.log(`🌟 OVERTIME: ${diffMinutes} minutes (${(diffMinutes / 60).toFixed(2)} hours)`)
-      } else {
+        } else {
         console.log(`⏰ ON TIME (perfect clock-out)`)
       }
     }

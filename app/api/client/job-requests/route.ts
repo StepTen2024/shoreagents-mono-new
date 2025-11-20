@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
        ORDER BY created_at DESC`,
       [bpocCompanyId]
     )
-    
+
     console.log(`📊 Found ${result.rows.length} job requests for ${clientUser.company.companyName}`)
 
     // Fetch application counts for these job requests

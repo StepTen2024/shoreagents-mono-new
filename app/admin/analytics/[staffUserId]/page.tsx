@@ -62,6 +62,14 @@ export default function StaffAnalyticsDetailPage() {
     return `${hours}h ${mins}m ${secs}s`
   }
 
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+  }
+
   function getProductivityColor(percentage: number): string {
     if (percentage >= 80) return "text-green-600"
     if (percentage >= 60) return "text-blue-600"
@@ -218,7 +226,7 @@ export default function StaffAnalyticsDetailPage() {
               <CardDescription>Key metrics for the selected period</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Mouse Clicks</p>
                   <p className="text-2xl font-bold">{summary.totalMouseClicks.toLocaleString()}</p>
@@ -230,6 +238,68 @@ export default function StaffAnalyticsDetailPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">URLs Visited</p>
                   <p className="text-2xl font-bold">{summary.totalUrlsVisited}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tab Switches</p>
+                  <p className="text-2xl font-bold">{summary.totalTabsSwitched || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Network & File Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Network & File Activity</CardTitle>
+              <CardDescription>Downloads, uploads, and data transfer</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">📥 Downloads</p>
+                  <p className="text-2xl font-bold text-blue-600">{summary.totalDownloads || 0}</p>
+                  <p className="text-xs text-muted-foreground">Files downloaded</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">📤 Uploads</p>
+                  <p className="text-2xl font-bold text-green-600">{summary.totalUploads || 0}</p>
+                  <p className="text-xs text-muted-foreground">Files uploaded</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">📊 Bandwidth</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatBytes(summary.totalBandwidth || 0)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Data transferred</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>System Activity</CardTitle>
+              <CardDescription>Clipboard and other system interactions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">📋 Clipboard Actions</p>
+                  <p className="text-2xl font-bold">{summary.totalClipboardActions || 0}</p>
+                  <p className="text-xs text-muted-foreground">Copy/paste operations</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">🖥️ Screen Time</p>
+                  <p className="text-2xl font-bold">{formatTime(summary.totalScreenTime || 0)}</p>
+                  <p className="text-xs text-muted-foreground">Total app open time</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">🎯 Productivity Score</p>
+                  <p className={`text-2xl font-bold ${getProductivityColor(summary.productivityScore || 0)}`}>
+                    {summary.productivityScore || 0}/100
+                  </p>
+                  <p className="text-xs text-muted-foreground">Weighted score</p>
                 </div>
               </div>
             </CardContent>
