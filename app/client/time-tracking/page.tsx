@@ -26,7 +26,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  Activity
+  Activity,
+  Globe
 } from "lucide-react"
 import { useWebSocket } from "@/lib/websocket-provider"
 
@@ -292,6 +293,10 @@ export default function ClientTimeTrackingPage() {
               <p className="text-gray-600 text-lg">
                 Monitor your team's attendance and work hours
               </p>
+              <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                <Globe className="h-3 w-3" />
+                <span>Times shown in your profile timezone</span>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {/* Date Selector */}

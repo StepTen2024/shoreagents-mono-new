@@ -392,6 +392,10 @@ export default function ClientMonitoringPage() {
                     <span>{lastUpdate.toLocaleString()}</span>
                   </div>
                 )}
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Globe className="h-3 w-3" />
+                  <span>Times shown in your profile timezone</span>
+                </div>
               </div>
             </div>
 

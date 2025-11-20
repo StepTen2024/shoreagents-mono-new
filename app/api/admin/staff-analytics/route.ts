@@ -38,12 +38,19 @@ export async function GET(request: NextRequest) {
     
     const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Current time + 1hr buffer
     
-    console.log(`[Staff Analytics] Date range for ${days} days:`, {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      startDatePH: new Date(startDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
-      endDatePH: new Date(endDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
-    })
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📊 [Staff Analytics] DATE RANGE CALCULATION')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`🔍 Filtering for: ${days} day(s)`)
+    console.log(`⏰ Current UTC Time: ${nowUTC.toISOString()}`)
+    console.log(`🇵🇭 Current PH Time: ${nowInPH.toISOString()}`)
+    console.log(`📅 Query Date Range (UTC):`)
+    console.log(`   Start: ${startDate.toISOString()}`)
+    console.log(`   End:   ${endDate.toISOString()}`)
+    console.log(`📅 Query Date Range (PH Time):`)
+    console.log(`   Start: ${new Date(startDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+    console.log(`   End:   ${new Date(endDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     const where: any = {}
 
@@ -105,6 +112,26 @@ export async function GET(request: NextRequest) {
         name: "asc",
       },
     })
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📈 [Staff Analytics] DATABASE QUERY RESULTS')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`👥 Total Staff Found: ${staff.length}`)
+    
+    staff.forEach((s, index) => {
+      console.log(`\n${index + 1}. ${s.name}:`)
+      console.log(`   📊 Performance Metrics: ${s.performance_metrics.length} records`)
+      if (s.performance_metrics.length > 0) {
+        s.performance_metrics.forEach((m, i) => {
+          console.log(`      ${i + 1}. Date (UTC): ${m.date.toISOString()}`)
+          console.log(`         Date (PH):  ${new Date(m.date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+          console.log(`         Clicks: ${m.mouseClicks}, Keys: ${m.keystrokes}, Active: ${m.activeTime}s`)
+        })
+      } else {
+        console.log(`      ❌ No metrics found in date range`)
+      }
+    })
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     // Calculate stats for each staff member
     const staffWithStats = staff.map((staffMember) => {
@@ -175,6 +202,19 @@ export async function GET(request: NextRequest) {
         lastActivity: metrics[0]?.date || timeEntries[0]?.clockIn || null,
       }
     })
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📤 [Staff Analytics] RESPONSE SUMMARY')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`✅ Returning ${staffWithStats.length} staff members to frontend`)
+    staffWithStats.forEach((s, i) => {
+      console.log(`${i + 1}. ${s.name}:`)
+      console.log(`   Productivity: ${s.stats.productivityPercentage}%`)
+      console.log(`   Active Time: ${s.stats.totalActiveTime}s`)
+      console.log(`   Mouse Clicks: ${s.stats.totalMouseClicks}`)
+      console.log(`   Last Activity: ${s.lastActivity ? new Date(s.lastActivity).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : 'None'}`)
+    })
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     return NextResponse.json({ success: true, staff: staffWithStats })
   } catch (error) {

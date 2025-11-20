@@ -11,15 +11,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get client user and their organization
+    // Get client user and their organization with profile (for timezone)
     const clientUser = await prisma.client_users.findUnique({
       where: { email: session.user.email },
-      include: { company: true }
+      include: { 
+        company: true,
+        client_profiles: {
+          select: {
+            timezone: true
+          }
+        }
+      }
     })
 
     if (!clientUser) {
       return NextResponse.json({ error: "Unauthorized - Not a client user" }, { status: 401 })
     }
+    
+    // Get client's timezone from profile (default to browser timezone behavior if not set)
+    const clientTimezone = clientUser.client_profiles?.timezone || 'America/New_York'
 
     // Get all staff assigned to this company
     const staffUsers = await prisma.staff_users.findMany({
@@ -40,16 +50,41 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Get date range (default to Today)
+    // Get date range (default to Today) using CLIENT'S timezone
     const url = new URL(req.url)
     const days = parseInt(url.searchParams.get('days') || '1')
-    const endDate = new Date()
-    endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    // For "Today" (days=1), we want today's data, not yesterday's
-    // So subtract (days - 1) instead of days
+    
+    // ✅ Calculate date range based on CLIENT'S timezone from their profile
+    const nowUTC = new Date()
+    const nowInClientTZ = new Date(nowUTC.toLocaleString('en-US', { timeZone: clientTimezone }))
+    
+    // Get midnight today in client's timezone, then convert to UTC
+    const startOfTodayClient = new Date(nowInClientTZ)
+    startOfTodayClient.setHours(0, 0, 0, 0)
+    
+    // Calculate timezone offset in milliseconds
+    const tzOffset = nowInClientTZ.getTime() - nowUTC.getTime()
+    
+    const startDate = new Date(startOfTodayClient.getTime() - tzOffset)
     startDate.setDate(startDate.getDate() - (days - 1))
-    startDate.setHours(0, 0, 0, 0)
+    
+    const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Current time + 1hr buffer
+    
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📊 [Client Analytics] DATE RANGE CALCULATION')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`👤 Client: ${clientUser.email}`)
+    console.log(`🌍 Client Timezone: ${clientTimezone}`)
+    console.log(`🔍 Filtering for: ${days} day(s)`)
+    console.log(`⏰ Current UTC Time: ${nowUTC.toISOString()}`)
+    console.log(`🕐 Current Client Time: ${nowInClientTZ.toISOString()}`)
+    console.log(`📅 Query Date Range (UTC):`)
+    console.log(`   Start: ${startDate.toISOString()}`)
+    console.log(`   End:   ${endDate.toISOString()}`)
+    console.log(`📅 Query Date Range (Client TZ):`)
+    console.log(`   Start: ${new Date(startDate).toLocaleString('en-US', { timeZone: clientTimezone })}`)
+    console.log(`   End:   ${new Date(endDate).toLocaleString('en-US', { timeZone: clientTimezone })}`)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     // Fetch all staff with their user info and performance metrics
     const staffMembers = await prisma.staff_users.findMany({
