@@ -1163,9 +1163,9 @@ function JobRequestsTab({
   if (showForm) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-lg text-gray-900">
-        <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <h2 className="text-2xl font-bold text-gray-900">Create Job Request</h2>
-          <p className="mt-2 text-sm text-gray-600">
+        <div className="px-6 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-t-2xl">
+          <h2 className="text-2xl font-bold text-white">Create Job Request</h2>
+          <p className="mt-2 text-sm text-blue-100">
             Fill out the details below to post your job request
           </p>
         </div>
@@ -1190,7 +1190,7 @@ function JobRequestsTab({
                               value={formData.job_title}
                               onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                               placeholder="e.g. Senior Virtual Assistant"
-                              className="mt-1 text-gray-900 bg-white border-gray-300"
+                              className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             />
                   </div>
 
@@ -1205,7 +1205,7 @@ function JobRequestsTab({
                       value={formData.job_description}
                       onChange={(e) => setFormData({ ...formData, job_description: e.target.value })}
                       placeholder="Describe the role, responsibilities, and what makes this position exciting..."
-                      className="mt-1 text-gray-900 bg-white border-gray-300"
+                      className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
 
@@ -1220,7 +1220,7 @@ function JobRequestsTab({
                         value={formData.department}
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                         placeholder="e.g. Marketing, IT, Operations"
-                        className="mt-1 text-gray-900 bg-white border-gray-300"
+                        className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                     </div>
                     <div>
@@ -1233,7 +1233,7 @@ function JobRequestsTab({
                         value={formData.industry}
                         onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
                         placeholder="e.g. Technology, Finance, Healthcare"
-                        className="mt-1 text-gray-900 bg-white border-gray-300"
+                        className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                     </div>
                   </div>
@@ -1256,7 +1256,7 @@ function JobRequestsTab({
                       value={formData.work_type}
                       onValueChange={(value) => setFormData({ ...formData, work_type: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select work type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1275,7 +1275,7 @@ function JobRequestsTab({
                       value={formData.work_arrangement}
                       onValueChange={(value) => setFormData({ ...formData, work_arrangement: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select arrangement" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1294,7 +1294,7 @@ function JobRequestsTab({
                       value={formData.experience_level}
                       onValueChange={(value) => setFormData({ ...formData, experience_level: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select level" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1315,7 +1315,7 @@ function JobRequestsTab({
                       value={formData.shift}
                       onValueChange={(value) => setFormData({ ...formData, shift: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select shift" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1334,7 +1334,7 @@ function JobRequestsTab({
                       value={formData.priority}
                       onValueChange={(value) => setFormData({ ...formData, priority: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1355,7 +1355,7 @@ function JobRequestsTab({
                       value={formData.application_deadline}
                       onChange={(e) => setFormData({ ...formData, application_deadline: e.target.value })}
                       min={new Date().toISOString().split('T')[0]}
-                      className="mt-1 text-gray-900 bg-white border-gray-300"
+                      className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
                 </div>
@@ -1377,7 +1377,7 @@ function JobRequestsTab({
                       value={formData.currency}
                       onValueChange={(value) => setFormData({ ...formData, currency: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select currency" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1396,7 +1396,7 @@ function JobRequestsTab({
                       value={formData.salary_type}
                       onValueChange={(value) => setFormData({ ...formData, salary_type: value })}
                     >
-                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-300">
+                      <SelectTrigger className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1417,7 +1417,7 @@ function JobRequestsTab({
                       value={formData.salary_min}
                       onChange={(e) => setFormData({ ...formData, salary_min: e.target.value })}
                       placeholder="20000"
-                      className="mt-1 text-gray-900 bg-white border-gray-300"
+                      className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
 
@@ -1431,7 +1431,7 @@ function JobRequestsTab({
                       value={formData.salary_max}
                       onChange={(e) => setFormData({ ...formData, salary_max: e.target.value })}
                       placeholder="30000"
-                      className="mt-1 text-gray-900 bg-white border-gray-300"
+                      className="mt-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                     />
                   </div>
                 </div>
@@ -1452,7 +1452,7 @@ function JobRequestsTab({
                         value={req}
                         onChange={(e) => updateArrayItem('requirements', index, e.target.value)}
                         placeholder={`Requirement ${index + 1}`}
-                        className="flex-1"
+                        className="flex-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                       {formData.requirements.length > 1 && (
                         <Button
@@ -1471,7 +1471,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('requirements')}
-                    className="w-full"
+                    className="w-full bg-gray-50 border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Requirement
@@ -1494,7 +1494,7 @@ function JobRequestsTab({
                         value={resp}
                         onChange={(e) => updateArrayItem('responsibilities', index, e.target.value)}
                         placeholder={`Responsibility ${index + 1}`}
-                        className="flex-1"
+                        className="flex-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                       {formData.responsibilities.length > 1 && (
                         <Button
@@ -1513,7 +1513,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('responsibilities')}
-                    className="w-full"
+                    className="w-full bg-gray-50 border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Responsibility
@@ -1536,7 +1536,7 @@ function JobRequestsTab({
                         value={skill}
                         onChange={(e) => updateArrayItem('skills', index, e.target.value)}
                         placeholder={`Skill ${index + 1}`}
-                        className="flex-1"
+                        className="flex-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                       {formData.skills.length > 1 && (
                         <Button
@@ -1555,7 +1555,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('skills')}
-                    className="w-full"
+                    className="w-full bg-gray-50 border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Skill
@@ -1578,7 +1578,7 @@ function JobRequestsTab({
                         value={benefit}
                         onChange={(e) => updateArrayItem('benefits', index, e.target.value)}
                         placeholder={`Benefit ${index + 1}`}
-                        className="flex-1"
+                        className="flex-1 text-gray-900 bg-white border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       />
                       {formData.benefits.length > 1 && (
                         <Button
@@ -1597,7 +1597,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('benefits')}
-                    className="w-full"
+                    className="w-full bg-gray-50 border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Benefit
@@ -1612,7 +1612,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => setShowForm(false)}
-                    className="flex-1"
+                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                   >
                     <X className="h-4 w-4 mr-2" />
                     Cancel
@@ -1620,7 +1620,7 @@ function JobRequestsTab({
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md transition-all"
                   >
                     {submitting ? (
                       <>
