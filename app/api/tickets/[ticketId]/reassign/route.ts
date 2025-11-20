@@ -3,13 +3,13 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 /**
- * PATCH /api/tickets/[id]/reassign
+ * PATCH /api/tickets/[ticketId]/reassign
  * Reassign a ticket to a different management user
  * Only accessible by management users
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ ticketId: string }> }
 ) {
   try {
     const session = await auth()
@@ -30,7 +30,7 @@ export async function PATCH(
       )
     }
 
-    const { id } = await params
+    const { ticketId } = await params
     const body = await request.json()
     const { newAssigneeId, reason } = body
 
@@ -56,7 +56,7 @@ export async function PATCH(
 
     // Get the ticket
     const ticket = await prisma.tickets.findUnique({
-      where: { id },
+      where: { id: ticketId },
       include: {
         management_users: {
           select: { name: true }
@@ -70,7 +70,7 @@ export async function PATCH(
 
     // Update the ticket assignment
     const updatedTicket = await prisma.tickets.update({
-      where: { id },
+      where: { id: ticketId },
       data: {
         managementUserId: newAssigneeId,
         updatedAt: new Date()
