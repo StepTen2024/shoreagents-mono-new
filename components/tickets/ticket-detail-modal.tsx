@@ -102,6 +102,13 @@ export default function TicketDetailModal({
   const [showLightbox, setShowLightbox] = useState(false)
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [ticketAttachments, setTicketAttachments] = useState<string[]>(ticket.attachments || [])
+  
+  // 🔄 REASSIGNMENT STATE
+  const [showReassignModal, setShowReassignModal] = useState(false)
+  const [availableManagers, setAvailableManagers] = useState<any[]>([])
+  const [selectedNewAssignee, setSelectedNewAssignee] = useState("")
+  const [reassignReason, setReassignReason] = useState("")
+  const [reassigning, setReassigning] = useState(false)
 
   const CategoryIcon = categoryConfig[ticket.category]?.icon || HelpCircle
 
@@ -201,6 +208,70 @@ export default function TicketDetailModal({
     router.push(`/call/ticket-${ticket.ticketId}?ticketId=${ticket.id}`)
   }
 
+  // 🔄 REASSIGNMENT FUNCTIONS
+  const fetchAvailableManagers = async () => {
+    try {
+      const response = await fetch("/api/management/available")
+      if (!response.ok) throw new Error("Failed to fetch managers")
+      const data = await response.json()
+      setAvailableManagers(data.managers || [])
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load available managers",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleReassign = async () => {
+    if (!selectedNewAssignee) {
+      toast({
+        title: "Error",
+        description: "Please select a manager to reassign to",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setReassigning(true)
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/reassign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newAssigneeId: selectedNewAssignee,
+          reason: reassignReason
+        })
+      })
+
+      if (!response.ok) throw new Error("Failed to reassign ticket")
+
+      const data = await response.json()
+      
+      toast({
+        title: "Success!",
+        description: data.message || "Ticket reassigned successfully"
+      })
+
+      // Reset state
+      setShowReassignModal(false)
+      setSelectedNewAssignee("")
+      setReassignReason("")
+      
+      // Refresh ticket data
+      onUpdate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reassign ticket. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setReassigning(false)
+    }
+  }
+
   // Client gets LIGHT theme, Staff/Management get DARK theme
   const isDark = !isClient  // Light theme for clients, dark for staff/management
   
@@ -252,6 +323,24 @@ export default function TicketDetailModal({
               </h2>
             </div>
             <div className="flex items-center gap-2">
+              {/* 🔄 REASSIGN BUTTON - Management Only */}
+              {isManagement && (
+                <Button
+                  onClick={() => {
+                    setShowReassignModal(true)
+                    fetchAvailableManagers()
+                  }}
+                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                    isDark
+                      ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-amber-500/50"
+                      : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30"
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  Reassign
+                </Button>
+              )}
+              
               <Button
                 onClick={handleStartVideoCall}
                 className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
@@ -645,6 +734,99 @@ export default function TicketDetailModal({
         </div>
       </div>
       
+      {/* 🔄 REASSIGNMENT MODAL */}
+      {showReassignModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="w-full max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-amber-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+            {/* Header */}
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">
+                Reassign Ticket
+              </h3>
+              <p className="text-sm text-slate-400 mt-2">
+                Assign this ticket to a different manager
+              </p>
+            </div>
+
+            {/* Current Assignment */}
+            {ticket.management_users && (
+              <div className="mb-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <p className="text-xs text-slate-400 mb-2">Currently assigned to:</p>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 ring-2 ring-amber-500/30">
+                    <AvatarImage src={ticket.management_users.avatar} />
+                    <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold">
+                      {ticket.management_users.name?.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-bold text-white">{ticket.management_users.name}</p>
+                    <p className="text-xs text-slate-400">{ticket.management_users.department?.replace('_', ' ')}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* New Assignee Dropdown */}
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Reassign to: <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={selectedNewAssignee}
+                onChange={(e) => setSelectedNewAssignee(e.target.value)}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">Select a manager...</option>
+                {availableManagers
+                  .filter(m => m.id !== ticket.managementUserId)
+                  .map(manager => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.name} ({manager.department.replace('_', ' ')})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Reason (Optional) */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Reason (optional)
+              </label>
+              <textarea
+                value={reassignReason}
+                onChange={(e) => setReassignReason(e.target.value)}
+                placeholder="e.g., Manager is on leave today"
+                rows={3}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-500 resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowReassignModal(false)
+                  setSelectedNewAssignee("")
+                  setReassignReason("")
+                }}
+                disabled={reassigning}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3 transition-all"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReassign}
+                disabled={reassigning || !selectedNewAssignee}
+                className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl py-3 shadow-lg shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {reassigning ? "Reassigning..." : "Reassign"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Image Lightbox */}
       {showLightbox && (
         <ImageLightbox
