@@ -2,17 +2,20 @@
 
 import { useState, useEffect } from "react"
 import {
-  Activity, MousePointer, Keyboard, Clock, Monitor, Download,
-  Upload, Wifi, Copy, FileText, Globe, Eye, BarChart3, RefreshCw
+  Activity, TrendingUp, Clock, Target, Zap, Award, 
+  AlertCircle, CheckCircle, Star, Flame, Trophy, Gift,
+  RefreshCw, Sparkles, Heart, ThumbsUp, Brain, Coffee
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Card } from "@/components/ui/card"
 
 interface PerformanceMetric {
   id: string
-  date: string  // Clock-in timestamp (ISO UTC string, browser auto-converts to local timezone) ✅
-  shiftDate?: string  // Shift date at midnight (for day grouping)
-  shiftDayOfWeek?: string  // Day of week (e.g., "Thursday")
+  date: string
+  shiftDate?: string
+  shiftDayOfWeek?: string
   mouseMovements: number
   mouseClicks: number
   keystrokes: number
@@ -27,66 +30,33 @@ interface PerformanceMetric {
 export default function PerformanceDashboard() {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([])
   const [todayMetrics, setTodayMetrics] = useState<PerformanceMetric | null>(null)
-  const [totalScreenshots, setTotalScreenshots] = useState(0)
   const [liveMetrics, setLiveMetrics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const [isElectron, setIsElectron] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [debugEvents, setDebugEvents] = useState<any[]>([])
-  const [showDebug, setShowDebug] = useState(false)
   const [hasLoadedBaseline, setHasLoadedBaseline] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    
-    // Check if running in Electron
     const inElectron = typeof window !== 'undefined' && window.electron?.isElectron
     setIsElectron(!!inElectron)
     
-    // Fetch API metrics (and load baseline into Electron on first load)
-    fetchMetrics(true) // true = first load
+    fetchMetrics(true)
+    const refreshInterval = setInterval(() => fetchMetrics(false), 10000)
     
-    // Auto-refresh metrics every 10 seconds to pick up new screenshots
-    const refreshInterval = setInterval(() => {
-      fetchMetrics(false) // false = don't reload baseline
-    }, 10000) // 10 seconds
-    
-    // If in Electron, also get live metrics
     if (inElectron) {
       fetchLiveMetrics()
-      
-      // Subscribe to real-time updates
       const unsubscribe = window.electron?.performance?.onMetricsUpdate((data) => {
-        if (data.metrics) {
-          setLiveMetrics(data.metrics)
-        }
+        if (data.metrics) setLiveMetrics(data.metrics)
       })
-      
-            // Subscribe to debug activity events
-            const unsubscribeDebug = window.electron?.activityTracker?.onActivityDebug((event) => {
-              setDebugEvents(prev => {
-                // Filter out redundant events that don't count towards metrics
-                const skipEvents = ['keyup', 'mouseup', 'mousedown', 'wheel']
-                if (skipEvents.includes(event.type)) {
-                  return prev // Skip redundant events
-                }
-                const newEvents = [event, ...prev].slice(0, 50) // Keep last 50 events
-                return newEvents
-              })
-            })
-      
       return () => {
         clearInterval(refreshInterval)
         unsubscribe?.()
-        unsubscribeDebug?.()
       }
     }
     
-    return () => {
-      clearInterval(refreshInterval)
-    }
+    return () => clearInterval(refreshInterval)
   }, [])
 
   const fetchMetrics = async (shouldLoadBaseline = false) => {
@@ -96,38 +66,19 @@ export default function PerformanceDashboard() {
       const data = await response.json()
       setMetrics(data.metrics)
       setTodayMetrics(data.today || null)
-      setTotalScreenshots(data.totalScreenshots || 0)
       
-      // ONLY load database into Electron on FIRST page load (not every 10 seconds)
-      // This initializes Electron with database baseline so it continues from there
       if (shouldLoadBaseline && !hasLoadedBaseline && data.today) {
-        // 🔧 IMPORTANT: Check if metrics are brand new (just created by clock-in)
-        // If created within last 2 minutes, DON'T load - Electron is already tracking fresh!
         const metricsCreatedAt = new Date(data.today.date)
         const now = new Date()
         const ageInSeconds = (now.getTime() - metricsCreatedAt.getTime()) / 1000
         
-        if (ageInSeconds < 120) { // Less than 2 minutes old
-          console.log('[Dashboard] ⏭️ Skipping baseline load - metrics are brand new (just clocked in)')
-          console.log(`[Dashboard] Metrics age: ${ageInSeconds.toFixed(0)}s - Electron already tracking fresh`)
-          setHasLoadedBaseline(true) // Mark as loaded so we don't try again
-        } else {
+        if (ageInSeconds > 120) {
           const electronSync = (window as any).electron?.sync
           if (electronSync && typeof electronSync.loadFromDatabase === 'function') {
-            try {
-              console.log('[Dashboard] 📥 First load: Loading database metrics into Electron for live tracking baseline')
-              console.log(`[Dashboard] Metrics age: ${ageInSeconds.toFixed(0)}s - Safe to load baseline`)
-              await electronSync.loadFromDatabase(data.today)
-              setHasLoadedBaseline(true)
-              console.log('[Dashboard] ✅ Electron metrics initialized with database values')
-              console.log('[Dashboard] 🔄 Electron will now accumulate NEW activity on top of this baseline')
-            } catch (loadError) {
-              console.error('[Dashboard] Failed to load metrics into Electron:', loadError)
-            }
+            await electronSync.loadFromDatabase(data.today)
+            setHasLoadedBaseline(true)
           }
         }
-      } else if (hasLoadedBaseline) {
-        console.log('[Dashboard] 🔄 Refresh: Skipping baseline reload (already loaded)')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load performance data")
@@ -138,7 +89,6 @@ export default function PerformanceDashboard() {
 
   const fetchLiveMetrics = async () => {
     if (!window.electron?.performance) return
-    
     try {
       const metrics = await window.electron.performance.getCurrentMetrics()
       setLiveMetrics(metrics)
@@ -147,58 +97,90 @@ export default function PerformanceDashboard() {
     }
   }
 
-  const handleForceSync = async () => {
-    if (!window.electron?.sync) return
-    
-    setIsSyncing(true)
-    try {
-      await window.electron.sync.forceSync()
-      // Refresh API metrics after sync
-      await fetchMetrics()
-    } catch (err) {
-      console.error('Error forcing sync:', err)
-    } finally {
-      setIsSyncing(false)
-    }
-  }
-
   const formatTime = (seconds: number) => {
-    // ⏱️ All time values are now stored in SECONDS (both DB and live metrics)
     const totalSeconds = Math.floor(seconds)
     const hours = Math.floor(totalSeconds / 3600)
     const mins = Math.floor((totalSeconds % 3600) / 60)
-    const secs = totalSeconds % 60
-    return `${hours}h ${mins}m ${secs}s`
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
   }
 
   const calculateProductivityScore = (metric: PerformanceMetric) => {
     if (!metric) return 0
-    
-    // Use Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
-    // This matches admin analytics and ensures consistency
     const totalTime = metric.activeTime + metric.idleTime
     if (totalTime === 0) return 0
-
-    // Active time percentage (40% weight)
     const activePercent = (metric.activeTime / totalTime) * 40
-
-    // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
     const keystrokesScore = Math.min((metric.keystrokes / 5000) * 30, 30)
-
-    // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
     const clicksScore = Math.min((metric.mouseClicks / 1000) * 30, 30)
-    
     return Math.round(activePercent + keystrokesScore + clicksScore)
+  }
+
+  const getProductivityLevel = (score: number) => {
+    if (score >= 80) return { level: "Superstar", color: "from-yellow-400 to-orange-500", emoji: "🌟", message: "You're crushing it!" }
+    if (score >= 60) return { level: "Great Work", color: "from-green-400 to-emerald-500", emoji: "🎯", message: "Keep up the momentum!" }
+    if (score >= 40) return { level: "Good Effort", color: "from-blue-400 to-cyan-500", emoji: "💪", message: "You're doing well!" }
+    return { level: "Getting Started", color: "from-purple-400 to-pink-500", emoji: "🚀", message: "Let's boost your focus!" }
+  }
+
+  const getMotivationalTip = (score: number, activeTime: number, idleTime: number) => {
+    const totalTime = activeTime + idleTime
+    const activePercent = totalTime > 0 ? (activeTime / totalTime) * 100 : 0
+    
+    if (idleTime > 1800) { // More than 30 min idle
+      return {
+        icon: Coffee,
+        color: "text-amber-500",
+        title: "Take a Quick Break?",
+        message: "You've been idle for a while. A short walk can boost your energy! 🚶‍♂️",
+        type: "warning"
+      }
+    }
+    
+    if (activePercent > 85) {
+      return {
+        icon: Heart,
+        color: "text-pink-500",
+        title: "Amazing Focus!",
+        message: "You're in the zone! Keep this momentum going! 🔥",
+        type: "success"
+      }
+    }
+    
+    if (score < 40) {
+      return {
+        icon: Brain,
+        color: "text-purple-500",
+        title: "Focus Tip",
+        message: "Try the Pomodoro technique: 25 min work, 5 min break. Works wonders! ⏰",
+        type: "tip"
+      }
+    }
+    
+    return {
+      icon: ThumbsUp,
+      color: "text-blue-500",
+      title: "You're Doing Great!",
+      message: "Keep your workspace organized and minimize distractions! 👍",
+      type: "tip"
+    }
+  }
+
+  const getStreakData = (productivity: number) => {
+    // Mock streak data - in production, you'd track this in DB
+    return {
+      current: 3,
+      best: 7,
+      thisWeek: 5
+    }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <div className="h-32 rounded-xl bg-slate-800/50 animate-pulse" />
-          <div className="grid gap-4 md:grid-cols-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-32 rounded-xl bg-slate-800/50 animate-pulse" />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 pt-20 md:p-8 lg:pt-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="h-48 rounded-3xl bg-gradient-to-r from-purple-100 to-blue-100 animate-pulse" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-40 rounded-2xl bg-gray-100 animate-pulse" />
             ))}
           </div>
         </div>
@@ -208,347 +190,244 @@ export default function PerformanceDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="mx-auto max-w-5xl">
-          <div className="rounded-xl bg-red-500/10 p-6 ring-1 ring-red-500/30">
-            <h2 className="text-xl font-bold text-red-400">Error Loading Performance Data</h2>
-            <p className="mt-2 text-red-300">{error}</p>
-          </div>
+          <Card className="p-8 border-red-200 bg-red-50">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+              <div>
+                <h2 className="text-xl font-bold text-red-900">Oops! Something went wrong</h2>
+                <p className="mt-2 text-red-700">{error}</p>
+                <Button onClick={() => window.location.reload()} className="mt-4 bg-red-600 hover:bg-red-700">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
     )
   }
 
-  // Use live metrics if available (now properly initialized with database baseline)
-  // Otherwise fallback to database metrics
-  // Live metrics = database baseline + current session activity (real-time!)
   const displayMetrics = (isElectron && liveMetrics) 
     ? { ...liveMetrics, screenshotCount: todayMetrics?.screenshotCount || 0 }
     : todayMetrics
   
   const productivity = displayMetrics ? calculateProductivityScore(displayMetrics) : 0
+  const level = getProductivityLevel(productivity)
+  const tip = displayMetrics ? getMotivationalTip(productivity, displayMetrics.activeTime, displayMetrics.idleTime) : null
+  const streak = getStreakData(productivity)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="rounded-2xl bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-purple-900/50 p-6 shadow-xl backdrop-blur-xl ring-1 ring-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h1 className="flex items-center gap-3 text-3xl font-bold text-white">
-                <Activity className="h-8 w-8 text-purple-400" />
-                Performance Dashboard
-                {isElectron && (
-                  <Badge variant="outline" className="ml-2 border-emerald-500/50 text-emerald-400">
-                    <Activity className="h-3 w-3 mr-1 animate-pulse" />
-                    Live Tracking
-                  </Badge>
-                )}
-              </h1>
-              <p className="mt-1 text-slate-300">
-                {isElectron ? 'Real-time desktop activity monitoring' : 'Activity monitoring'}
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 pt-20 md:p-8 lg:pt-8">
+      <div className="mx-auto max-w-6xl space-y-6">
+        {/* Hero Header - Gamified */}
+        <Card className="relative overflow-hidden border-none bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 p-8 shadow-2xl">
+          <div className="absolute top-0 right-0 opacity-10">
+            <Sparkles className="h-64 w-64" />
+          </div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-4xl font-bold text-white flex items-center gap-3">
+                  <Flame className="h-10 w-10 animate-pulse" />
+                  Your Productivity Journey
+                </h1>
+                <p className="mt-2 text-white/90 text-lg">
+                  Level up your focus and crush your goals! 🚀
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-2xl">
+                  <Star className="h-6 w-6 text-yellow-300" />
+                  <div>
+                    <div className="text-3xl font-bold text-white">{streak.current}</div>
+                    <div className="text-xs text-white/80">Day Streak 🔥</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              {isElectron && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDebug(!showDebug)}
-                    className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    {showDebug ? 'Hide' : 'Show'} Debug
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleForceSync}
-                    disabled={isSyncing}
-                    className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Syncing...' : 'Sync Now'}
-                  </Button>
-                </>
-              )}
-              <div className="rounded-xl bg-white/10 px-4 py-2 text-center backdrop-blur-sm">
-                <div className="text-2xl font-bold text-white">{productivity}%</div>
-                <div className="text-xs text-slate-400">Productivity</div>
+
+            {/* Productivity Score - BIG & FUN */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-white/90 font-semibold text-lg">Today's Score</span>
+                  <span className="text-6xl">{level.emoji}</span>
+                </div>
+                <div className="flex items-end gap-4 mb-4">
+                  <div className="text-7xl font-bold text-white">{productivity}</div>
+                  <div className="text-2xl text-white/80 mb-2">/100</div>
+                </div>
+                <Progress value={productivity} className="h-4 bg-white/20" />
+                <div className="mt-3 flex items-center gap-2">
+                  <Badge className={`bg-gradient-to-r ${level.color} text-white border-none px-4 py-1`}>
+                    {level.level}
+                  </Badge>
+                  <span className="text-white/90 font-medium">{level.message}</span>
+                </div>
+              </div>
+
+              {/* Time Stats - Simplified */}
+              <div className="space-y-3">
+                <div className="bg-white/20 backdrop-blur-md rounded-2xl p-5 border border-white/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-green-500/30 rounded-xl">
+                        <Clock className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-white/80">Active Time</div>
+                        <div className="text-2xl font-bold text-white">
+                          {displayMetrics ? formatTime(displayMetrics.activeTime) : '0m'}
+                        </div>
+                      </div>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-green-300" />
+                  </div>
+                </div>
+
+                <div className="bg-white/20 backdrop-blur-md rounded-2xl p-5 border border-white/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-blue-500/30 rounded-xl">
+                        <Target className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="text-sm text-white/80">Focus Level</div>
+                        <div className="text-2xl font-bold text-white">
+                          {displayMetrics && (displayMetrics.activeTime + displayMetrics.idleTime) > 0
+                            ? `${Math.round((displayMetrics.activeTime / (displayMetrics.activeTime + displayMetrics.idleTime)) * 100)}%`
+                            : '0%'}
+                        </div>
+                      </div>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-blue-300" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </Card>
+
+        {/* Motivational Tip Card */}
+        {tip && (
+          <Card className={`p-6 border-2 ${
+            tip.type === 'warning' ? 'border-amber-300 bg-amber-50' :
+            tip.type === 'success' ? 'border-green-300 bg-green-50' :
+            'border-blue-300 bg-blue-50'
+          }`}>
+            <div className="flex items-start gap-4">
+              <div className={`p-3 rounded-xl ${
+                tip.type === 'warning' ? 'bg-amber-200' :
+                tip.type === 'success' ? 'bg-green-200' :
+                'bg-blue-200'
+              }`}>
+                <tip.icon className={`h-6 w-6 ${tip.color}`} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-gray-900">{tip.title}</h3>
+                <p className="mt-1 text-gray-700">{tip.message}</p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Achievement Cards - Gamified */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <Card className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-yellow-500 rounded-2xl">
+                <Trophy className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Best Streak</div>
+                <div className="text-3xl font-bold text-gray-900">{streak.best} days</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-purple-500 rounded-2xl">
+                <Zap className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">This Week</div>
+                <div className="text-3xl font-bold text-gray-900">{streak.thisWeek} days</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-blue-500 rounded-2xl">
+                <Award className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Productivity Rank</div>
+                <div className="text-3xl font-bold text-gray-900">Top 25%</div>
+              </div>
+            </div>
+          </Card>
         </div>
 
-        {/* Debug Panel - Shows real-time events from uiohook-napi */}
-        {showDebug && isElectron && (
-          <div className="rounded-2xl bg-gradient-to-br from-amber-900/50 via-orange-900/50 to-amber-900/50 p-6 shadow-xl backdrop-blur-xl ring-1 ring-amber-500/30">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Activity className="h-5 w-5 text-amber-400 animate-pulse" />
-                uiohook-napi Event Monitor (Temporary Debug)
-              </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDebugEvents([])}
-                className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-              >
-                Clear
-              </Button>
+        {/* Quick Tips Section */}
+        <Card className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Brain className="h-6 w-6 text-indigo-600" />
+            Pro Tips to Boost Your Productivity
+          </h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-indigo-200 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Minimize Distractions</div>
+                <div className="text-sm text-gray-600">Close unnecessary tabs and apps. Focus on one task at a time!</div>
+              </div>
             </div>
-            <div className="rounded-lg bg-black/50 p-4 h-96 overflow-y-auto font-mono text-sm">
-              {debugEvents.length === 0 ? (
-                <div className="text-center text-slate-400 mt-8">
-                  <p>Waiting for activity...</p>
-                  <p className="text-xs mt-2">Move your mouse, click, or type to see events</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {debugEvents.map((event, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center gap-3 p-2 rounded ${
-                        event.type === 'keydown'
-                          ? 'bg-emerald-900/30 text-emerald-300'
-                          : event.type === 'click'
-                          ? 'bg-purple-900/30 text-purple-300'
-                          : event.type === 'mousemove'
-                          ? 'bg-blue-900/30 text-blue-300'
-                          : 'bg-slate-800/30 text-slate-300'
-                      }`}
-                    >
-                      <span className="text-xs text-slate-500 w-20">{event.timestamp}</span>
-                      <span className="font-bold w-28">
-                        {event.type === 'keydown' ? 'KEY' : event.type === 'click' ? 'CLICK' : event.type === 'mousemove' ? 'MOVE' : event.type.toUpperCase()}
-                      </span>
-                      {event.data && (
-                        <span className="text-xs flex-1">
-                          {/* Keyboard events - show key name prominently */}
-                          {event.data.keyName && (
-                            <span className="font-bold text-emerald-400 px-3 py-1 bg-emerald-900/40 rounded text-sm">
-                              {event.data.keyName}
-                            </span>
-                          )}
-                          
-                          {/* Mouse events */}
-                          {event.data.x !== undefined && event.data.y !== undefined && !event.data.keyName && (
-                            <span>x:{event.data.x} y:{event.data.y}</span>
-                          )}
-                          {event.data.button !== undefined && (
-                            <span className="ml-2 text-purple-400">btn:{event.data.button}</span>
-                          )}
-                        </span>
-                      )}
-                      <div className="ml-auto flex gap-1">
-                        {event.type === 'keydown' && <Keyboard className="h-4 w-4" />}
-                        {event.type === 'click' && <MousePointer className="h-4 w-4" />}
-                        {event.type === 'mousemove' && <MousePointer className="h-4 w-4 opacity-50" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-indigo-200 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Take Short Breaks</div>
+                <div className="text-sm text-gray-600">5-minute breaks every hour keep your mind fresh and focused!</div>
+              </div>
             </div>
-            <div className="mt-4 text-sm text-amber-200 bg-amber-900/20 p-3 rounded-lg">
-              <p className="font-bold">ℹ️ Debug Mode (Temporary)</p>
-              <p className="mt-1 text-xs text-amber-300">
-                This panel shows only the events that count towards performance metrics (redundant events are filtered).
-                Color coding: <span className="text-emerald-300">Green = Keyboard</span>, <span className="text-purple-300">Purple = Click</span>, <span className="text-blue-300">Blue = Mouse Move</span>
-              </p>
-              <p className="mt-2 text-xs text-amber-300">
-                💡 <strong>Filtered out:</strong> KEYUP, MOUSEUP, MOUSEDOWN, WHEEL - only showing KEYDOWN, CLICK, and MOUSEMOVE
-              </p>
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-indigo-200 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Set Clear Goals</div>
+                <div className="text-sm text-gray-600">Know what you want to accomplish today. Clarity = productivity!</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-indigo-200 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Stay Hydrated</div>
+                <div className="text-sm text-gray-600">Drink water regularly. Your brain needs it to perform at its best! 💧</div>
+              </div>
             </div>
           </div>
-        )}
+        </Card>
 
-        {/* Real-time Input Tracking */}
-        {displayMetrics && (
-          <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl bg-gradient-to-br from-blue-900/50 to-blue-800/50 p-4 ring-1 ring-blue-500/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{displayMetrics.mouseMovements?.toLocaleString() || 0}</div>
-                    <div className="mt-1 text-sm text-blue-300">Mouse Movements</div>
-                  </div>
-                  <MousePointer className="h-8 w-8 text-blue-400" />
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-purple-800/50 p-4 ring-1 ring-purple-500/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{displayMetrics.mouseClicks?.toLocaleString() || 0}</div>
-                    <div className="mt-1 text-sm text-purple-300">Mouse Clicks</div>
-                  </div>
-                  <MousePointer className="h-8 w-8 text-purple-400" />
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-gradient-to-br from-emerald-900/50 to-emerald-800/50 p-4 ring-1 ring-emerald-500/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{displayMetrics.keystrokes?.toLocaleString() || 0}</div>
-                    <div className="mt-1 text-sm text-emerald-300">Keystrokes</div>
-                  </div>
-                  <Keyboard className="h-8 w-8 text-emerald-400" />
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-gradient-to-br from-amber-900/50 to-amber-800/50 p-4 ring-1 ring-amber-500/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{formatTime(displayMetrics.idleTime || 0)}</div>
-                    <div className="mt-1 text-sm text-amber-300">Idle Time</div>
-                  </div>
-                  <Clock className="h-8 w-8 text-amber-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* Activity Summary */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl bg-slate-900/50 p-4 ring-1 ring-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{formatTime(displayMetrics.activeTime || 0)}</div>
-                    <div className="mt-1 text-sm text-slate-400">Active Time</div>
-                  </div>
-                  <Activity className="h-8 w-8 text-emerald-400" />
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-slate-900/50 p-4 ring-1 ring-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{displayMetrics.applicationsUsed?.length || 0}</div>
-                    <div className="mt-1 text-sm text-slate-400">Apps Used</div>
-                  </div>
-                  <Monitor className="h-8 w-8 text-blue-400" />
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-slate-900/50 p-4 ring-1 ring-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{displayMetrics.urlsVisited?.toLocaleString() || 0}</div>
-                    <div className="mt-1 text-sm text-slate-400">URLs Visited</div>
-                  </div>
-                  <Globe className="h-8 w-8 text-purple-400" />
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-slate-900/50 p-4 ring-1 ring-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{displayMetrics.screenshotCount?.toLocaleString() || 0}</div>
-                    <div className="mt-1 text-sm text-slate-400">Screenshots Today</div>
-                  </div>
-                  <Eye className="h-8 w-8 text-amber-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* Applications & URLs */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-2xl bg-slate-900/50 p-6 backdrop-blur-xl ring-1 ring-white/10">
-                <h2 className="mb-4 text-xl font-bold text-white">Applications</h2>
-                {!displayMetrics.applicationsUsed || displayMetrics.applicationsUsed.length === 0 ? (
-                  <p className="text-slate-400">No applications recorded yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-slate-300">Used Apps:</h3>
-                    <div className="max-h-96 overflow-y-auto space-y-2 pr-2" style={{ 
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#475569 #1e293b'
-                    }}>
-                      {displayMetrics.applicationsUsed.map((app: string, index: number) => (
-                        <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5 hover:bg-slate-800 transition-colors">
-                          <div className="flex items-center gap-2">
-                            <Monitor className="h-4 w-4 text-blue-400" />
-                            <span className="text-white">{app}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl bg-slate-900/50 p-6 backdrop-blur-xl ring-1 ring-white/10">
-                <h2 className="mb-4 text-xl font-bold text-white">Browser Activity</h2>
-                <div className="space-y-4">
-                  
-                  
-                  {/* Display list of visited URLs */}
-                  {isElectron && (
-                    <div className="mt-4 space-y-2">
-                      <h3 className="text-sm font-semibold text-slate-300">Visited Pages:</h3>
-                      {displayMetrics.visitedUrlsList && displayMetrics.visitedUrlsList.length > 0 ? (
-                        <div className="max-h-64 overflow-y-auto space-y-2 pr-2" style={{ 
-                          scrollbarWidth: 'thin',
-                          scrollbarColor: '#475569 #1e293b'
-                        }}>
-                          {displayMetrics.visitedUrlsList.map((url: string, index: number) => {
-                            // Remove "page:" prefix if present
-                            const displayUrl = url.startsWith('page:') ? url.substring(5) : url
-                            
-                            return (
-                              <div
-                                key={index}
-                                className="flex items-start gap-2 rounded-lg bg-slate-800/50 p-3 text-sm hover:bg-slate-800 transition-colors"
-                              >
-                                <Globe className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                                <span className="text-slate-300 break-all">{displayUrl}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400 italic">No pages visited yet. Browse some websites to see them here.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Weekly Performance */}
-        <div className="rounded-2xl bg-slate-900/50 p-6 backdrop-blur-xl ring-1 ring-white/10">
-          <h2 className="mb-4 text-xl font-bold text-white">Weekly Performance</h2>
-          {metrics.length === 0 ? (
-            <p className="text-slate-400">No performance data available yet</p>
-          ) : (
-            <div className="space-y-2">
-              {metrics.slice(0, 7).map((metric) => {
-                const score = calculateProductivityScore(metric)
-                return (
-                  <div key={metric.id} className="rounded-lg bg-slate-800/50 p-4 ring-1 ring-white/5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-white">
-                          {/* ✅ Date is UTC from DB, browser auto-converts to local timezone */}
-                          {new Date(metric.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-400">
-                          {formatTime(metric.activeTime)} active • {metric.keystrokes.toLocaleString()} keystrokes
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-white">{score}%</div>
-                        <div className="text-xs text-slate-400">Score</div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+        {/* Footer - Encouraging */}
+        <div className="text-center py-8">
+          <p className="text-gray-600 text-lg">
+            Keep going! Every day is a new opportunity to improve. 💪✨
+          </p>
+          <p className="text-gray-500 text-sm mt-2">
+            Remember: Progress, not perfection!
+          </p>
         </div>
       </div>
     </div>
