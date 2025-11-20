@@ -409,104 +409,67 @@ export default function ClientMonitoringPage() {
       `}</style>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Professional Header */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          {/* Header Bar */}
-          <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-purple-700 px-8 py-6">
+        {/* Modern Clean Header */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          {/* Header Section */}
+          <div className="px-8 py-8 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                  <Monitor className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-white">Staff Performance Dashboard</h1>
-                  <p className="text-blue-100 mt-1">
-                    Comprehensive monitoring and analytics for your team
-                  </p>
-                </div>
+              {/* Left: Title */}
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                  Team Analytics
+                </h1>
+                <p className="text-gray-600 text-lg">
+                  AI-powered productivity insights for your staff
+                </p>
               </div>
+              
+              {/* Right: Actions */}
               <div className="flex items-center gap-3">
                 <Button
                   onClick={refresh}
                   variant="outline"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
+                  className="border-gray-300 hover:bg-gray-50"
                   disabled={isUpdating}
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`} />
-                  {isUpdating ? 'Updating...' : 'Refresh Data'}
+                  {isUpdating ? 'Updating...' : 'Refresh'}
                 </Button>
                 <Button
                   onClick={() => setShowFilters(!showFilters)}
                   variant="outline"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
+                  className={`border-gray-300 ${showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : 'hover:bg-gray-50'}`}
                 >
                   <Filter className="h-4 w-4 mr-2" />
-                  Filters
+                  {showFilters ? 'Hide Filters' : 'Show Filters'}
                 </Button>
               </div>
             </div>
-          </div>
-
-          {/* Controls Panel */}
-          <div className="p-6 bg-gray-50 border-b border-gray-200">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-600" />
-                  <label className="text-sm font-medium text-gray-700">Date Range:</label>
-                  <select
-                    key={selectedDays}
-                    value={selectedDays}
-                    onChange={(e) => setSelectedDays(parseInt(e.target.value))}
-                    className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-                  >
-                    <option value={1}>Today</option>
-                    <option value={7}>Last 7 days</option>
-                    <option value={30}>Last 30 days</option>
-                    <option value={90}>Last 90 days</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-gray-600" />
-                  <label className="text-sm font-medium text-gray-700">View Mode:</label>
-                  <div className="flex rounded-lg bg-white border border-gray-300 overflow-hidden shadow-sm">
-                    <button
-                      onClick={() => setViewMode('latest')}
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${
-                        viewMode === 'latest' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      Latest Day
-                    </button>
-                    <button
-                      onClick={() => setViewMode('totals')}
-                      className={`px-4 py-2 text-sm font-medium transition-colors ${
-                        viewMode === 'totals' 
-                          ? 'bg-blue-600 text-white' 
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      Total Period
-                    </button>
-                  </div>
-                </div>
+            
+            {/* Date Range & Status */}
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-blue-50 px-4 py-2.5 rounded-xl border border-purple-200">
+                <Calendar className="h-4 w-4 text-purple-600" />
+                <select
+                  key={selectedDays}
+                  value={selectedDays}
+                  onChange={(e) => setSelectedDays(parseInt(e.target.value))}
+                  className="bg-transparent border-none text-sm font-semibold text-gray-900 focus:outline-none focus:ring-0 cursor-pointer"
+                >
+                  <option value={1}>Today</option>
+                  <option value={7}>Last 7 days</option>
+                  <option value={30}>Last 30 days</option>
+                  <option value={90}>Last 90 days</option>
+                </select>
               </div>
-
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                {lastUpdate && (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Last Updated:</span> 
-                    <span>{lastUpdate.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Globe className="h-3 w-3" />
-                  <span>Times shown in your profile timezone</span>
+              
+              {lastUpdate && (
+                <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  <span className="font-medium">Updated:</span>
+                  <span>{lastUpdate.toLocaleTimeString()}</span>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Advanced Filters */}
@@ -556,115 +519,11 @@ export default function ClientMonitoringPage() {
               </div>
             )}
           </div>
-
-          {/* Enhanced Summary Stats */}
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Total Staff */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-bold text-blue-900">{data.summary.totalStaff}</div>
-                    <div className="text-sm font-medium text-blue-700">Total Staff</div>
-                    <div className="text-xs text-blue-600 mt-1">All team members</div>
-                  </div>
-                  <div className="p-3 bg-blue-200 rounded-lg">
-                    <Users className="h-6 w-6 text-blue-700" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Staff */}
-              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-bold text-emerald-900">{data.summary.activeStaff}</div>
-                    <div className="text-sm font-medium text-emerald-700">Currently Active</div>
-                    <div className="text-xs text-emerald-600 mt-1">
-                      {data.summary.totalStaff > 0 ? Math.round((data.summary.activeStaff / data.summary.totalStaff) * 100) : 0}% of team
-                    </div>
-                  </div>
-                  <div className="p-3 bg-emerald-200 rounded-lg">
-                    <Activity className="h-6 w-6 text-emerald-700 animate-pulse" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Average Productivity */}
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-6 border border-amber-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-bold text-amber-900">{data.summary.averageProductivity}%</div>
-                    <div className="text-sm font-medium text-amber-700">Avg. Productivity</div>
-                    <div className="text-xs text-amber-600 mt-1">
-                      {getPerformanceLevel(data.summary.averageProductivity).level}
-                    </div>
-                  </div>
-                  <div className="p-3 bg-amber-200 rounded-lg">
-                    <Target className="h-6 w-6 text-amber-700" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Coverage */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-3xl font-bold text-purple-900">
-                      {data.staff.filter(s => s.metrics).length}
-                    </div>
-                    <div className="text-sm font-medium text-purple-700">With Data</div>
-                    <div className="text-xs text-purple-600 mt-1">
-                      {data.summary.totalStaff > 0 ? Math.round((data.staff.filter(s => s.metrics).length / data.summary.totalStaff) * 100) : 0}% coverage
-                    </div>
-                  </div>
-                  <div className="p-3 bg-purple-200 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-purple-700" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Performance Overview */}
-            {data.summary.overallTotals && (
-              <div className="mt-6 bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-blue-600" />
-                  Overall Team Activity (Last {data.summary.dateRange.days} days)
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {data.summary.overallTotals.mouseClicks.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-600">Mouse Clicks</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {data.summary.overallTotals.keystrokes.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-600">Keystrokes</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {formatTime(data.summary.overallTotals.activeTime)}
-                    </div>
-                    <div className="text-sm text-gray-600">Active Time</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {data.summary.overallTotals.urlsVisited}
-                    </div>
-                    <div className="text-sm text-gray-600">URLs Visited</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Staff Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedStaff().map((staff) => {
             const performanceLevel = getPerformanceLevel(staff.productivityScore)
             const activityStatus = getActivityStatus(staff)
@@ -823,6 +682,7 @@ export default function ClientMonitoringPage() {
             </Card>
             )
           })}
+          </div>
         </div>
 
         {/* Professional Footer */}
