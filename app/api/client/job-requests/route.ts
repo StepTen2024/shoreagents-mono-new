@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Pool } from "pg"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getApplicationCounts } from "@/lib/bpoc-db"
 
 // BPOC Database connection
 const bpocPool = new Pool({
@@ -46,39 +47,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    // First, let's check the actual structure of the job_requests table
-    try {
-      const tableStructure = await bpocPool.query(
-        `SELECT column_name, data_type, is_nullable 
-         FROM information_schema.columns 
-         WHERE table_name = 'job_requests' 
-         ORDER BY ordinal_position`
-      )
-      console.log("📋 BPOC job_requests table structure:", tableStructure.rows)
-    } catch (structureError) {
-      console.error("Error checking table structure:", structureError)
-    }
-
-    // For now, use a default company ID since BPOC database schema is different
-    // TODO: Map Supabase company IDs to BPOC company IDs properly
-    let bpocCompanyId = '1' // Default company ID for BPOC database
+    // ✅ FIX: Use Shore Agents company ID as BPOC company ID
+    // This ensures each client only sees THEIR job requests
+    const bpocCompanyId = clientUser.companyId // Use actual Shore Agents company ID
     
-    try {
-      // Check if we can find any existing company in BPOC
-      const companyCheck = await bpocPool.query(
-        `SELECT company_id FROM job_requests LIMIT 1`
-      )
-      
-      if (companyCheck.rows.length > 0) {
-        bpocCompanyId = companyCheck.rows[0].company_id
-        console.log("✅ Using existing company ID from BPOC:", bpocCompanyId)
-      } else {
-        console.log("✅ Using default company ID:", bpocCompanyId)
-      }
-    } catch (companyError) {
-      console.error("Error checking BPOC companies:", companyError)
-      // Use default company ID
-    }
+    console.log(`✅ POST Job Request for company: ${clientUser.company.companyName} (ID: ${bpocCompanyId})`)
 
     // Insert into BPOC database
     const result = await bpocPool.query(
@@ -180,35 +153,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Client user or company not found" }, { status: 404 })
     }
 
-    // Use the same company ID logic as POST method
-    let bpocCompanyId = '1' // Default company ID for BPOC database
+    // ✅ FIX: Use Shore Agents company ID as BPOC company ID
+    // This ensures each client only sees THEIR job requests
+    const bpocCompanyId = clientUser.companyId // Use actual Shore Agents company ID
     
-    try {
-      // Check if we can find any existing company in BPOC
-      const companyCheck = await bpocPool.query(
-        `SELECT company_id FROM job_requests LIMIT 1`
-      )
-      
-      if (companyCheck.rows.length > 0) {
-        bpocCompanyId = companyCheck.rows[0].company_id
-        console.log("✅ GET: Using existing company ID from BPOC:", bpocCompanyId)
-      } else {
-        console.log("✅ GET: Using default company ID:", bpocCompanyId)
-      }
-    } catch (companyError) {
-      console.error("Error checking BPOC companies in GET:", companyError)
-      // Use default company ID
-    }
+    console.log(`✅ GET Job Requests for company: ${clientUser.company.companyName} (ID: ${bpocCompanyId})`)
 
-    // Fetch job requests from BPOC database
+    // Fetch job requests from BPOC database - FILTERED BY CLIENT'S COMPANY
     const result = await bpocPool.query(
       `SELECT * FROM job_requests 
        WHERE company_id = $1 
        ORDER BY created_at DESC`,
       [bpocCompanyId]
     )
+    
+    console.log(`📊 Found ${result.rows.length} job requests for ${clientUser.company.companyName}`)
 
-    return NextResponse.json(result.rows)
+    // Fetch application counts for these job requests
+    const jobRequestIds = result.rows.map(job => job.id.toString())
+    const applicationCounts = await getApplicationCounts(jobRequestIds)
+
+    // Merge application counts into job requests
+    const enrichedJobRequests = result.rows.map(job => ({
+      ...job,
+      applicants: applicationCounts.get(job.id.toString()) || 0
+    }))
+
+    console.log(`✅ Enriched ${enrichedJobRequests.length} job requests with application counts`)
+
+    return NextResponse.json(enrichedJobRequests)
   } catch (error) {
     console.error("Error fetching job requests:", error)
     // Return empty array instead of error to allow form to show

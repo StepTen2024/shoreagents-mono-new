@@ -142,6 +142,10 @@ export default function RecruitmentPage() {
   const [jobRequests, setJobRequests] = useState<JobRequest[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [selectedJobRequest, setSelectedJobRequest] = useState<JobRequest | null>(null)
+  const [jobDetailsModalOpen, setJobDetailsModalOpen] = useState(false)
+  const [jobApplications, setJobApplications] = useState<any[]>([])
+  const [loadingApplications, setLoadingApplications] = useState(false)
   
   // Talent Pool State
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -261,11 +265,38 @@ export default function RecruitmentPage() {
       const response = await fetch("/api/client/job-requests")
       if (!response.ok) throw new Error("Failed to fetch")
       const data = await response.json()
+      console.log('📊 [CLIENT] Job requests fetched:', data)
+      console.log('📊 [CLIENT] First job applicant count:', data[0]?.applicants)
       setJobRequests(data)
     } catch (error) {
       console.error("Error fetching job requests:", error)
     } finally {
       setJobsLoading(false)
+    }
+  }
+
+  async function viewJobDetails(job: JobRequest) {
+    setSelectedJobRequest(job)
+    setJobDetailsModalOpen(true)
+    
+    // Fetch applications for this job
+    if (job.applicants > 0) {
+      try {
+        setLoadingApplications(true)
+        const response = await fetch(`/api/client/job-requests/${job.id}/applications`)
+        if (response.ok) {
+          const data = await response.json()
+          setJobApplications(data.applications || [])
+          console.log(`📋 Loaded ${data.applications?.length || 0} applications for job ${job.id}`)
+        }
+      } catch (error) {
+        console.error('Failed to fetch applications:', error)
+        setJobApplications([])
+      } finally {
+        setLoadingApplications(false)
+      }
+    } else {
+      setJobApplications([])
     }
   }
 
@@ -676,6 +707,12 @@ export default function RecruitmentPage() {
             removeArrayItem={removeArrayItem}
             updateArrayItem={updateArrayItem}
             clientTimezone={clientTimezone}
+            viewJobDetails={viewJobDetails}
+            selectedJobRequest={selectedJobRequest}
+            jobDetailsModalOpen={jobDetailsModalOpen}
+            setJobDetailsModalOpen={setJobDetailsModalOpen}
+            jobApplications={jobApplications}
+            loadingApplications={loadingApplications}
           />
         )}
 
@@ -1099,17 +1136,31 @@ function JobRequestsTab({
   addArrayItem,
   removeArrayItem,
   updateArrayItem,
-  clientTimezone
+  clientTimezone,
+  viewJobDetails,
+  selectedJobRequest,
+  jobDetailsModalOpen,
+  setJobDetailsModalOpen,
+  jobApplications,
+  loadingApplications
 }: any) {
   if (showForm) {
     return (
-                  <div className="bg-white shadow rounded-lg text-gray-900">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Create Job Request</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Fill out the details below to post your job request
-              </p>
-            </div>
+      <div className="bg-white shadow-sm rounded-xl border border-gray-200 text-gray-900">
+        <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Create Job Request</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Fill out the details below to post your job request to the BPOC talent pool
+            </p>
+          </div>
+          <button
+            onClick={() => setShowForm(false)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-8">
               {/* Basic Information */}
@@ -1412,7 +1463,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('requirements')}
-                    className="w-full"
+                    className="w-full border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Requirement
@@ -1454,7 +1505,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('responsibilities')}
-                    className="w-full"
+                    className="w-full border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Responsibility
@@ -1496,7 +1547,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('skills')}
-                    className="w-full"
+                    className="w-full border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Skill
@@ -1538,7 +1589,7 @@ function JobRequestsTab({
                     type="button"
                     variant="outline"
                     onClick={() => addArrayItem('benefits')}
-                    className="w-full"
+                    className="w-full border-dashed border-2 border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Benefit
@@ -1661,53 +1712,234 @@ function JobRequestsTab({
     )
   }
 
+  // Loading State
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Loading your job requests...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Empty State
+  if (jobRequests.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+          <Briefcase className="h-12 w-12 text-blue-600" />
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-3">
+          No Job Requests Yet
+        </h3>
+        <p className="text-gray-600 mb-8 max-w-md mx-auto">
+          Create your first job request to start receiving applications from our pool of 26 pre-vetted candidates at BPOC.
+        </p>
+        <button
+          onClick={() => setShowForm(true)}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+        >
+          <Plus className="h-5 w-5" />
+          Create Job Request
+        </button>
+      </div>
+    )
+  }
+
+  // Job Requests List
   return (
-          <div className="space-y-4">
-      {jobRequests.map((job: JobRequest) => (
-              <Card key={job.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">{job.job_title}</h3>
-                    <div className="flex items-center gap-3 mb-4 flex-wrap">
-                      <Badge className={
-                        job.status === 'active' ? 'bg-green-100 text-green-800' :
-                        job.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }>
-                        {job.status.toUpperCase()}
-                      </Badge>
-                      <span className="flex items-center gap-1 text-sm text-gray-600">
-                        <Briefcase className="h-4 w-4" />
-                        {job.work_type}
-                      </span>
-                      <span className="flex items-center gap-1 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        {job.work_arrangement}
-                      </span>
-                      <span className="flex items-center gap-1 text-sm text-gray-600">
-                        <Target className="h-4 w-4" />
-                        {job.experience_level}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-6 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {job.applicants} applicants
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {new Date(job.created_at).toLocaleDateString('en-US', {
-                          timeZone: clientTimezone
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
+    <div className="space-y-6">
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Your Job Requests</h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage your job postings on the BPOC platform
+          </p>
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+        >
+          <Plus className="h-5 w-5" />
+          New Job Request
+        </button>
+      </div>
+
+      {/* Job Cards */}
+      <div className="space-y-4">
+        {jobRequests.map((job: JobRequest) => (
+          <Card key={job.id} className="p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.job_title}</h3>
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
+                  <Badge className={
+                    job.status === 'active' ? 'bg-green-100 text-green-800 border border-green-200' :
+                    job.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                    'bg-gray-100 text-gray-800 border border-gray-200'
+                  }>
+                    {job.status.toUpperCase()}
+                  </Badge>
+                  <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <Briefcase className="h-4 w-4" />
+                    {job.work_type}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <MapPin className="h-4 w-4" />
+                    {job.work_arrangement}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <Target className="h-4 w-4" />
+                    {job.experience_level}
+                  </span>
                 </div>
-              </Card>
-            ))}
+                <div className="flex items-center gap-6 text-sm text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4" />
+                    <span className="font-medium">{job.applicants}</span> applicants
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="h-4 w-4" />
+                    Posted {new Date(job.created_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      timeZone: clientTimezone
+                    })}
+                  </span>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => viewJobDetails(job)}
+                className="border-gray-300 hover:bg-gray-50"
+              >
+                View Details
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Job Details Modal */}
+      <Dialog open={jobDetailsModalOpen} onOpenChange={setJobDetailsModalOpen}>
+        <DialogContent className="bg-white text-gray-900 max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Briefcase className="h-6 w-6 text-blue-600" />
+              {selectedJobRequest?.job_title}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Job Request Details and Applications
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedJobRequest && (
+            <div className="space-y-6 pt-4">
+              {/* Job Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Work Type</Label>
+                  <p className="text-gray-900">{selectedJobRequest.work_type}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Work Arrangement</Label>
+                  <p className="text-gray-900">{selectedJobRequest.work_arrangement}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Experience Level</Label>
+                  <p className="text-gray-900">{selectedJobRequest.experience_level}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">Status</Label>
+                  <Badge className="bg-green-100 text-green-800 border border-green-200">
+                    {selectedJobRequest.status?.toUpperCase()}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Applications Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Applications ({selectedJobRequest.applicants})
+                  </h3>
+                </div>
+
+                {loadingApplications ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                    <p className="ml-3 text-gray-600">Loading applications...</p>
+                  </div>
+                ) : jobApplications.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600">No applications yet</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Candidates will see this job on the BPOC platform
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {jobApplications.map((application: any) => (
+                      <Card key={application.id} className="p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          {application.avatar_url ? (
+                            <img
+                              src={application.avatar_url}
+                              alt={application.first_name}
+                              className="h-12 w-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                              <User className="h-6 w-6 text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <h4 className="text-base font-semibold text-gray-900">
+                                  {application.first_name} {application.last_name}
+                                </h4>
+                                <p className="text-sm text-gray-600">{application.position}</p>
+                              </div>
+                              <Badge className="bg-blue-100 text-blue-800 border border-blue-200">
+                                {application.status || 'pending'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-2">
+                              {application.location_city}, {application.location_country}
+                            </p>
+                            {application.cover_letter && (
+                              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <p className="text-xs font-semibold text-gray-700 mb-1">Cover Letter:</p>
+                                <p className="text-sm text-gray-600">{application.cover_letter}</p>
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-500 mt-2">
+                              Applied: {new Date(application.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                timeZone: clientTimezone
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
