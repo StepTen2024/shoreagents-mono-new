@@ -112,16 +112,21 @@ export async function GET(request: NextRequest) {
 // POST /api/tickets - Create a new ticket
 export async function POST(request: NextRequest) {
   try {
+    console.log('🎫 [TICKETS API] Starting ticket creation...')
+    
     const session = await auth()
+    console.log('🔐 Session:', session?.user?.id ? 'Authenticated' : 'Not authenticated')
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log('📝 Request body:', { title: body.title, category: body.category, priority: body.priority, attachments: body.attachments?.length })
     const { title, description, category, priority, attachments } = body
 
     if (!title || !description || !category) {
+      console.log('❌ Missing required fields')
       return NextResponse.json(
         { error: "Title, description, and category are required" },
         { status: 400 }
@@ -129,20 +134,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Get staff user first
+    console.log('🔍 Looking for staff user with authUserId:', session.user.id)
     const staffUser = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id }
     })
 
     if (!staffUser) {
+      console.log('❌ Staff user not found')
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
+    console.log('✅ Found staff user:', staffUser.name)
 
     // Generate unique ticket ID
     const ticketCount = await prisma.tickets.count()
     const ticketId = `TKT-${String(ticketCount + 1).padStart(4, "0")}`
+    console.log('🎫 Generated ticket ID:', ticketId)
 
     // 🎯 AUTO-ASSIGN: Map category to department and find manager
     const department = mapCategoryToDepartment(category)
+    console.log('🏢 Mapped department:', department)
     let managementUserId: string | null = null
 
     if (department) {
@@ -159,6 +169,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('💾 Creating ticket in database...')
     const ticket = await prisma.tickets.create({
       data: {
         id: randomUUID(),
@@ -201,10 +212,19 @@ export async function POST(request: NextRequest) {
     console.log(`✅ [TICKETS API] Created ticket ${ticketId} for staff ${staffUser.name}`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating ticket:", error)
+  } catch (error: any) {
+    console.error('❌ [TICKETS API] ERROR CREATING TICKET:')
+    console.error('Error name:', error?.name)
+    console.error('Error message:', error?.message)
+    console.error('Error code:', error?.code)
+    console.error('Full error:', error)
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: error?.message || 'Unknown error',
+        code: error?.code || 'UNKNOWN'
+      },
       { status: 500 }
     )
   }
