@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRealtimeMonitoring } from "@/hooks/useRealtimeMonitoring"
+import { getProductivityRating } from "@/lib/productivity-score"
 import {
   Activity, MousePointer, Keyboard, Clock, Monitor, User,
   Download, Upload, Wifi, Copy, FileText, Globe, Eye,
