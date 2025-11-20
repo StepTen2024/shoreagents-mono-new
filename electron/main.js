@@ -50,6 +50,102 @@ const autoUpdater = require('./services/autoUpdater')
 let mainWindow = null
 let tray = null
 
+function createApplicationMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Quit',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: () => {
+            app.isQuitting = true
+            app.quit()
+          }
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        {
+          label: 'Show Dashboard',
+          click: () => {
+            if (mainWindow) {
+              if (mainWindow.isMinimized()) {
+                mainWindow.restore()
+              }
+              mainWindow.show()
+              mainWindow.focus()
+            }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Documentation',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://docs.shoreagents.com')
+          }
+        },
+        {
+          label: 'Report Issue',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://github.com/shoreagents/support/issues')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'About',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('show-about-dialog')
+            }
+          }
+        }
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+  console.log('[Main] Application menu created')
+}
+
 function createWindow() {
   // Set window icon
   const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
@@ -960,6 +1056,9 @@ app.whenReady().then(async () => {
   
   // Setup IPC first
   setupIPC()
+  
+  // Create application menu
+  createApplicationMenu()
   
   // Create window
   createWindow()

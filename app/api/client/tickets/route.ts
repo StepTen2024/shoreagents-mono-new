@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate ticket ID
+    // Generate ticket ID (safe from race conditions)
     const lastTicket = await prisma.tickets.findFirst({
       orderBy: { createdAt: "desc" },
       select: { ticketId: true },
@@ -179,7 +179,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const ticketId = `TKT-${ticketNumber.toString().padStart(4, "0")}`
+    // Keep trying until we find a unique ticketId (handles race conditions)
+    let ticketId = `TKT-${ticketNumber.toString().padStart(4, "0")}`
+    let attempts = 0
+    while (attempts < 10) {
+      const existing = await prisma.tickets.findUnique({
+        where: { ticketId },
+        select: { id: true }
+      })
+      if (!existing) break
+      ticketNumber++
+      ticketId = `TKT-${ticketNumber.toString().padStart(4, "0")}`
+      attempts++
+    }
+
+    if (attempts >= 10) {
+      return NextResponse.json(
+        { error: "Failed to generate unique ticket ID" },
+        { status: 500 }
+      )
+    }
 
     // Create ticket - auto-assign to account manager
     const accountManagerId = clientUser.company?.accountManagerId || null

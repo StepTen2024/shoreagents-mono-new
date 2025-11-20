@@ -137,9 +137,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
 
-    // Generate unique ticket ID
-    const ticketCount = await prisma.tickets.count()
-    const ticketId = `TKT-${String(ticketCount + 1).padStart(4, "0")}`
+    // Generate unique ticket ID (safe from race conditions)
+    const lastTicket = await prisma.tickets.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { ticketId: true },
+    })
+
+    let ticketNumber = 1
+    if (lastTicket?.ticketId) {
+      const match = lastTicket.ticketId.match(/TKT-(\d+)/)
+      if (match) {
+        ticketNumber = parseInt(match[1]) + 1
+      }
+    }
+
+    // Keep trying until we find a unique ticketId (handles race conditions)
+    let ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
+    let attempts = 0
+    while (attempts < 10) {
+      const existing = await prisma.tickets.findUnique({
+        where: { ticketId },
+        select: { id: true }
+      })
+      if (!existing) break
+      ticketNumber++
+      ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
+      attempts++
+    }
+
+    if (attempts >= 10) {
+      return NextResponse.json(
+        { error: "Failed to generate unique ticket ID" },
+        { status: 500 }
+      )
+    }
 
     // 🎯 AUTO-ASSIGN: Map category to department and find manager
     const department = mapCategoryToDepartment(category)

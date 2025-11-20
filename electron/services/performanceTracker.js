@@ -373,12 +373,20 @@ class PerformanceTracker {
             const url = this.extractUrlFromWindow(window)
             console.log(`[PerformanceTracker] Extracted URL: ${url}`)
             if (url && url !== this.currentUrl) {
-              this.currentUrl = url
-              this.visitedUrls.add(url)
-              this.metrics.urlsVisited = this.visitedUrls.size
-              console.log(`[PerformanceTracker] URL visited: ${url} (Total: ${this.metrics.urlsVisited})`)
-              // Log all visited URLs
-              this.logVisitedUrls()
+              // Skip login URLs - don't track authentication pages
+              const isLoginUrl = url.toLowerCase().includes('/login') || 
+                                 url.toLowerCase().includes('login')
+              
+              if (isLoginUrl) {
+                console.log(`[PerformanceTracker] ⚠️ Skipping login URL from tracking: ${url}`)
+              } else {
+                this.currentUrl = url
+                this.visitedUrls.add(url)
+                this.metrics.urlsVisited = this.visitedUrls.size
+                console.log(`[PerformanceTracker] URL visited: ${url} (Total: ${this.metrics.urlsVisited})`)
+                // Log all visited URLs
+                this.logVisitedUrls()
+              }
             }
           }
         }
