@@ -180,13 +180,16 @@ export async function POST(req: NextRequest) {
         // Get salary from job acceptance
         const salary = jobAcceptance.salary ? parseFloat(jobAcceptance.salary) : 50000.00
         
-        await prisma.staff_profiles.create({
+        // Create staff profile with data from job_acceptances
+        const staffProfile = await prisma.staff_profiles.create({
           data: {
             id: crypto.randomUUID(),
             staffUserId: staffUser.id,
             currentRole: position || 'Staff Member',
             startDate: startDate,
             salary: salary,
+            hmo: jobAcceptance.hmoIncluded || false, // ✅ Transfer from job_acceptances
+            totalLeave: jobAcceptance.leaveCredits || 12, // ✅ Transfer from job_acceptances
             phone: phone,
             location: location,
             employmentStatus: 'PROBATION',
@@ -198,9 +201,73 @@ export async function POST(req: NextRequest) {
         console.log('✅ [SIGNUP] Staff profile created:', {
           position,
           salary,
+          hmo: jobAcceptance.hmoIncluded,
+          totalLeave: jobAcceptance.leaveCredits,
           location,
           phone
         })
+        
+        // 2.8. Create work_schedules from job_acceptances data
+        if (jobAcceptance.workDays && jobAcceptance.workStartTime && jobAcceptance.workEndTime) {
+          try {
+            const allDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            
+            // Parse customHours if available
+            const customHours = jobAcceptance.customHours ? 
+              (typeof jobAcceptance.customHours === 'string' ? 
+                JSON.parse(jobAcceptance.customHours) : 
+                jobAcceptance.customHours) : 
+              null
+            
+            const workSchedules = allDays.map((day) => {
+              let startTime = ""
+              let endTime = ""
+              
+              if (jobAcceptance.workDays.includes(day)) {
+                // Check if custom hours exist for this day
+                if (customHours && customHours[day]) {
+                  startTime = customHours[day]
+                  // Calculate end time (start + 9 hours)
+                  const [hours, minutes] = startTime.split(':').map(Number)
+                  const endHour = (hours + 9) % 24
+                  endTime = `${endHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+                } else {
+                  // Use default schedule times
+                  startTime = jobAcceptance.workStartTime
+                  endTime = jobAcceptance.workEndTime
+                }
+              }
+              
+              return {
+                id: crypto.randomUUID(),
+                profileId: staffProfile.id,
+                dayOfWeek: day,
+                startTime,
+                endTime,
+                timezone: "Asia/Manila", // Staff default timezone
+                clientTimezone: jobAcceptance.clientTimezone || "UTC",
+                isWorkday: jobAcceptance.workDays.includes(day),
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            })
+            
+            await prisma.work_schedules.createMany({ data: workSchedules })
+            console.log('✅ [SIGNUP] Work schedules created from job_acceptances:', {
+              workDays: jobAcceptance.workDays,
+              workTime: customHours ? 'Custom hours per day' : `${jobAcceptance.workStartTime} - ${jobAcceptance.workEndTime}`,
+              hasCustomHours: !!customHours,
+              customHours: customHours,
+              clientTimezone: jobAcceptance.clientTimezone,
+              schedulesCreated: workSchedules.length
+            })
+          } catch (error) {
+            console.error('❌ [SIGNUP] Error creating work schedules:', error)
+            // Don't fail signup if work schedule creation fails
+          }
+        } else {
+          console.warn('⚠️ [SIGNUP] Work schedule data missing from job_acceptances, skipping work_schedules creation')
+        }
       }
     }
 

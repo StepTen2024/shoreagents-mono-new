@@ -786,6 +786,8 @@ export function getAllQuestions(template: ReviewTemplate): ReviewQuestion[] {
 
 /**
  * Get review due date based on start date and type
+ * For RECURRING reviews, this returns the FIRST recurring review date (day 330)
+ * Subsequent recurring reviews should be calculated by adding 180 days to the previous review
  */
 export function getReviewDueDate(startDate: Date, type: ReviewType): Date {
   const dueDate = new Date(startDate)
@@ -801,7 +803,8 @@ export function getReviewDueDate(startDate: Date, type: ReviewType): Date {
       dueDate.setDate(dueDate.getDate() + 150)
       break
     case "RECURRING":
-      dueDate.setDate(dueDate.getDate() + 180)
+      // First recurring review: 150 (regularisation) + 180 = day 330
+      dueDate.setDate(dueDate.getDate() + 330)
       break
   }
   
@@ -809,7 +812,7 @@ export function getReviewDueDate(startDate: Date, type: ReviewType): Date {
 }
 
 /**
- * Check if review should be created (7 days before due date)
+ * Check if review should be created (from 7 days before due date, including overdue)
  */
 export function shouldCreateReview(startDate: Date, type: ReviewType): boolean {
   const now = new Date()
@@ -817,8 +820,8 @@ export function shouldCreateReview(startDate: Date, type: ReviewType): boolean {
   const createDate = new Date(dueDate)
   createDate.setDate(createDate.getDate() - 7) // 7 days before due
   
-  // Check if today is on or after the create date AND before the due date
-  return now >= createDate && now < dueDate
+  // Check if today is on or after the create date (allows overdue reviews to be created)
+  return now >= createDate
 }
 
 /**

@@ -130,6 +130,14 @@ class ActivityTracker {
 
     // Start uIOhook to listen for keyboard and mouse events
     try {
+      // Safety: Remove any existing listeners first to prevent duplicates
+      console.log('🧹 [ActivityTracker] Cleaning up any existing event listeners...')
+      uIOhook.removeAllListeners('mousemove')
+      uIOhook.removeAllListeners('mousedown')
+      uIOhook.removeAllListeners('wheel')
+      uIOhook.removeAllListeners('keydown')
+      uIOhook.removeAllListeners('keyup')
+      
       console.log('🎯 [ActivityTracker] Setting up uIOhook event listeners...')
       
       // Mouse movement (throttled to avoid overwhelming the system)
@@ -142,11 +150,11 @@ class ActivityTracker {
       })
       console.log('   ✅ Mouse movement listener registered')
       
-      // Mouse clicks
-      uIOhook.on('mousedown', (event) => this.onActivity('mousedown', event))
-      uIOhook.on('mouseup', (event) => this.onActivity('mouseup', event))
-      uIOhook.on('click', (event) => this.onActivity('click', event))
-      console.log('   ✅ Mouse click listeners registered')
+      // Mouse clicks (only count mousedown to avoid triple-counting)
+      // Note: uIOhook fires mousedown, mouseup, and click for each click
+      // We only need to track mousedown to count clicks accurately
+      uIOhook.on('mousedown', (event) => this.onActivity('click', event))
+      console.log('   ✅ Mouse click listener registered (mousedown only)')
       
       // Mouse wheel
       uIOhook.on('wheel', (event) => this.onActivity('wheel', event))
@@ -234,6 +242,15 @@ class ActivityTracker {
     this.isTracking = false
 
     try {
+      // Remove ALL event listeners to prevent duplicates on restart
+      console.log('[ActivityTracker] Removing all event listeners...')
+      uIOhook.removeAllListeners('mousemove')
+      uIOhook.removeAllListeners('mousedown')
+      uIOhook.removeAllListeners('wheel')
+      uIOhook.removeAllListeners('keydown')
+      uIOhook.removeAllListeners('keyup')
+      console.log('[ActivityTracker] ✅ Event listeners removed')
+      
       // Stop uIOhook
       uIOhook.stop()
       console.log('[ActivityTracker] uIOhook stopped')
@@ -356,7 +373,7 @@ class ActivityTracker {
           break
         
         case 'click':
-          // Only count 'click' events, not mousedown/mouseup to avoid double counting
+          // Count each mousedown as one click (converted from mousedown event)
           metrics.mouseClicks++
           console.log(`🖱️  [ActivityTracker] Mouse click detected! Total: ${metrics.mouseClicks} ✅`)
           break
@@ -704,6 +721,34 @@ class ActivityTracker {
     
     // Reset activity timer
     this.onActivity()
+  }
+
+  /**
+   * Reset activity tracking state (called on clock-in)
+   */
+  reset() {
+    console.log('🔄 [ActivityTracker] ========================================')
+    console.log('🔄 [ActivityTracker] RESETTING ACTIVITY TRACKER STATE')
+    console.log('🔄 [ActivityTracker] ========================================')
+    
+    // Reset activity timestamp to now
+    this.lastActivityTime = Date.now()
+    
+    // Reset mouse tracking throttle
+    this.lastMouseTrack = 0
+    
+    // Clear any inactivity state
+    this.dialogShown = false
+    this.inactivityStartTime = null
+    
+    // Close inactivity dialog if open
+    if (this.inactivityDialog && !this.inactivityDialog.isDestroyed()) {
+      this.inactivityDialog.close()
+      this.inactivityDialog = null
+    }
+    
+    console.log('🔄 [ActivityTracker] Activity tracker reset complete')
+    console.log('🔄 [ActivityTracker] Ready to track fresh session activity')
   }
 
   /**

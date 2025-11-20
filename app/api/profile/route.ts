@@ -59,7 +59,10 @@ export async function GET(req: NextRequest) {
         dateOfBirth: staffUser.staff_profiles.dateOfBirth,
         employmentStatus: staffUser.staff_profiles.employmentStatus,
         startDate: staffUser.staff_profiles.startDate,
-        daysEmployed: Math.floor((new Date().getTime() - new Date(staffUser.staff_profiles.startDate).getTime()) / (1000 * 60 * 60 * 24)),
+        daysEmployed: (() => {
+          const daysDiff = Math.floor((new Date().getTime() - new Date(staffUser.staff_profiles.startDate).getTime()) / (1000 * 60 * 60 * 24))
+          return daysDiff >= 0 ? daysDiff : 0 // Return 0 if start date is in the future
+        })(),
         currentRole: staffUser.staff_profiles.currentRole,
         salary: Number(staffUser.staff_profiles.salary),
         lastPayIncrease: staffUser.staff_profiles.lastPayIncrease,
@@ -71,7 +74,12 @@ export async function GET(req: NextRequest) {
         hmo: staffUser.staff_profiles.hmo,
       } : null,
       personalRecords: staffUser.staff_personal_records || null,
-      workSchedules: staffUser.staff_profiles?.work_schedules || [],
+      workSchedules: (() => {
+        const schedules = staffUser.staff_profiles?.work_schedules || []
+        // Sort by day of week: Monday to Sunday
+        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        return schedules.sort((a, b) => dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek))
+      })(),
       onboarding: staffUser.staff_onboarding ? {
         isComplete: staffUser.staff_onboarding.isComplete,
         completionPercent: staffUser.staff_onboarding.completionPercent

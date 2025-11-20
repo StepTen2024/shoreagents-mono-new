@@ -12,6 +12,7 @@ import { EndBreakModal } from "@/components/end-break-modal"
 import { useToast } from "@/hooks/use-toast"
 import { useTimeTrackingWebSocket } from "@/hooks/use-time-tracking-websocket"
 import { useWebSocket } from "@/lib/websocket-provider"
+import { convertTo12Hour } from "@/lib/utils"
 
 interface TimeEntry {
   id: string
@@ -34,10 +35,29 @@ interface TimeStats {
 export default function TimeTracking() {
   const { toast } = useToast()
   
+  // Helper function to format minutes into readable hours/minutes
+  const formatLateTime = (minutes: number | undefined): string => {
+    if (!minutes) return "0 min"
+    
+    if (minutes < 60) {
+      return `${minutes} min`
+    }
+    
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    
+    if (mins === 0) {
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+    }
+    
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${mins} min`
+  }
+  
   // Get user information from WebSocket context (already authenticated)
   const { socket } = useWebSocket()
   
   // Use WebSocket hook for all time tracking data
+  // Enable auto-start of scheduled breaks when on this page
   const {
     isClockedIn,
     activeEntry,
@@ -58,7 +78,7 @@ export default function TimeTracking() {
     resumeBreak,
     resetBreakScheduler,
     refreshScheduledBreaks
-  } = useTimeTrackingWebSocket()
+  } = useTimeTrackingWebSocket(true)
   
   // Local UI state
   const [currentSessionTime, setCurrentSessionTime] = useState("00:00:00")
@@ -103,33 +123,63 @@ export default function TimeTracking() {
 
   // WebSocket automatically handles data fetching, no need for manual API calls
   
-  // Check for late clock-in and show modal
+  // Listen for late clock-in event (ONLY triggered on actual clock-in, not page refresh)
   useEffect(() => {
     if (isClockedIn && activeEntry?.wasLate && activeEntry?.lateBy && activeEntry?.id) {
       // Check if user already saw this modal for this time entry
       const seenKey = `late-modal-seen-${activeEntry.id}`
       const alreadySeen = localStorage.getItem(seenKey)
       
-      if (!alreadySeen) {
-        setLateMinutes(activeEntry.lateBy)
-        setShowLateModal(true)
-      }
-    }
-  }, [isClockedIn, activeEntry?.wasLate || false, activeEntry?.lateBy || 0, activeEntry?.id])
-
-  // Check for early clock-in and show modal
-  useEffect(() => {
-    if (isClockedIn && activeEntry?.wasEarly && activeEntry?.earlyBy && activeEntry?.id) {
-      // Check if user already saw this modal for this time entry
-      const seenKey = `early-modal-seen-${activeEntry.id}`
-      const alreadySeen = localStorage.getItem(seenKey)
+      console.log('[Late Modal] Check:', {
+        timeEntryId: activeEntry.id,
+        wasLate: activeEntry.wasLate,
+        lateBy: activeEntry.lateBy,
+        seenKey,
+        alreadySeen,
+        willShow: !alreadySeen
+      })
       
       if (!alreadySeen) {
-        setEarlyMinutes(activeEntry.earlyBy)
-        setShowEarlyModal(true)
+        console.log('[Late Modal] Showing late modal for the first time')
+        setLateMinutes(activeEntry.lateBy)
+        setShowLateModal(true)
+        // Mark as seen immediately to prevent re-showing
+        localStorage.setItem(seenKey, 'true')
+        console.log('[Late Modal] Marked as seen in localStorage:', seenKey)
+      } else {
+        console.log('[Late Modal] Already seen, skipping')
       }
     }
-  }, [isClockedIn, activeEntry?.wasEarly || false, activeEntry?.earlyBy || 0, activeEntry?.id])
+    
+    const handleShowLateModal = (event: CustomEvent) => {
+      const { lateBy } = event.detail
+      console.log('[Time Tracking] Late modal event received:', lateBy)
+      setLateMinutes(lateBy)
+      setShowLateModal(true)
+    }
+    
+    window.addEventListener('show-late-modal', handleShowLateModal as EventListener)
+    
+    return () => {
+      window.removeEventListener('show-late-modal', handleShowLateModal as EventListener)
+    }
+  }, [])
+
+  // Listen for early clock-in event (ONLY triggered on actual clock-in, not page refresh)
+  useEffect(() => {
+    const handleShowEarlyModal = (event: CustomEvent) => {
+      const { earlyBy } = event.detail
+      console.log('[Time Tracking] Early modal event received:', earlyBy)
+      setEarlyMinutes(earlyBy)
+      setShowEarlyModal(true)
+    }
+    
+    window.addEventListener('show-early-modal', handleShowEarlyModal as EventListener)
+    
+    return () => {
+      window.removeEventListener('show-early-modal', handleShowEarlyModal as EventListener)
+    }
+  }, [])
   
   // Auto clock-out effect - runs when clocked in
   useEffect(() => {
@@ -202,60 +252,30 @@ export default function TimeTracking() {
     }
   }, [isClockedIn, activeEntry])
   
-  // Auto-start scheduled breaks at their scheduled time
-  useEffect(() => {
-    if (!isClockedIn || !scheduledBreaks.length || activeBreak) return
-    
-    const checkScheduledBreaks = () => {
-      const now = new Date()
-      const currentTime = now.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true
-      })
+  // Helper function to parse time strings
+  const parseTimeString = (timeStr: string) => {
+    if (!timeStr) return null
+    try {
+      const [time, period] = timeStr.trim().split(' ')
+      const [hours, minutes] = time.split(':')
+      let hour = parseInt(hours)
+      const min = parseInt(minutes)
       
-      console.log("🕐 CHECKING SCHEDULED BREAKS - Current time:", currentTime)
+      if (period === 'PM' && hour !== 12) hour += 12
+      if (period === 'AM' && hour === 12) hour = 0
       
-      // Find a break that should start now
-      const breakToStart = scheduledBreaks.find(b => {
-        // Skip if already started or completed
-        if (b.actualStart || b.actualEnd) {
-          console.log(`  ⏭️ Skipping ${b.type} - already started/completed`)
-          return false
-        }
-        
-        // Normalize both times for comparison (remove leading zeros, spaces)
-        const scheduledTime = b.scheduledStart.trim()
-        const normalizedCurrent = currentTime.trim()
-        
-        
-        // Check if scheduledStart matches current time
-        const shouldStart = scheduledTime === normalizedCurrent
-        
-        if (shouldStart) {
-          console.log("🚨 BREAK SHOULD START NOW:", b.type, "at", currentTime)
-        }
-        
-        return shouldStart
-      })
-      
-      if (breakToStart) {
-        console.log("🎯 AUTO-STARTING SCHEDULED BREAK:", breakToStart.type, breakToStart.id)
-        // For scheduled AWAY breaks, use the stored awayReason
-        const awayReason = breakToStart.type === "AWAY" ? breakToStart.awayReason : undefined
-        handleStartBreak(breakToStart.id, breakToStart.type, awayReason)
-      } else {
-      }
+      const date = new Date()
+      date.setHours(hour, min, 0, 0)
+      return date
+    } catch (error) {
+      console.error('Error parsing time string:', timeStr, error)
+      return null
     }
-    
-    // Check every 15 seconds for more accuracy
-    const interval = setInterval(checkScheduledBreaks, 15000)
-    
-    // Also check immediately
-    checkScheduledBreaks()
-    
-    return () => clearInterval(interval)
-  }, [isClockedIn, scheduledBreaks, activeBreak])
+  }
+  
+  // NOTE: Auto-start of scheduled breaks is now handled by the backend WebSocket system
+  // (server.js startBreakAutoStartJob) and will only trigger when this page is active.
+  // This prevents breaks from auto-starting when the user is on a different page.
 
   // Reset clocking out state immediately when clock-out completes
   useEffect(() => {
@@ -264,6 +284,31 @@ export default function TimeTracking() {
       setIsClockingOut(false)
     }
   }, [isClockedIn, isClockingOut])
+  
+  // Listen for clock-out errors from WebSocket
+  useEffect(() => {
+    const handleClockOutError = (event: CustomEvent) => {
+      const errorMsg = event.detail?.error || 'Clock out failed'
+      console.error('[Time Tracking] Clock-out error received:', errorMsg)
+      
+      // Reset loading state
+      setIsClockingOut(false)
+      
+      // Show error toast
+      toast({
+        title: "Clock Out Failed",
+        description: errorMsg,
+        variant: "destructive",
+        duration: 8000
+      })
+    }
+    
+    window.addEventListener('clock-out-error', handleClockOutError as EventListener)
+    
+    return () => {
+      window.removeEventListener('clock-out-error', handleClockOutError as EventListener)
+    }
+  }, [toast])
 
   // WebSocket handles all data fetching automatically
   
@@ -804,8 +849,8 @@ export default function TimeTracking() {
   }
 
   const handleClockOut = async () => {
-    // ⚠️ PREVENT CLOCK OUT IF ON ACTIVE BREAK
-    if (activeBreak && !activeBreak.actualEnd) {
+    // ⚠️ PREVENT CLOCK OUT IF ON ACTIVE BREAK (started but not ended)
+    if (activeBreak && activeBreak.actualStart && !activeBreak.actualEnd) {
       toast({
         title: "Cannot Clock Out",
         description: "Please end your active break before clocking out!",
@@ -825,15 +870,50 @@ export default function TimeTracking() {
       return
     }
     
-    // Get current time
+    // Get current time and check if clocking out early
     const now = new Date()
     const clockOutTime = now.toISOString()
     
-    // ⚡ SHOW MODAL IMMEDIATELY
-    setClockOutModalType('clock-out')
-    setClockOutModalData({ clockOutTime })
-    setShowClockOutModal(true)
+    // ⏰ Check if clocking out early
+    let isEarly = false
+    let earlyBy = 0
+    let scheduledEnd = null
     
+    if (weeklySchedule.length > 0) {
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+      const todaySchedule = weeklySchedule.find(s => s.dayOfWeek === today)
+      
+      if (todaySchedule && todaySchedule.isWorkday && todaySchedule.endTime) {
+        // Parse shift end time
+        const [time, period] = todaySchedule.endTime.split(' ')
+        const [hours, minutes] = time.split(':')
+        let hour = parseInt(hours)
+        if (period === 'PM' && hour !== 12) hour += 12
+        if (period === 'AM' && hour === 12) hour = 0
+        
+        const shiftEnd = new Date()
+        shiftEnd.setHours(hour, parseInt(minutes), 0, 0)
+        scheduledEnd = shiftEnd.toISOString()
+        
+        // Check if clocking out before shift end
+        if (now < shiftEnd) {
+          isEarly = true
+          earlyBy = Math.floor((shiftEnd.getTime() - now.getTime()) / (1000 * 60))
+        }
+      }
+    }
+    
+    // ⚡ SHOW APPROPRIATE MODAL
+    if (isEarly) {
+      setClockOutModalType('clock-out-early')
+      setClockOutModalData({ clockOutTime, scheduledEnd, earlyBy })
+      console.log(`⚠️ Early clock-out detected: ${earlyBy} minutes early`)
+    } else {
+      setClockOutModalType('clock-out')
+      setClockOutModalData({ clockOutTime })
+    }
+    
+    setShowClockOutModal(true)
     console.log("⚡ Clock-out modal shown!")
   }
   
@@ -911,6 +991,7 @@ export default function TimeTracking() {
   }
 
   const formatDateTime = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     const date = new Date(dateString)
     return date.toLocaleString("en-US", {
       month: "short",
@@ -922,6 +1003,7 @@ export default function TimeTracking() {
   }
 
   const formatDate = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     const date = new Date(dateString)
     const today = new Date()
     const yesterday = new Date(today)
@@ -941,14 +1023,21 @@ export default function TimeTracking() {
   }
 
   const formatTime = (dateString: string) => {
+    // ✅ UTC timestamp from DB auto-converts to browser's local timezone
     const date = new Date(dateString)
     return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
+      hour12: true,
     })
   }
 
   const formatHoursToHMS = (decimalHours: number) => {
+    // Handle negative or invalid values
+    if (!decimalHours || decimalHours < 0) {
+      return '0h 0m 0s'
+    }
+    
     const hours = Math.floor(decimalHours)
     const minutes = Math.floor((decimalHours - hours) * 60)
     const seconds = Math.floor(((decimalHours - hours) * 60 - minutes) * 60)
@@ -1082,7 +1171,7 @@ export default function TimeTracking() {
                   <div className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-red-500/10 px-3 py-1 border border-red-500/20">
                     <AlertCircle className="h-4 w-4 text-red-400" />
                     <span className="text-sm font-medium text-red-400">
-                      Clocked in {activeEntry.lateBy} min late
+                      Clocked in {formatLateTime(activeEntry.lateBy)} late
                     </span>
                   </div>
                 )}
@@ -1105,7 +1194,7 @@ export default function TimeTracking() {
                {/* Clock In/Out Button */}
                <Button
                  onClick={isClockedIn ? handleClockOut : handleClockIn}
-                 disabled={isClockingIn || isClockingOut || !canClockIn}
+                 disabled={isClockingIn || isClockingOut || (!isClockedIn && !canClockIn)}
                  size="lg"
                  className={`h-20 w-full max-w-sm text-lg font-semibold ${
                    isClockedIn
@@ -1195,7 +1284,7 @@ export default function TimeTracking() {
                       <div className="flex items-center gap-2 justify-end mb-1">
                         <Clock className="h-4 w-4 text-indigo-400" />
                         <span className="text-2xl font-bold text-white">
-                          {todaySchedule.startTime} - {todaySchedule.endTime}
+                          {convertTo12Hour(todaySchedule.startTime)} - {convertTo12Hour(todaySchedule.endTime)}
                         </span>
                       </div>
                       <div className="text-xs text-emerald-400 font-medium">
@@ -1531,24 +1620,48 @@ export default function TimeTracking() {
                           )}
                           {isCompleted && breakItem.isLate && (
                             <div className="text-xs font-medium text-red-400 mt-1">
-                              Returned {breakItem.lateBy} min late
+                              Returned {formatLateTime(breakItem.lateBy)} late
                             </div>
                           )}
                         </div>
                       </div>
-                      {!isCompleted && !isOnBreak && !isExpired && breakItem.scheduledStart && (
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-xs font-medium text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-                            🤖 Auto-starts at {parseTimeString(breakItem.scheduledStart).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit"
-                            })}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            System will prompt you
-                          </span>
-                        </div>
-                      )}
+                      {!isCompleted && !isOnBreak && !isExpired && breakItem.scheduledStart && (() => {
+                        const scheduledStartDate = parseTimeString(breakItem.scheduledStart)
+                        const now = new Date()
+                        const isPastScheduledTime = scheduledStartDate && now >= scheduledStartDate
+                        
+                        return (
+                          <div className="flex flex-col items-end gap-2">
+                            {isPastScheduledTime ? (
+                              <>
+                                <Button
+                                  onClick={() => handleStartBreak(breakItem.id, breakItem.type, breakItem.awayReason)}
+                                  disabled={startingBreakType !== null}
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                                >
+                                  {startingBreakType === breakItem.type ? "Starting..." : "▶️ Start Now"}
+                                </Button>
+                                <span className="text-[10px] text-amber-400">
+                                  Missed auto-start
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs font-medium text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                                  🤖 Auto-starts at {scheduledStartDate?.toLocaleTimeString("en-US", {
+                                    hour: "numeric",
+                                    minute: "2-digit"
+                                  })}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  System will prompt you
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
                       {isExpired && (
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-xs font-medium text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
@@ -1593,7 +1706,7 @@ export default function TimeTracking() {
               </div>
             </div>
             <div className="text-3xl font-black text-white tabular-nums group-hover:scale-110 transition-transform">
-              {formatHoursToHMS(stats.today)}
+              {formatHoursToHMS(Math.max(0, stats.today || 0))}
             </div>
             <p className="text-xs text-indigo-300/70 mt-1">
               Hours worked today ⏰
@@ -1609,7 +1722,7 @@ export default function TimeTracking() {
               </div>
             </div>
             <div className="text-3xl font-black text-white tabular-nums group-hover:scale-110 transition-transform">
-              {formatHoursToHMS(stats.week)}
+              {formatHoursToHMS(Math.max(0, stats.week || 0))}
             </div>
             <p className="text-xs text-emerald-300/70 mt-1">
               Mon - Sun 📈
@@ -1625,7 +1738,7 @@ export default function TimeTracking() {
               </div>
             </div>
             <div className="text-3xl font-black text-white tabular-nums group-hover:scale-110 transition-transform">
-              {formatHoursToHMS(stats.month)}
+              {formatHoursToHMS(Math.max(0, stats.month || 0))}
             </div>
             <p className="text-xs text-purple-300/70 mt-1">
               Calendar month 🗓️
@@ -1667,7 +1780,7 @@ export default function TimeTracking() {
                 <div className="space-y-4">
                   {todaysEntries.map((entry) => {
                     // Determine card color based on shift status
-                    const getShiftStatus = () => {
+                    const getShiftStatus = (): { color: 'indigo' | 'emerald' | 'amber' | 'slate', label: string, icon: string } => {
                       if (!entry.clockOut) return { color: 'indigo', label: 'In Progress', icon: '🔵' }
                       if (entry.workedFullShift) return { color: 'emerald', label: 'Full Shift Complete', icon: '✅' }
                       if (entry.wasEarlyClockOut) return { color: 'amber', label: 'Early Clock Out', icon: '⚠️' }
@@ -1770,7 +1883,10 @@ export default function TimeTracking() {
                           ) : (
                             <div className="text-right">
                               <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 animate-pulse group-hover/card:scale-110 transition-transform">
-                                {activeEntry?.clockIn ? formatHoursToHMS((new Date().getTime() - new Date(activeEntry.clockIn).getTime()) / (1000 * 60 * 60)) : '0.00h'}
+                                {activeEntry?.clockIn ? (() => {
+                                  const timeDiff = (new Date().getTime() - new Date(activeEntry.clockIn).getTime()) / (1000 * 60 * 60)
+                                  return formatHoursToHMS(Math.max(0, timeDiff))
+                                })() : '0h 0m 0s'}
                               </div>
                               <div className="text-xs text-emerald-300 font-bold animate-pulse">and counting... 🚀</div>
                             </div>
@@ -1907,7 +2023,7 @@ export default function TimeTracking() {
                   </div>
                 </div>
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 tabular-nums group-hover:scale-110 transition-transform">
-                  {formatHoursToHMS(stats.week)}
+                  {formatHoursToHMS(Math.max(0, stats.week || 0))}
                 </div>
                 <p className="text-xs text-emerald-300/70 mt-2 font-medium">Mon - Sun 📈</p>
               </div>
@@ -1920,7 +2036,7 @@ export default function TimeTracking() {
                   </div>
                 </div>
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tabular-nums group-hover:scale-110 transition-transform">
-                  {formatHoursToHMS(stats.month)}
+                  {formatHoursToHMS(Math.max(0, stats.month || 0))}
                 </div>
                 <p className="text-xs text-purple-300/70 mt-2 font-medium">Calendar month 🗓️</p>
               </div>
@@ -1964,10 +2080,6 @@ export default function TimeTracking() {
               console.error('Failed to save late reason:', error)
             }
           }
-          // Mark as seen in localStorage
-          if (activeEntry?.id) {
-            localStorage.setItem(`late-modal-seen-${activeEntry.id}`, 'true')
-          }
           setShowLateModal(false)
           // Break scheduler will be shown automatically via WebSocket state
         }}
@@ -1979,10 +2091,6 @@ export default function TimeTracking() {
         type="early-clock-in"
         data={{ earlyBy: earlyMinutes, expectedTime: activeEntry?.expectedClockIn }}
         onAction={() => {
-          // Mark as seen in localStorage
-          if (activeEntry?.id) {
-            localStorage.setItem(`early-modal-seen-${activeEntry.id}`, 'true')
-          }
           setShowEarlyModal(false)
           // Break scheduler will be shown automatically via WebSocket state
         }}

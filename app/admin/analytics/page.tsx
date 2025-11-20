@@ -46,7 +46,7 @@ export default function StaffAnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [companyFilter, setCompanyFilter] = useState("all")
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(1) // Default to Today
 
   useEffect(() => {
     fetchStaff()
@@ -90,10 +90,12 @@ export default function StaffAnalyticsPage() {
     setFilteredStaff(filtered)
   }
 
-  function formatTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
+  function formatTime(seconds: number): string {
+    // ⏱️ Database now stores SECONDS (not minutes!)
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours}h ${mins}m ${secs}s`
   }
 
   function getProductivityColor(score: number): string {
@@ -114,7 +116,7 @@ export default function StaffAnalyticsPage() {
   const totalStaff = staff.length
   const activeStaff = staff.filter((s) => s.isClockedIn).length
   const avgProductivity =
-    staff.length > 0 ? Math.round(staff.reduce((sum, s) => sum + s.stats.productivityPercentage, 0) / staff.length) : 0
+    staff.length > 0 ? Math.round(staff.reduce((sum, s) => sum + s.stats.productivityScore, 0) / staff.length) : 0  // ✅ FIX: Use productivityScore (weighted) instead of productivityPercentage
   const staffWithIssues = staff.filter((s) => s.stats.hasSuspiciousActivity || s.stats.lateBreaks > 0).length
 
   const companies = Array.from(new Set(staff.map((s) => s.company?.id).filter(Boolean)))
@@ -223,6 +225,7 @@ export default function StaffAnalyticsPage() {
             <SelectItem value="1">Today</SelectItem>
             <SelectItem value="7">Last 7 Days</SelectItem>
             <SelectItem value="30">Last 30 Days</SelectItem>
+            <SelectItem value="90">Last 90 Days</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -270,9 +273,9 @@ export default function StaffAnalyticsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Productivity</span>
                   <div className="flex items-center gap-2">
-                    {getProductivityBadge(staffMember.stats.productivityPercentage)}
-                    <span className={`text-lg font-bold ${getProductivityColor(staffMember.stats.productivityPercentage)}`}>
-                      {staffMember.stats.productivityPercentage}%
+                    {getProductivityBadge(staffMember.stats.productivityScore)}
+                    <span className={`text-lg font-bold ${getProductivityColor(staffMember.stats.productivityScore)}`}>
+                      {staffMember.stats.productivityScore}%
                     </span>
                   </div>
                 </div>

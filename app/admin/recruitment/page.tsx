@@ -218,6 +218,7 @@ export default function AdminRecruitmentPage() {
     workHours: '9 hours (includes 1 hour break, 15 min either side)'
   })
   const [hiring, setHiring] = useState(false)
+  const [loadingCandidateData, setLoadingCandidateData] = useState(false)
   
   // Schedule Interview Modal State
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
@@ -704,7 +705,7 @@ export default function AdminRecruitmentPage() {
     })
     
     setInterviewToHire(interview)
-    setHiring(true) // Show loading state
+    setLoadingCandidateData(true) // Show loading state while fetching candidate data
     
     try {
       // Fetch candidate details from BPOC database to get email
@@ -830,7 +831,7 @@ export default function AdminRecruitmentPage() {
         workHours: '9 hours (includes 1 hour break, 15 min either side)'
       })
     } finally {
-      setHiring(false)
+      setLoadingCandidateData(false)
     }
     
     setHireModalOpen(true)
@@ -1990,8 +1991,8 @@ export default function AdminRecruitmentPage() {
                           </div>
                         </div>
 
-                        {/* Preferred Interview Times - Hide for completed, hire requested, offer sent, and offer declined */}
-                        {status !== 'completed' && status !== 'hire_requested' && status !== 'hire-requested' && status !== 'offer-sent' && status !== 'offer-declined' && (
+                        {/* Preferred Interview Times - Only show for pending and needs-rescheduling */}
+                        {(status === 'pending' || status === 'needs-rescheduling') && (
                         <div>
                           <h4 className="text-base font-semibold text-foreground mb-2">
                             Client's Preferred Interview Times
@@ -2580,12 +2581,8 @@ export default function AdminRecruitmentPage() {
                 </div>
               )}
 
-              {/* Client's Preferred Times - Hide for completed, hire requested, offer sent, and offer declined */}
-              {modalStatus !== 'completed' && 
-               modalStatus !== 'hire_requested' && 
-               modalStatus !== 'hire-requested' && 
-               modalStatus !== 'offer-sent' && 
-               modalStatus !== 'offer-declined' && (
+              {/* Client's Preferred Times - Only show for pending and needs-rescheduling */}
+              {(modalStatus === 'pending' || modalStatus === 'needs-rescheduling') && (
               <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
                 <h4 className="text-base font-semibold text-slate-100 mb-3">Client's Preferred Interview Times</h4>
                 <div className="flex flex-wrap gap-2">
@@ -2893,7 +2890,17 @@ export default function AdminRecruitmentPage() {
               Send Job Offer
             </DialogTitle>
           </DialogHeader>
-          {interviewToHire && (
+          
+          {loadingCandidateData && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center space-y-3">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+                <p className="text-slate-400 text-sm">Loading candidate details...</p>
+              </div>
+            </div>
+          )}
+          
+          {!loadingCandidateData && interviewToHire && (
             <div className="space-y-6">
               {/* Client Company Information */}
               {interviewToHire.client_users?.company && (

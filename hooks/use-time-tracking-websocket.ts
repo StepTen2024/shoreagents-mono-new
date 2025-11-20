@@ -19,7 +19,7 @@ interface TimeTrackingState {
   }
 }
 
-export function useTimeTrackingWebSocket() {
+export function useTimeTrackingWebSocket(enableAutoStart: boolean = false) {
   const { socket, isConnected, emit, on, off } = useWebSocket()
   
   const [state, setState] = useState<TimeTrackingState>({
@@ -36,6 +36,24 @@ export function useTimeTrackingWebSocket() {
   
   const [isLoading, setIsLoading] = useState(true)
   const [isWebSocketUpdate, setIsWebSocketUpdate] = useState(false)
+  const [currentStaffUserId, setCurrentStaffUserId] = useState<string | null>(null)
+
+  // Fetch current staff user ID on mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/staff/profile')
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentStaffUserId(data.staffUser?.id || null)
+          console.log('[WebSocket] Current staff user ID:', data.staffUser?.id)
+        }
+      } catch (error) {
+        console.error('[WebSocket] Failed to fetch current user:', error)
+      }
+    }
+    fetchCurrentUser()
+  }, [])
 
   // Clock in/out functions
   const clockIn = useCallback(async () => {
@@ -47,6 +65,24 @@ export function useTimeTrackingWebSocket() {
     console.log('[WebSocket] Attempting clock in...')
     
     try {
+      // 🔧 CRITICAL FIX: Reset Electron BEFORE calling API
+      // This prevents old data from syncing to the new empty row
+      if (typeof window !== 'undefined' && window.electron?.sync?.reset) {
+        try {
+          console.log('🔄 [Clock-In] Step 1: Resetting Electron metrics FIRST (before API call)...')
+          const resetResult = await window.electron.sync.reset()
+          console.log('✅ [Clock-In] Electron reset complete - tracking stopped:', resetResult)
+          console.log('🎯 [Clock-In] This prevents old data from syncing to new shift row')
+        } catch (resetError) {
+          console.error('⚠️ [Clock-In] Failed to reset Electron metrics:', resetError)
+          console.error('⚠️ [Clock-In] Continuing anyway, but there may be data issues')
+        }
+      } else {
+        console.warn('⚠️ [Clock-In] Electron not available (browser mode)')
+      }
+      
+      console.log('📡 [Clock-In] Step 2: Calling clock-in API to create database row...')
+      
       // Make API call directly
       const response = await fetch('/api/time-tracking/clock-in', {
         method: 'POST',
@@ -63,8 +99,22 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (data.success) {
-        // Emit WebSocket event for real-time updates
-        emit('time:clockin', data)
+        console.log('✅ [Clock-In] Clock-in successful! Database row created.')
+        
+        // ✅ IMMEDIATELY update local state so UI updates instantly
+        setState(prev => ({
+          ...prev,
+          isClockedIn: true,
+          activeEntry: data.timeEntry || null,
+          showBreakScheduler: data.showBreakScheduler || false,
+          pendingTimeEntryId: data.timeEntry?.id || null
+        }))
+        
+        console.log('✅ [Clock-In] Local state updated immediately')
+        console.log('🎯 [Clock-In] Electron is already reset and ready for fresh tracking!')
+        
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('time:clockin', { ...data, staffUserId: currentStaffUserId })
       } else {
         console.error('Clock in failed - API error:', data)
         throw new Error(data.error || 'Clock in failed')
@@ -73,7 +123,7 @@ export function useTimeTrackingWebSocket() {
       console.error('Clock in error:', error)
       throw error // Re-throw so component can handle it
     }
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   const clockOut = useCallback((reason?: string, notes?: string) => {
     if (!isConnected) {
@@ -81,25 +131,55 @@ export function useTimeTrackingWebSocket() {
       return
     }
     
-    // Make API call in background (don't await)
+    // Make API call and handle errors
     fetch('/api/time-tracking/clock-out', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason, notes })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        // Emit WebSocket event for real-time updates
-        emit('time:clockout', data)
+    .then(async response => {
+      const data = await response.json()
+      
+      console.log('[Clock Out] API Response:', { 
+        status: response.status, 
+        ok: response.ok,
+        data 
+      })
+      
+      if (response.ok && data.success) {
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('time:clockout', { ...data, staffUserId: currentStaffUserId })
       } else {
-        console.error('Clock out failed:', data)
+        const errorMsg = data.details || data.error || 'Unknown error'
+        console.error('❌ Clock out failed:', {
+          status: response.status,
+          error: errorMsg,
+          fullData: data
+        })
+        
+        // Show error toast to user
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('clock-out-error', { 
+            detail: { error: errorMsg } 
+          })
+          window.dispatchEvent(event)
+        }
+        
+        throw new Error(errorMsg)
       }
     })
     .catch(error => {
-      console.error('Clock out error:', error)
+      console.error('❌ Clock out error:', error.message || error)
+      
+      // Show error toast to user if not already shown
+      if (typeof window !== 'undefined' && !error.message?.includes('Failed to fetch')) {
+        const event = new CustomEvent('clock-out-error', { 
+          detail: { error: error.message || 'Network error' } 
+        })
+        window.dispatchEvent(event)
+      }
     })
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   // Break functions
   const startBreak = useCallback(async (breakType: string, awayReason?: string) => {
@@ -119,6 +199,29 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (response.ok) {
+        // ✅ IMMEDIATELY update local state so modal shows instantly
+        const breakData = {
+          id: data.break.id,
+          type: data.break.type,
+          startTime: data.break.actualStart,
+          actualStart: data.break.actualStart,
+          duration: data.break.type === 'LUNCH' ? 60 : 15,
+          awayReason: data.break.awayReason,
+          isPaused: false,
+          pausedDuration: 0,
+          pauseUsed: false
+        }
+        
+        setState(prev => ({
+          ...prev,
+          activeBreak: breakData,
+          scheduledBreaks: prev.scheduledBreaks.map(b => 
+            b.id === data.break.id ? { ...b, actualStart: data.break.actualStart } : b
+          )
+        }))
+        
+        console.log('[WebSocket] ✅ Break started, state updated immediately:', breakData)
+        
         // Pause activity tracking in Electron
         if (typeof window !== 'undefined' && (window as any).electron?.breaks?.start) {
           console.log('[WebSocket] Calling Electron to pause activity tracking for', breakType, 'break')
@@ -134,15 +237,15 @@ export function useTimeTrackingWebSocket() {
           console.log('[WebSocket] Electron API not available (running in browser)')
         }
         
-        // Emit WebSocket event for real-time updates
-        emit('break:start', data)
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('break:start', { ...data, staffUserId: currentStaffUserId })
       } else {
         console.error('Start break failed:', data)
       }
     } catch (error) {
       console.error('Start break error:', error)
     }
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   const endBreak = useCallback(async (breakId: string) => {
     if (!isConnected) {
@@ -161,6 +264,17 @@ export function useTimeTrackingWebSocket() {
       const data = await response.json()
       
       if (response.ok) {
+        // ✅ IMMEDIATELY update local state so modal closes instantly
+        setState(prev => ({
+          ...prev,
+          activeBreak: null,
+          scheduledBreaks: prev.scheduledBreaks.map(b => 
+            b.id === data.break?.id ? { ...b, actualEnd: data.break?.actualEnd } : b
+          )
+        }))
+        
+        console.log('[WebSocket] ✅ Break ended, state updated immediately')
+        
         // Resume activity tracking in Electron
         if (typeof window !== 'undefined' && (window as any).electron?.breaks?.end) {
           console.log('[WebSocket] Calling Electron to resume activity tracking')
@@ -170,15 +284,15 @@ export function useTimeTrackingWebSocket() {
           console.log('[WebSocket] Electron API not available (running in browser)')
         }
         
-        // Emit WebSocket event for real-time updates
-        emit('break:end', data)
+        // Emit WebSocket event for real-time updates (include staffUserId for targeted emission)
+        emit('break:end', { ...data, staffUserId: currentStaffUserId })
       } else {
         console.error('End break failed:', data)
       }
     } catch (error) {
       console.error('End break error:', error)
     }
-  }, [emit, isConnected])
+  }, [emit, isConnected, currentStaffUserId])
 
   const pauseBreak = useCallback(async (breakId: string) => {
     console.warn('[WebSocket] Pause break not implemented in backend')
@@ -239,7 +353,7 @@ export function useTimeTrackingWebSocket() {
       setState({
         isClockedIn: statusData.isClockedIn || false,
         activeEntry: statusData.activeEntry || null,
-        timeEntries: (entriesData.entries || []).filter(e => e && e.clockIn),
+        timeEntries: (entriesData.entries || []).filter((e: any) => e && e.clockIn),
         scheduledBreaks: breaksData.breaks || [],
         activeBreak: activeBreak,
         weeklySchedule: statusData.workSchedules || [],
@@ -257,6 +371,46 @@ export function useTimeTrackingWebSocket() {
   // WebSocket event handlers
   const handleClockInSuccess = useCallback(async (data: any) => {
     console.log('[WebSocket] Clock in success:', data)
+    
+    // 🔒 FIX: Only show modal if this event is for the current user
+    const isCurrentUser = currentStaffUserId && data.timeEntry?.staffUserId === currentStaffUserId
+    
+    if (!isCurrentUser) {
+      console.log('[WebSocket] Clock-in event is for another user, skipping modal')
+      // Still update state for real-time dashboard updates
+      setState(prev => ({
+        ...prev,
+        weeklySchedule: data.workSchedules || prev.weeklySchedule,
+      }))
+      return
+    }
+    
+    // Trigger late/early modal if applicable (only on actual clock-in action for THIS user)
+    if (data.timeEntry?.wasLate && data.timeEntry?.lateBy) {
+      if (typeof window !== 'undefined') {
+        console.log('[WebSocket] Showing late modal for current user')
+        const event = new CustomEvent('show-late-modal', { 
+          detail: { 
+            lateBy: data.timeEntry.lateBy,
+            timeEntryId: data.timeEntry.id 
+          } 
+        })
+        window.dispatchEvent(event)
+      }
+    }
+    
+    if (data.timeEntry?.wasEarly && data.timeEntry?.earlyBy) {
+      if (typeof window !== 'undefined') {
+        console.log('[WebSocket] Showing early modal for current user')
+        const event = new CustomEvent('show-early-modal', { 
+          detail: { 
+            earlyBy: data.timeEntry.earlyBy,
+            timeEntryId: data.timeEntry.id 
+          } 
+        })
+        window.dispatchEvent(event)
+      }
+    }
     
     // Update state immediately
     setState(prev => ({
@@ -286,10 +440,20 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error refreshing stats after clock in:', error)
     }
-  }, [])
+  }, [currentStaffUserId])
 
   const handleClockOutSuccess = useCallback(async (data: any) => {
     console.log('[WebSocket] Clock out success:', data)
+    
+    // ✅ CRITICAL FIX: Only update state if this event is for the current user
+    const isCurrentUser = currentStaffUserId && data.timeEntry?.staffUserId === currentStaffUserId
+    
+    if (!isCurrentUser) {
+      console.log('[WebSocket] Clock-out event is for another user, ignoring. Event user:', data.timeEntry?.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Clock-out event is for current user, updating state')
     
     // Update state immediately
     setState(prev => ({
@@ -317,10 +481,18 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error refreshing stats after clock out:', error)
     }
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakStarted = useCallback((data: any) => {
     console.log('[WebSocket] Break started:', data)
+    
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break started for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Break started for current user, updating state')
     setIsWebSocketUpdate(true) // Flag to prevent API override
     
     // Map the break data to match the expected format
@@ -349,10 +521,18 @@ export function useTimeTrackingWebSocket() {
     
     // Don't refresh data immediately - the WebSocket update is sufficient
     // The break modal will show immediately with the updated state
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakEnded = useCallback((data: any) => {
     console.log('[WebSocket] Break ended:', data)
+    
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break ended for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    console.log('[WebSocket] Break ended for current user, updating state')
     setIsWebSocketUpdate(true) // Flag to prevent API override
     setState(prev => {
       console.log('[WebSocket] Setting activeBreak to null, previous state:', prev.activeBreak)
@@ -412,7 +592,7 @@ export function useTimeTrackingWebSocket() {
         })
         .catch(error => console.error('[WebSocket] Fallback: Error refreshing scheduled breaks:', error))
     }, 1000)
-  }, [])
+  }, [currentStaffUserId])
 
   const handleDataUpdate = useCallback((data: any) => {
     console.log('[WebSocket] Data update received:', data)
@@ -424,6 +604,12 @@ export function useTimeTrackingWebSocket() {
   }, [])
 
   const handleBreakPaused = useCallback((data: any) => {
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break paused for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
     setState(prev => ({
       ...prev,
       activeBreak: prev.activeBreak ? { 
@@ -432,9 +618,15 @@ export function useTimeTrackingWebSocket() {
         pausedDuration: data.break?.pausedduration || prev.activeBreak.pausedDuration
       } : null
     }))
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakResumed = useCallback((data: any) => {
+    // ✅ CRITICAL FIX: Only update state if this break belongs to the current user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break resumed for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
     setState(prev => ({
       ...prev,
       activeBreak: prev.activeBreak ? { 
@@ -443,13 +635,24 @@ export function useTimeTrackingWebSocket() {
         pausedDuration: data.break?.pausedduration || 0
       } : null
     }))
-  }, [])
+  }, [currentStaffUserId])
 
   const handleBreakAutoStartTrigger = useCallback(async (data: any) => {
     console.log('[WebSocket] Break auto-start trigger:', data)
     
-    // Only process if it's for this user (check would need staffUserId comparison)
-    // For now, let's auto-start the break via API
+    // ✅ CRITICAL FIX: Only process if it's for this user
+    if (data.staffUserId && data.staffUserId !== currentStaffUserId) {
+      console.log('[WebSocket] Break auto-start for different user, ignoring. Event user:', data.staffUserId, 'Current user:', currentStaffUserId)
+      return
+    }
+    
+    // ✅ NEW FIX: Only auto-start if the time tracking page is active (enableAutoStart = true)
+    if (!enableAutoStart) {
+      console.log('[WebSocket] Auto-start disabled (not on time tracking page), ignoring trigger')
+      return
+    }
+    
+    console.log('[WebSocket] Break auto-start for current user, proceeding...')
     try {
       const response = await fetch('/api/breaks/start', {
         method: 'POST',
@@ -468,7 +671,7 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error auto-starting break:', error)
     }
-  }, [])
+  }, [currentStaffUserId, enableAutoStart])
 
   // Set up event listeners
   useEffect(() => {

@@ -26,14 +26,21 @@ export async function GET(
     const { staffUserId } = params
 
     const { searchParams } = new URL(request.url)
-    const days = parseInt(searchParams.get("days") || "7")
+    const days = parseInt(searchParams.get("days") || "1") // Default to Today
 
-    // Calculate date range
-    const endDate = new Date()
-    endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-    startDate.setHours(0, 0, 0, 0)
+    // Calculate date range based on Philippines timezone
+    // ✅ FIX: Calculate date range based on Philippines timezone (UTC+8)
+    const nowUTC = new Date()
+    const nowInPH = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+    
+    // Get midnight today in PH time, then convert to UTC
+    const startOfTodayPH = new Date(nowInPH)
+    startOfTodayPH.setHours(0, 0, 0, 0)
+    
+    const startDate = new Date(startOfTodayPH.getTime() - (8 * 60 * 60 * 1000))
+    startDate.setDate(startDate.getDate() - (days - 1))
+    
+    const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Current time + 1hr buffer
 
     // Fetch staff with ALL tracking data
     const staffMember = await prisma.staff_users.findUnique({
@@ -56,13 +63,13 @@ export async function GET(
         },
         performance_metrics: {
           where: {
-            shiftDate: {
+            shiftDate: {              // ✅ FIX: Use shiftDate (timezone-aware) instead of date
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            shiftDate: "desc",
+            shiftDate: "desc",        // ✅ FIX: Order by shiftDate
           },
         },
         time_entries: {
@@ -116,7 +123,7 @@ export async function GET(
         allVisitedUrls.push(
           ...metric.visitedurls.map((urlData: any) => ({
             ...urlData,
-            date: metric.shiftDate,
+            date: metric.date,
           }))
         )
       }
@@ -156,7 +163,7 @@ export async function GET(
         allApplications.push(
           ...metric.applicationsused.map((appData: any) => ({
             ...appData,
-            date: metric.shiftDate,
+            date: metric.date,
           }))
         )
       }
@@ -196,7 +203,7 @@ export async function GET(
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
 
-      const dayMetrics = metrics.filter((m) => m.shiftDate >= date && m.shiftDate <= dayEnd)
+      const dayMetrics = metrics.filter((m) => m.shiftDate && m.shiftDate >= date && m.shiftDate <= dayEnd)  // ✅ FIX: Use shiftDate for filtering
       const dayEntries = timeEntries.filter((e) => e.clockIn >= date && e.clockIn <= dayEnd)
 
       const dayStats = {
@@ -218,11 +225,13 @@ export async function GET(
     // Get screenshots
     const allScreenshots: any[] = []
     metrics.forEach((metric) => {
-      if (metric.screenshotUrls && Array.isArray(metric.screenshotUrls)) {
+      // Database column is lowercase: screenshoturls
+      const screenshots = (metric as any).screenshoturls
+      if (screenshots && Array.isArray(screenshots)) {
         allScreenshots.push(
-          ...metric.screenshotUrls.map((screenshotData: any) => ({
-            ...screenshotData,
-            date: metric.shiftDate,
+          ...screenshots.map((url: string) => ({
+            url: url,
+            date: metric.date,
           }))
         )
       }

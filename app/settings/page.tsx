@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Settings, Bell, Lock, Palette, Globe } from "lucide-react"
+import { UpdateNotification } from "@/components/staff/update-notification"
 
 export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
@@ -123,6 +124,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Software Updates - Only visible in Electron app */}
+          <UpdateNotification />
 
           {/* Language & Region */}
           <Card className="bg-slate-900/50 backdrop-blur-xl ring-1 ring-white/10 border-0">

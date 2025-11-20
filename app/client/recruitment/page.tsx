@@ -2344,18 +2344,36 @@ function InterviewsTab({
   }
 
   function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const formatted = new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: clientTimezone
     })
+    
+    // Get timezone display
+    const tzMap: Record<string, string> = {
+      'Australia/Sydney': 'AEDT',
+      'Australia/Melbourne': 'AEDT',
+      'Australia/Brisbane': 'AEST',
+      'Australia/Adelaide': 'ACDT',
+      'Australia/Perth': 'AWST',
+      'America/New_York': 'ET',
+      'America/Chicago': 'CT',
+      'America/Denver': 'MT',
+      'America/Los_Angeles': 'PT',
+      'Pacific/Auckland': 'NZDT',
+    }
+    const tzDisplay = tzMap[clientTimezone] || clientTimezone
+    
+    return `${formatted} (${tzDisplay})`
   }
 
   function formatPreferredTime(time: string | PreferredTime) {
     try {
-      // Handle new object format
+      // Handle new object format with timezone
       if (typeof time === 'object' && time.datetime) {
         const date = new Date(time.datetime)
         const formatted = date.toLocaleDateString('en-US', {
@@ -2369,7 +2387,7 @@ function InterviewsTab({
         return `${formatted} (${time.timezoneDisplay})`
       }
       
-      // Handle old string format
+      // Handle old string format - display as-is without timezone conversion
       const date = new Date(time as string)
       return date.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -2847,7 +2865,8 @@ function InterviewsTab({
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',
-                      day: 'numeric'
+                      day: 'numeric',
+                      timeZone: clientTimezone
                     })}
                   </p>
                 </div>
@@ -2917,6 +2936,21 @@ function InterviewsTab({
                 const parseNotes = (notesText: string, type: 'client' | 'admin') => {
                   if (!notesText) return [];
                   
+                  // Get timezone display
+                  const tzMap: Record<string, string> = {
+                    'Australia/Sydney': 'AEDT',
+                    'Australia/Melbourne': 'AEDT',
+                    'Australia/Brisbane': 'AEST',
+                    'Australia/Adelaide': 'ACDT',
+                    'Australia/Perth': 'AWST',
+                    'America/New_York': 'ET',
+                    'America/Chicago': 'CT',
+                    'America/Denver': 'MT',
+                    'America/Los_Angeles': 'PT',
+                    'Pacific/Auckland': 'NZDT',
+                  }
+                  const tzDisplay = tzMap[clientTimezone] || clientTimezone
+                  
                   // Split by timestamp pattern - supports both () and [] and plain timestamps
                   const entries = notesText.split(/\n\n(?=[\(\[]|\d)/);
                   
@@ -2927,8 +2961,16 @@ function InterviewsTab({
                       const [, statusLabel, timestamp, content] = newFormatMatch;
                       try {
                         const date = new Date(timestamp.trim());
+                        const formattedTimestamp = date.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: clientTimezone
+                        });
                         return { 
-                          timestamp: `(${statusLabel}) ${timestamp.trim()}`, 
+                          timestamp: `(${statusLabel}) ${formattedTimestamp} (${tzDisplay})`, 
                           content: content.trim(), 
                           type, 
                           date, 
@@ -2951,8 +2993,16 @@ function InterviewsTab({
                       const [, timestamp, content] = plainFormatMatch;
                       try {
                         const date = new Date(timestamp.trim());
+                        const formattedTimestamp = date.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: clientTimezone
+                        });
                         return { 
-                          timestamp: timestamp.trim(), 
+                          timestamp: `${formattedTimestamp} (${tzDisplay})`, 
                           content: content.trim(), 
                           type, 
                           date, 
@@ -2975,8 +3025,16 @@ function InterviewsTab({
                       const [, statusLabel, timestamp, content] = oldNewFormatMatch;
                       try {
                         const date = new Date(timestamp.trim());
+                        const formattedTimestamp = date.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: clientTimezone
+                        });
                         return { 
-                          timestamp: `[${statusLabel}] ${timestamp.trim()}`, 
+                          timestamp: `[${statusLabel}] ${formattedTimestamp} (${tzDisplay})`, 
                           content: content.trim(), 
                           type, 
                           date, 
@@ -2999,7 +3057,15 @@ function InterviewsTab({
                       const [, timestamp, content] = oldFormatMatch;
                       try {
                         const date = new Date(timestamp);
-                        return { timestamp, content: content.trim(), type, date, rawText: entry };
+                        const formattedTimestamp = date.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: clientTimezone
+                        });
+                        return { timestamp: `${formattedTimestamp} (${tzDisplay})`, content: content.trim(), type, date, rawText: entry };
                       } catch {
                         return { timestamp, content: content.trim(), type, date: new Date(0), rawText: entry };
                       }

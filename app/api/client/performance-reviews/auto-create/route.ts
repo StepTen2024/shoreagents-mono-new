@@ -64,10 +64,12 @@ export async function POST(req: NextRequest) {
       console.log(`   Start Date: ${startDate.toLocaleDateString()}`)
       console.log(`   Days Since Start: ${daysSinceStart}`)
       
-      // Check each review type to see if it should be created (7 days before due)
-      const reviewTypes: ReviewType[] = ["MONTH_1", "MONTH_3", "MONTH_5", "RECURRING"]
+      // Check each review type to see if it should be created (from 7 days before due, including overdue)
+      const reviewTypes: ReviewType[] = ["MONTH_1", "MONTH_3", "MONTH_5"]
       let reviewType: ReviewType | null = null
+      let recurringDueDate: Date | null = null
       
+      // Check probation reviews (Month 1, 3, 5)
       for (const type of reviewTypes) {
         const dueDate = getReviewDueDate(startDate, type)
         const createDate = new Date(dueDate)
@@ -80,9 +82,10 @@ export async function POST(req: NextRequest) {
         console.log(`     Create Date: ${createDate.toLocaleDateString()}`)
         console.log(`     Today: ${now.toLocaleDateString()}`)
         
-        // Check if today is on or after the create date AND before the due date
-        const shouldCreate = now >= createDate && now < dueDate
-        console.log(`     Should Create: ${shouldCreate}`)
+        // Check if today is on or after the create date (allows overdue reviews to be created)
+        const shouldCreate = now >= createDate
+        const isOverdue = now >= dueDate
+        console.log(`     Should Create: ${shouldCreate}${isOverdue ? ' (OVERDUE)' : ''}`)
         
         if (shouldCreate) {
           // Check if this review type already exists
@@ -98,18 +101,58 @@ export async function POST(req: NextRequest) {
           
           if (!exists) {
             reviewType = type
-            console.log(`📅 ${staff.name}: ${type} review ready for creation!`)
+            const overdueMsg = isOverdue ? ' (OVERDUE - will create)' : ''
+            console.log(`📅 ${staff.name}: ${type} review ready for creation!${overdueMsg}`)
             break // Only create one review at a time
           } else {
             console.log(`⏭️  ${staff.name}: ${type} review already exists`)
           }
         } else {
           const daysUntilCreate = Math.ceil((createDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-          if (daysUntilCreate > 0) {
-            console.log(`⏳ ${staff.name}: ${type} review will be created in ${daysUntilCreate} days`)
-          } else {
-            console.log(`⏭️  ${staff.name}: ${type} review due date has passed`)
-          }
+          console.log(`⏳ ${staff.name}: ${type} review will be created in ${daysUntilCreate} days`)
+        }
+      }
+      
+      // Check for RECURRING reviews (after regularisation at day 150)
+      if (!reviewType && daysSinceStart >= 323) {
+        console.log(`   Checking RECURRING reviews (post-regularisation)...`)
+        
+        // Get all existing recurring reviews for this staff member
+        const existingRecurring = await prisma.reviews.findMany({
+          where: {
+            staffUserId: staff.id,
+            type: "RECURRING"
+          },
+          orderBy: { dueDate: 'desc' }
+        })
+        
+        console.log(`     Existing RECURRING reviews: ${existingRecurring.length}`)
+        
+        // Calculate which recurring review should be due
+        // First recurring: day 330 (150 + 180)
+        // Second recurring: day 510 (330 + 180)
+        // Third recurring: day 690 (510 + 180)
+        const recurringNumber = existingRecurring.length + 1
+        const daysUntilDue = 330 + (existingRecurring.length * 180) // 330, 510, 690, etc.
+        recurringDueDate = new Date(startDate)
+        recurringDueDate.setDate(recurringDueDate.getDate() + daysUntilDue)
+        
+        const createDate = new Date(recurringDueDate)
+        createDate.setDate(createDate.getDate() - 7)
+        
+        const now = new Date()
+        const shouldCreate = now >= createDate
+        const isOverdue = now >= recurringDueDate
+        
+        console.log(`     Recurring #${recurringNumber}:`)
+        console.log(`     Due Date: ${recurringDueDate.toLocaleDateString()} (day ${daysUntilDue})`)
+        console.log(`     Create Date: ${createDate.toLocaleDateString()}`)
+        console.log(`     Should Create: ${shouldCreate}${isOverdue ? ' (OVERDUE)' : ''}`)
+        
+        if (shouldCreate) {
+          reviewType = "RECURRING"
+          const overdueMsg = isOverdue ? ' (OVERDUE - will create)' : ''
+          console.log(`📅 ${staff.name}: RECURRING review #${recurringNumber} ready for creation!${overdueMsg}`)
         }
       }
       
@@ -119,12 +162,13 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Create the review if it's due (regardless of 7-day window)
-      const dueDate = getReviewDueDate(startDate, reviewType)
-      const evaluationPeriod = `Day 1 to Day ${daysSinceStart}`
+      // Create the review
+      const dueDate = recurringDueDate || getReviewDueDate(startDate, reviewType)
+      const evaluationPeriod = reviewType === "RECURRING" ? "Past 6 months" : `Day 1 to Day ${daysSinceStart}`
 
       const review = await prisma.reviews.create({
         data: {
+          id: require('crypto').randomUUID(),
           staffUserId: staff.id,
           type: reviewType,
           status: "PENDING",
@@ -132,7 +176,8 @@ export async function POST(req: NextRequest) {
           reviewer: clientUser.email,
           reviewerTitle: clientUser.role,
           dueDate,
-          evaluationPeriod
+          evaluationPeriod,
+          updatedAt: new Date()
         }
       })
 

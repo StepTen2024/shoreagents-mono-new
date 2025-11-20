@@ -57,9 +57,14 @@ app.prepare().then(() => {
     path: '/api/socketio',
     addTrailingSlash: false,
     cors: {
-      origin: dev ? ['http://localhost:3000'] : false,
-      methods: ['GET', 'POST']
+      origin: dev 
+        ? ['http://localhost:3000']
+        : ['https://shoreagents-mono-new-production.up.railway.app', 'https://shoreagents.ai'],
+      methods: ['GET', 'POST'],
+      credentials: true
     },
+    transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
+    allowEIO3: true
   })
 
   // Make socket server globally accessible
@@ -98,29 +103,41 @@ app.prepare().then(() => {
       })
     })
 
-    // Break events
+    // Break events - emit to specific user only
     socket.on('break:start', (data) => {
       console.log('[WebSocket] Break start event:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('break:started', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('break:started', data)
+        console.log(`[WebSocket] Break started emitted to user:${data.staffUserId}`)
+      }
     })
 
     socket.on('break:end', (data) => {
       console.log('[WebSocket] Break end event:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('break:ended', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('break:ended', data)
+        console.log(`[WebSocket] Break ended emitted to user:${data.staffUserId}`)
+      }
     })
 
     socket.on('break:pause', (data) => {
       console.log('[WebSocket] Break pause event:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('break:paused', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('break:paused', data)
+        console.log(`[WebSocket] Break paused emitted to user:${data.staffUserId}`)
+      }
     })
 
     socket.on('break:resume', (data) => {
       console.log('[WebSocket] Break resume event:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('break:resumed', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('break:resumed', data)
+        console.log(`[WebSocket] Break resumed emitted to user:${data.staffUserId}`)
+      }
     })
 
     // Task events
@@ -142,21 +159,34 @@ app.prepare().then(() => {
     // Time tracking events - just broadcast, client handles API calls
     socket.on('time:clockin', (data) => {
       console.log('[WebSocket] Clock in event:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('time:clockedin', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('time:clockedin', data)
+        console.log(`[WebSocket] Clock in emitted to user:${data.staffUserId}`)
+      }
+      // Also emit to monitoring clients (for admin dashboard)
+      io.to('monitoring').emit('time:clockedin', data)
     })
 
     socket.on('time:clockout', (data) => {
       console.log('[WebSocket] Clock out event:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('time:clockedout', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('time:clockedout', data)
+        console.log(`[WebSocket] Clock out emitted to user:${data.staffUserId}`)
+      }
+      // Also emit to monitoring clients (for admin dashboard)
+      io.to('monitoring').emit('time:clockedout', data)
     })
 
     // Data update events - broadcast when data changes
     socket.on('time:data-update', (data) => {
       console.log('[WebSocket] Time data update:', data)
-      // Broadcast to all clients for real-time updates
-      io.emit('time:data-updated', data)
+      // Emit to specific user only (not all clients)
+      if (data.staffUserId) {
+        io.to(`user:${data.staffUserId}`).emit('time:data-updated', data)
+        console.log(`[WebSocket] Time update emitted to user:${data.staffUserId}`)
+      }
     })
 
     // Performance metrics events
@@ -381,8 +411,8 @@ function startBreakAutoStartJob(io) {
           if (scheduledTime.hour === currentHour && scheduledTime.minute === currentMinute) {
             console.log(`[Break Auto-Start] Time to start break ${breakItem.type} for user ${entry.staffUserId}`)
             
-            // Emit WebSocket event to trigger break modal
-            io.emit('break:auto-start-trigger', {
+            // ✅ FIX: Emit WebSocket event to SPECIFIC USER ONLY (not broadcast to all)
+            io.to(`user:${entry.staffUserId}`).emit('break:auto-start-trigger', {
               staffUserId: entry.staffUserId,
               breakId: breakItem.id,
               breakType: breakItem.type,
@@ -390,6 +420,7 @@ function startBreakAutoStartJob(io) {
               duration: breakItem.duration,
               timeEntryId: entry.id
             })
+            console.log(`[Break Auto-Start] Emitted auto-start trigger to user:${entry.staffUserId}`)
           }
         }
       }

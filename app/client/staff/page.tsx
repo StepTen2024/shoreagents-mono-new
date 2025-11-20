@@ -194,16 +194,6 @@ export default function StaffPage() {
                   </div>
 
                   <div className="space-y-2 mb-4 text-sm">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Mail className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                      <span className="truncate">{member.email}</span>
-                    </div>
-                    {member.phone && (
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Phone className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                        <span>{member.phone}</span>
-                      </div>
-                    )}
                     {member.location && (
                       <div className="flex items-center gap-2 text-gray-700">
                         <MapPin className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
@@ -221,7 +211,7 @@ export default function StaffPage() {
                     {member.rate && (
                       <div className="flex items-center gap-2 text-gray-700">
                         <DollarSign className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                        <span>${member.rate}/month</span>
+                        <span>₱{member.rate.toLocaleString()}/month</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-gray-700">
@@ -328,16 +318,6 @@ export default function StaffPage() {
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="space-y-2.5">
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <Mail className="h-4 w-4 text-blue-600" />
-                        <span className="font-medium">{member.email}</span>
-                      </div>
-                      {member.phone && (
-                        <div className="flex items-center gap-2 text-sm text-gray-700">
-                          <Phone className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium">{member.phone}</span>
-                        </div>
-                      )}
                       {member.location && (
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <MapPin className="h-4 w-4 text-blue-600" />
@@ -348,16 +328,16 @@ export default function StaffPage() {
                         <Calendar className="h-4 w-4 text-blue-600" />
                         <span className="font-medium">Started {formatDate(member.startDate)}</span>
                       </div>
-                    </div>
-                    <div className="space-y-2.5">
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Clock className="h-4 w-4 text-blue-600" />
                         <span className="font-medium">Shift: {member.shift}</span>
                       </div>
+                    </div>
+                    <div className="space-y-2.5">
                       {member.rate && (
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <DollarSign className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium">${member.rate}/month</span>
+                          <span className="font-medium">₱{member.rate.toLocaleString()}/month</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-sm text-gray-700">

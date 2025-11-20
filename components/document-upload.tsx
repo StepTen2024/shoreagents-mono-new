@@ -50,9 +50,15 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
   }
 
   const updateDocument = (id: string, updates: Partial<DocumentToUpload>) => {
-    setDocumentsToUpload(documentsToUpload.map(doc => 
-      doc.id === id ? { ...doc, ...updates } : doc
-    ))
+    console.log('[updateDocument] CALLED with id:', id, 'updates:', updates)
+    setDocumentsToUpload(prevDocs => prevDocs.map(doc => {
+      if (doc.id === id) {
+        const updated = { ...doc, ...updates }
+        console.log('[updateDocument] Updated doc:', updated)
+        return updated
+      }
+      return doc
+    }))
   }
 
   const resetUploadForm = () => {
@@ -65,7 +71,11 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
 
   const handleUpload = async () => {
     // Validate all documents
+    console.log('[Upload Debug] Documents to upload:', documentsToUpload.map(d => ({ id: d.id, title: d.title, hasFile: !!d.file })))
+    
     const invalidDocs = documentsToUpload.filter(doc => !doc.title || !doc.file)
+    console.log('[Upload Debug] Invalid docs:', invalidDocs.map(d => ({ id: d.id, title: d.title, hasFile: !!d.file })))
+    
     if (invalidDocs.length > 0) {
       setError("Please provide a title and file for all documents.")
       return
@@ -209,6 +219,7 @@ export default function DocumentUpload({ onSuccess, onClose }: DocumentUploadPro
                       accept=".pdf,.doc,.docx,.txt,.md"
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null
+                        console.log('[File Input] Selected file:', file?.name, 'Size:', file?.size)
                         updateDocument(doc.id, { file })
                         // Auto-fill title from filename if title is empty
                         if (file && !doc.title) {

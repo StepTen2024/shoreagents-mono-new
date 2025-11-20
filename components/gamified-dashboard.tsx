@@ -6,6 +6,8 @@ import {
   CheckSquare, Coffee, Star, Headphones, Trophy, Activity, MessageSquare,
   Calendar, Clock, TrendingUp, AlertCircle, Users
 } from "lucide-react"
+import { TimeTrackingWidget } from "./dashboard/time-tracking-widget"
+import { ScheduleWidget } from "./dashboard/schedule-widget"
 
 interface DashboardData {
   tasks: any[]
@@ -143,8 +145,8 @@ export default function GamifiedDashboard() {
   }
 
   const quickActions = [
+    { href: "/time-tracking", icon: Clock, label: "Time Tracking" },
     { href: "/tasks", icon: CheckSquare, label: "Manage Tasks" },
-    { href: "/breaks", icon: Coffee, label: "Track Breaks" },
     { href: "/performance-reviews", icon: Star, label: "View Reviews" },
     { href: "/tickets", icon: Headphones, label: "Support Tickets" },
   ]
@@ -199,6 +201,12 @@ export default function GamifiedDashboard() {
             ))}
           </div>
         </div>
+
+        {/* Time Tracking Widget */}
+        <TimeTrackingWidget />
+
+        {/* Schedule Widget */}
+        <ScheduleWidget />
 
         {/* Welcome Form Banner */}
         {onboardingStatus?.isComplete && welcomeFormStatus?.needsCompletion && (
@@ -348,7 +356,7 @@ export default function GamifiedDashboard() {
             <div className="space-y-4 rounded-2xl bg-slate-900/50 backdrop-blur-xl ring-1 ring-white/10 p-6 shadow-xl transition-all duration-500 hover:ring-white/20 hover:shadow-indigo-500/30">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white">Recent Team Activity</h2>
-                <Link href="/activity" className="text-sm text-blue-400 hover:underline">View Feed →</Link>
+                {/* <Link href="/activity" className="text-sm text-blue-400 hover:underline">View Feed →</Link> */}
               </div>
               {recentPosts.length === 0 ? (
                 <p className="text-slate-400">No recent activity</p>

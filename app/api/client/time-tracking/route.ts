@@ -17,15 +17,25 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('endDate')
     const staffId = searchParams.get('staffId')
 
-    // Try to get client via ClientUser table
+    // Get client user with profile (for timezone)
     const clientUser = await prisma.client_users.findUnique({
       where: { email: session.user.email },
-      include: { company: true }
+      include: { 
+        company: true,
+        client_profiles: {
+          select: {
+            timezone: true
+          }
+        }
+      }
     })
 
     if (!clientUser) {
       return NextResponse.json({ error: "Unauthorized - Not a client user" }, { status: 401 })
     }
+    
+    // Get client's timezone from profile (default to America/New_York if not set)
+    const clientTimezone = clientUser.client_profiles?.timezone || 'America/New_York'
 
     // Get all staff assigned to this company
     const staffUsers = await prisma.staff_users.findMany({
@@ -67,24 +77,55 @@ export async function GET(req: NextRequest) {
       whereClause.staffUserId = staffId
     }
 
-    // Filter by date range if specified
+    // Filter by date range if specified - using CLIENT'S timezone
     if (startDate) {
-      const startDateTime = new Date(startDate)
-      startDateTime.setHours(0, 0, 0, 0)
+      // Parse the date in client's timezone
+      const dateStr = new Date(startDate).toLocaleDateString('en-US', { timeZone: clientTimezone })
+      const [month, day, year] = dateStr.split('/')
+      
+      // Create midnight in client's timezone, then get UTC equivalent
+      const startInClientTZ = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`)
+      const nowUTC = new Date()
+      const nowInClientTZ = new Date(nowUTC.toLocaleString('en-US', { timeZone: clientTimezone }))
+      const tzOffset = nowInClientTZ.getTime() - nowUTC.getTime()
+      
+      const startDateTime = new Date(startInClientTZ.getTime() - tzOffset)
+      
       whereClause.clockIn = {
         gte: startDateTime
       }
+      
+      console.log(`[Client Time Tracking] Start date filter (${clientTimezone}):`, {
+        inputDate: startDate,
+        startInClientTZ: startInClientTZ.toISOString(),
+        startInUTC: startDateTime.toISOString()
+      })
     }
 
     if (endDate) {
-      const endDateTime = new Date(endDate)
-      endDateTime.setHours(23, 59, 59, 999)
+      // Parse the date in client's timezone
+      const dateStr = new Date(endDate).toLocaleDateString('en-US', { timeZone: clientTimezone })
+      const [month, day, year] = dateStr.split('/')
+      
+      // Create end of day in client's timezone, then get UTC equivalent
+      const endInClientTZ = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T23:59:59.999Z`)
+      const nowUTC = new Date()
+      const nowInClientTZ = new Date(nowUTC.toLocaleString('en-US', { timeZone: clientTimezone }))
+      const tzOffset = nowInClientTZ.getTime() - nowUTC.getTime()
+      
+      const endDateTime = new Date(endInClientTZ.getTime() - tzOffset)
       
       if (whereClause.clockIn) {
         whereClause.clockIn.lte = endDateTime
       } else {
         whereClause.clockIn = { lte: endDateTime }
       }
+      
+      console.log(`[Client Time Tracking] End date filter (${clientTimezone}):`, {
+        inputDate: endDate,
+        endInClientTZ: endInClientTZ.toISOString(),
+        endInUTC: endDateTime.toISOString()
+      })
     }
 
     // Fetch time entries with breaks
@@ -152,6 +193,24 @@ export async function GET(req: NextRequest) {
       const activeBreak = activeEntry?.breaks.find((b: any) => b.actualStart && !b.actualEnd)
       const isOnBreak = !!activeBreak
 
+      // Calculate current hours for active entry (including break time deduction)
+      let currentHours = 0
+      if (activeEntry && !activeEntry.clockOut) {
+        const clockInTime = new Date(activeEntry.clockIn).getTime()
+        const now = new Date().getTime()
+        const totalMs = now - clockInTime
+        
+        // Subtract completed break time
+        const breakTimeMs = activeEntry.breaks
+          .filter((b: any) => b.actualStart && b.actualEnd)
+          .reduce((sum: number, b: any) => {
+            const breakDuration = new Date(b.actualEnd).getTime() - new Date(b.actualStart).getTime()
+            return sum + breakDuration
+          }, 0)
+        
+        currentHours = Math.round(((totalMs - breakTimeMs) / (1000 * 60 * 60)) * 100) / 100
+      }
+
       return {
         staff: {
           id: staff.id,
@@ -167,6 +226,7 @@ export async function GET(req: NextRequest) {
         currentEntry: activeEntry ? {
           id: activeEntry.id,
           clockIn: activeEntry.clockIn,
+          currentHours, // Add calculated current hours
           breaks: activeEntry.breaks.map((b: any) => ({
             id: b.id,
             type: b.type,
@@ -218,6 +278,11 @@ export async function GET(req: NextRequest) {
     const activeStaff = staffTimeEntries.filter(s => s.isClockedIn).length
     const totalHours = staffTimeEntries.reduce((sum, s) => sum + s.totalHours, 0)
     const totalEntries = timeEntries.length
+    
+    // Only count staff who have started work (not in NOT_STARTED status)
+    const activeEmployees = staffTimeEntries.filter(s => 
+      s.staff.employmentStatus !== 'NOT_STARTED'
+    ).length
 
     return NextResponse.json({
       staffTimeEntries: sortedStaffTimeEntries,
@@ -225,7 +290,7 @@ export async function GET(req: NextRequest) {
         totalHours: Math.round(totalHours * 100) / 100,
         activeStaff,
         totalEntries,
-        totalStaff: staffTimeEntries.length
+        totalStaff: activeEmployees // Only count active employees
       }
     })
   } catch (error: any) {

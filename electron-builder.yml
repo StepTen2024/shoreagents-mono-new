@@ -2,8 +2,15 @@
 # Builds Windows installer for Shore Agents Desktop App
 
 appId: com.shoreagents.desktop
-productName: Shore Agents
+productName: ShoreAgentsAI
 copyright: Copyright © 2025 Shore Agents
+
+# Auto-update configuration (GitHub Releases)
+publish:
+  provider: github
+  owner: StepTen2024
+  repo: shoreagents-mono-new
+  releaseType: release
 
 # Build output directory
 directories:
@@ -16,6 +23,7 @@ files:
   - "node_modules/**/*"
   - "!node_modules/.cache"
   - "package.json"
+  - "build/**/*"
 
 # Exclude files (reduce bundle size)
 # Don't include Next.js files - Electron connects to Railway
@@ -31,8 +39,8 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: build/icon.ico
-  artifactName: "${productName}-Setup-${version}.${ext}"
+  icon: build/shoreagents-icon.png
+  artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   
 # Windows installer configuration (NSIS)
 nsis:
@@ -40,18 +48,17 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: "Shore Agents"
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  license: LICENSE
-  artifactName: "${productName}-Setup-${version}.${ext}"
+  shortcutName: "ShoreAgentsAI"
+  # installerIcon and uninstallerIcon will be auto-generated from the main icon
+  # license: LICENSE  # Commented out if LICENSE file doesn't exist
+  artifactName: "ShoreAgentsAI-Setup-${version}.${ext}"
   deleteAppDataOnUninstall: false
 
 # Environment variables to embed in build
 # Set these when building for production
 extraMetadata:
   name: shore-agents-desktop
-  version: 1.0.0
+  version: 1.0.2
 
 # Build resources (icons, etc.)
 # Place icon.ico in /build folder

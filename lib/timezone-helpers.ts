@@ -7,27 +7,81 @@ import { prisma } from "@/lib/prisma"
 
 /**
  * Get current time in staff's timezone (default: Asia/Manila)
+ * Returns the ACTUAL current UTC time (not a fake offset time!)
+ * 
+ * NOTE: Date objects always store UTC internally. This function returns
+ * the actual current time, which is the same in all timezones!
  */
 export function getStaffLocalTime(timezone: string = 'Asia/Manila'): Date {
-  // Get current time as string in staff timezone
-  const nowStr = new Date().toLocaleString('en-US', { 
+  // Current UTC time is the same regardless of timezone!
+  // The timezone parameter is kept for API consistency but isn't needed here.
+  return new Date()
+}
+
+/**
+ * Get start of day (midnight) in staff's timezone
+ * Returns UTC Date that represents midnight in the target timezone
+ * 
+ * Example: Nov 14, 2025 00:00:00 Manila = Nov 13, 2025 16:00:00 UTC
+ * (Manila is UTC+8, so we subtract 8 hours from Manila midnight to get UTC)
+ */
+export function getStaffDayStart(timezone: string = 'Asia/Manila', daysOffset: number = 0): Date {
+  const now = new Date()
+  
+  // Get date components in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
+    day: '2-digit'
+  })
+  
+  const parts = formatter.formatToParts(now)
+  const year = parseInt(parts.find(p => p.type === 'year')!.value)
+  const month = parseInt(parts.find(p => p.type === 'month')!.value)
+  const day = parseInt(parts.find(p => p.type === 'day')!.value) + daysOffset
+  
+  // Create Date for midnight in target timezone
+  // We'll use Date.UTC which creates a UTC date, then adjust
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+  
+  // Get what time this UTC date appears as in the target timezone
+  const tzTime = utcDate.toLocaleString('en-US', { 
+    timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
     hour12: false
   })
   
-  // Parse back to Date object
-  // Format: "11/06/2025, 13:45:30"
-  const [datePart, timePart] = nowStr.split(', ')
-  const [month, day, year] = datePart.split('/').map(Number)
-  const [hour, minute, second] = timePart.split(':').map(Number)
+  // If it shows as "00:00", we're good. Otherwise we need to adjust.
+  // For Manila (UTC+8): UTC midnight shows as "08:00" in Manila
+  // So we need to go back 8 hours to get Manila midnight in UTC
   
-  return new Date(year, month - 1, day, hour, minute, second)
+  // Simple approach: Manila is always UTC+8
+  const MANILA_OFFSET_HOURS = 8
+  const result = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - (MANILA_OFFSET_HOURS * 60 * 60 * 1000))
+  
+  console.log('[getStaffDayStart] Debug:', {
+    timezone,
+    daysOffset,
+    inputDate: now.toISOString(),
+    targetYMD: `${year}-${month}-${day}`,
+    utcMidnight: utcDate.toISOString(),
+    tzTime,
+    result: result.toISOString(),
+    resultInManila: result.toLocaleString('en-US', { 
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  })
+  
+  return result
 }
 
 /**
@@ -85,13 +139,20 @@ export async function detectShiftDay(
   staffUserId: string,
   timezone: string = 'Asia/Manila'
 ): Promise<{ isNightShift: boolean; shiftDayOfWeek: string; shiftDate: Date }> {
-  const staffTime = getStaffLocalTime(timezone)
-  const currentHour = staffTime.getHours()
+  const now = new Date()
+  
+  // Get current hour in staff timezone
+  const nowStr = now.toLocaleString('en-US', { 
+    timeZone: timezone,
+    hour: '2-digit',
+    hour12: false
+  })
+  const currentHour = parseInt(nowStr.replace(/^0/, ''))  // Remove leading zero and parse
   
   const SHIFT_BOUNDARY_HOUR = 6  // 6 AM cutoff
   
   console.log(`🕐 [detectShiftDay] Current time in ${timezone}:`, {
-    time: staffTime.toISOString(),
+    time: now.toISOString(),
     hour: currentHour
   })
   
@@ -99,11 +160,15 @@ export async function detectShiftDay(
   if (currentHour < SHIFT_BOUNDARY_HOUR) {
     console.log(`⏰ [detectShiftDay] Before ${SHIFT_BOUNDARY_HOUR} AM - checking for yesterday's night shift...`)
     
-    // Get yesterday in staff timezone
-    const yesterday = new Date(staffTime)
-    yesterday.setDate(yesterday.getDate() - 1)
-    yesterday.setHours(0, 0, 0, 0) // Start of yesterday
-    const yesterdayDayOfWeek = yesterday.toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })
+    // Get yesterday's date in staff timezone using getStaffDayStart with -1 offset
+    const yesterday = getStaffDayStart(timezone, -1)  // Yesterday at midnight
+    
+    // Get yesterday's day of week in staff timezone
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)  // Subtract 1 day
+    const yesterdayDayOfWeek = yesterdayDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      timeZone: timezone 
+    })
     
     console.log(`📅 [detectShiftDay] Yesterday:`, {
       date: yesterday.toISOString(),
@@ -133,17 +198,18 @@ export async function detectShiftDay(
       
       console.log(`⏰ [detectShiftDay] Yesterday's shift starts at:`, startTime)
       
-      // Night shift = starts at 6 PM (18:00) or later
-      if (startTime.hour >= 18) {
-        console.log(`🌙 [detectShiftDay] NIGHT SHIFT DETECTED! This is ${yesterdayDayOfWeek}'s shift`)
-        
-        return {
-          isNightShift: true,
-          shiftDayOfWeek: yesterdayDayOfWeek,
-          shiftDate: yesterday
-        }
-      } else {
-        console.log(`☀️ [detectShiftDay] Yesterday's shift starts before 6 PM - not a night shift`)
+      // ✅ FIX: If clocking in before 6 AM and yesterday had a shift, treat it as yesterday's shift
+      // This handles:
+      // 1. Night shifts (6 PM or later)
+      // 2. Afternoon shifts where staff might clock in late after midnight
+      // 3. Overtime situations
+      console.log(`🌙 [detectShiftDay] Before 6 AM with yesterday's shift - treating as ${yesterdayDayOfWeek}'s shift`)
+      console.log(`   (This could be late arrival, night shift, or overtime for yesterday's shift)`)
+      
+      return {
+        isNightShift: true,  // Mark as night shift to indicate it crosses midnight
+        shiftDayOfWeek: yesterdayDayOfWeek,
+        shiftDate: yesterday
       }
     } else {
       console.log(`❌ [detectShiftDay] No schedule found for ${yesterdayDayOfWeek}`)
@@ -153,9 +219,11 @@ export async function detectShiftDay(
   }
   
   // Not a night shift crossover - use today
-  const todayDayOfWeek = getStaffDayOfWeek(timezone)
-  const today = new Date(staffTime)
-  today.setHours(0, 0, 0, 0) // Start of today
+  const today = getStaffDayStart(timezone, 0)  // Today at midnight in staff timezone
+  const todayDayOfWeek = now.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    timeZone: timezone 
+  })
   
   console.log(`📅 [detectShiftDay] Using today's shift:`, {
     date: today.toISOString(),
@@ -172,6 +240,10 @@ export async function detectShiftDay(
 /**
  * Create expected clock-in time for a shift
  * Handles night shifts that cross midnight
+ * 
+ * ✅ CRITICAL: Properly handles Manila timezone (UTC+8)
+ * shiftDate should be midnight Manila time in UTC
+ * Example: Nov 14 00:00 Manila = Nov 13 16:00 UTC
  */
 export function createExpectedClockIn(
   shiftDate: Date,
@@ -179,10 +251,25 @@ export function createExpectedClockIn(
 ): Date {
   const { hour, minute } = parseTimeString(startTimeStr)
   
-  const expectedTime = new Date(shiftDate)
-  expectedTime.setHours(hour, minute, 0, 0)
+  // shiftDate should already be midnight Manila in UTC format
+  // e.g., Nov 14 00:00 Manila = Nov 13 16:00:00 UTC
+  // If we add 7 hours: Nov 14 07:00 Manila = Nov 13 23:00:00 UTC ✅
+  const hoursInMs = hour * 60 * 60 * 1000
+  const minutesInMs = minute * 60 * 1000
   
-  return expectedTime
+  const result = new Date(shiftDate.getTime() + hoursInMs + minutesInMs)
+  
+  console.log('[createExpectedClockIn] Debug:', {
+    shiftDate: shiftDate.toISOString(),
+    shiftDateManila: shiftDate.toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
+    startTimeStr,
+    hour,
+    minute,
+    result: result.toISOString(),
+    resultManila: result.toLocaleString('en-US', { timeZone: 'Asia/Manila' })
+  })
+  
+  return result
 }
 
 

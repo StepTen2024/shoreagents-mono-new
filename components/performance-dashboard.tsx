@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge"
 
 interface PerformanceMetric {
   id: string
-  date: string
+  date: string  // Clock-in timestamp (ISO UTC string, browser auto-converts to local timezone) ✅
+  shiftDate?: string  // Shift date at midnight (for day grouping)
+  shiftDayOfWeek?: string  // Day of week (e.g., "Thursday")
   mouseMovements: number
   mouseClicks: number
   keystrokes: number
@@ -34,6 +36,7 @@ export default function PerformanceDashboard() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [debugEvents, setDebugEvents] = useState<any[]>([])
   const [showDebug, setShowDebug] = useState(false)
+  const [hasLoadedBaseline, setHasLoadedBaseline] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -42,12 +45,12 @@ export default function PerformanceDashboard() {
     const inElectron = typeof window !== 'undefined' && window.electron?.isElectron
     setIsElectron(!!inElectron)
     
-    // Fetch API metrics
-    fetchMetrics()
+    // Fetch API metrics (and load baseline into Electron on first load)
+    fetchMetrics(true) // true = first load
     
     // Auto-refresh metrics every 10 seconds to pick up new screenshots
     const refreshInterval = setInterval(() => {
-      fetchMetrics()
+      fetchMetrics(false) // false = don't reload baseline
     }, 10000) // 10 seconds
     
     // If in Electron, also get live metrics
@@ -86,7 +89,7 @@ export default function PerformanceDashboard() {
     }
   }, [])
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (shouldLoadBaseline = false) => {
     try {
       const response = await fetch("/api/analytics")
       if (!response.ok) throw new Error("Failed to fetch performance metrics")
@@ -94,6 +97,38 @@ export default function PerformanceDashboard() {
       setMetrics(data.metrics)
       setTodayMetrics(data.today || null)
       setTotalScreenshots(data.totalScreenshots || 0)
+      
+      // ONLY load database into Electron on FIRST page load (not every 10 seconds)
+      // This initializes Electron with database baseline so it continues from there
+      if (shouldLoadBaseline && !hasLoadedBaseline && data.today) {
+        // 🔧 IMPORTANT: Check if metrics are brand new (just created by clock-in)
+        // If created within last 2 minutes, DON'T load - Electron is already tracking fresh!
+        const metricsCreatedAt = new Date(data.today.date)
+        const now = new Date()
+        const ageInSeconds = (now.getTime() - metricsCreatedAt.getTime()) / 1000
+        
+        if (ageInSeconds < 120) { // Less than 2 minutes old
+          console.log('[Dashboard] ⏭️ Skipping baseline load - metrics are brand new (just clocked in)')
+          console.log(`[Dashboard] Metrics age: ${ageInSeconds.toFixed(0)}s - Electron already tracking fresh`)
+          setHasLoadedBaseline(true) // Mark as loaded so we don't try again
+        } else {
+          const electronSync = (window as any).electron?.sync
+          if (electronSync && typeof electronSync.loadFromDatabase === 'function') {
+            try {
+              console.log('[Dashboard] 📥 First load: Loading database metrics into Electron for live tracking baseline')
+              console.log(`[Dashboard] Metrics age: ${ageInSeconds.toFixed(0)}s - Safe to load baseline`)
+              await electronSync.loadFromDatabase(data.today)
+              setHasLoadedBaseline(true)
+              console.log('[Dashboard] ✅ Electron metrics initialized with database values')
+              console.log('[Dashboard] 🔄 Electron will now accumulate NEW activity on top of this baseline')
+            } catch (loadError) {
+              console.error('[Dashboard] Failed to load metrics into Electron:', loadError)
+            }
+          }
+        }
+      } else if (hasLoadedBaseline) {
+        console.log('[Dashboard] 🔄 Refresh: Skipping baseline reload (already loaded)')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load performance data")
     } finally {
@@ -128,7 +163,7 @@ export default function PerformanceDashboard() {
   }
 
   const formatTime = (seconds: number) => {
-    // Handle both seconds (live metrics) and minutes (API metrics)
+    // ⏱️ All time values are now stored in SECONDS (both DB and live metrics)
     const totalSeconds = Math.floor(seconds)
     const hours = Math.floor(totalSeconds / 3600)
     const mins = Math.floor((totalSeconds % 3600) / 60)
@@ -139,13 +174,21 @@ export default function PerformanceDashboard() {
   const calculateProductivityScore = (metric: PerformanceMetric) => {
     if (!metric) return 0
     
-    // Prevent NaN by checking for zero division
+    // Use Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
+    // This matches admin analytics and ensures consistency
     const totalTime = metric.activeTime + metric.idleTime
-    const activePercent = totalTime > 0 ? (metric.activeTime / totalTime) * 100 : 0
-    const keystrokesScore = Math.min((metric.keystrokes / 5000) * 100, 100)
-    const clicksScore = Math.min((metric.mouseClicks / 1000) * 100, 100)
+    if (totalTime === 0) return 0
+
+    // Active time percentage (40% weight)
+    const activePercent = (metric.activeTime / totalTime) * 40
+
+    // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+    const keystrokesScore = Math.min((metric.keystrokes / 5000) * 30, 30)
+
+    // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+    const clicksScore = Math.min((metric.mouseClicks / 1000) * 30, 30)
     
-    return Math.round((activePercent + keystrokesScore + clicksScore) / 3)
+    return Math.round(activePercent + keystrokesScore + clicksScore)
   }
 
   if (loading) {
@@ -176,11 +219,13 @@ export default function PerformanceDashboard() {
     )
   }
 
-  // Use live metrics if available in Electron, otherwise use todayMetrics
-  // BUT always use todayMetrics for screenshotCount (managed by screenshot service, not Electron)
+  // Use live metrics if available (now properly initialized with database baseline)
+  // Otherwise fallback to database metrics
+  // Live metrics = database baseline + current session activity (real-time!)
   const displayMetrics = (isElectron && liveMetrics) 
     ? { ...liveMetrics, screenshotCount: todayMetrics?.screenshotCount || 0 }
     : todayMetrics
+  
   const productivity = displayMetrics ? calculateProductivityScore(displayMetrics) : 0
 
   return (
@@ -410,19 +455,25 @@ export default function PerformanceDashboard() {
             {/* Applications & URLs */}
             <div className="grid gap-6 md:grid-cols-2">
               <div className="rounded-2xl bg-slate-900/50 p-6 backdrop-blur-xl ring-1 ring-white/10">
-                <h2 className="mb-4 text-xl font-bold text-white">Active Applications</h2>
+                <h2 className="mb-4 text-xl font-bold text-white">Applications</h2>
                 {!displayMetrics.applicationsUsed || displayMetrics.applicationsUsed.length === 0 ? (
                   <p className="text-slate-400">No applications recorded yet</p>
                 ) : (
                   <div className="space-y-2">
-                    {displayMetrics.applicationsUsed.slice(0, 5).map((app: string, index: number) => (
-                      <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="h-4 w-4 text-blue-400" />
-                          <span className="text-white">{app}</span>
+                    <h3 className="text-sm font-semibold text-slate-300">Used Apps:</h3>
+                    <div className="max-h-96 overflow-y-auto space-y-2 pr-2" style={{ 
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#475569 #1e293b'
+                    }}>
+                      {displayMetrics.applicationsUsed.map((app: string, index: number) => (
+                        <div key={index} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/5 hover:bg-slate-800 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <Monitor className="h-4 w-4 text-blue-400" />
+                            <span className="text-white">{app}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -481,6 +532,7 @@ export default function PerformanceDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-semibold text-white">
+                          {/* ✅ Date is UTC from DB, browser auto-converts to local timezone */}
                           {new Date(metric.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                         </div>
                         <div className="mt-1 text-sm text-slate-400">

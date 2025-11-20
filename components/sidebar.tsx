@@ -122,7 +122,7 @@ export default function Sidebar() {
       }
     }
     
-    await signOut({ callbackUrl: '/login', redirect: true })
+    await signOut({ callbackUrl: '/login/staff', redirect: true })
   }
 
   // Get user initials
@@ -185,7 +185,7 @@ export default function Sidebar() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-white truncate">
+                  <div className="font-semibold text-white break-words">
                     {status === "loading" ? "Loading..." : session?.user?.name || "Guest"}
                   </div>
                   <div className="text-xs text-white/60 break-all">

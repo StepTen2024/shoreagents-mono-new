@@ -17,6 +17,7 @@ class SyncService {
     this.lastSyncTime = null
     this.syncEnabled = true
     this.lastSyncedMetrics = null // 🔧 Track last synced values for delta calculation
+    this.baselineReady = true // 🔧 Prevent syncing during baseline load
   }
 
   /**
@@ -104,6 +105,12 @@ class SyncService {
    */
   async sync() {
     if (!this.syncEnabled || this.isSyncing) {
+      return
+    }
+
+    // 🔧 Don't sync if baseline is being loaded (prevents race condition)
+    if (!this.baselineReady) {
+      console.log('⏸️  [SyncService] Skipping sync - baseline loading in progress')
       return
     }
 
@@ -216,7 +223,12 @@ class SyncService {
         // Try to find the exact cookie name that was found
         const { session } = require('electron')
         const cookies = await session.defaultSession.cookies.get({ url: config.API_BASE_URL })
-        const sessionCookie = cookies.find(c => c.name === 'authjs.session-token' || c.name === 'next-auth.session-token')
+        const sessionCookie = cookies.find(c => 
+          c.name === 'authjs.session-token' || 
+          c.name === 'next-auth.session-token' ||
+          c.name === '__Secure-authjs.session-token' || 
+          c.name === '__Secure-next-auth.session-token'
+        )
         
         if (sessionCookie) {
           request.setHeader('Cookie', `${sessionCookie.name}=${sessionCookie.value}`)
@@ -316,6 +328,66 @@ class SyncService {
   clearQueue() {
     this.queue = []
     this.log('Queue cleared')
+  }
+
+  /**
+   * Set baseline metrics (called when loading from database after page refresh)
+   * This prevents duplicate data by setting the "already synced" baseline
+   */
+  setBaseline(metrics) {
+    console.log('📊 [SyncService] ========================================')
+    console.log('📊 [SyncService] SETTING SYNC BASELINE (PAGE REFRESH)')
+    console.log('📊 [SyncService] ========================================')
+    
+    // 🔧 Pause syncing during baseline setup
+    this.baselineReady = false
+    
+    // Set the last synced metrics to the current database values
+    // This tells the sync service: "These values are already in the database"
+    // So only NEW activity (deltas) will be synced
+    this.lastSyncedMetrics = { ...metrics }
+    
+    console.log('📊 [SyncService] Baseline set:')
+    console.log(`   🖱️  Mouse: ${metrics.mouseMovements} movements, ${metrics.mouseClicks} clicks`)
+    console.log(`   ⌨️  Keystrokes: ${metrics.keystrokes}`)
+    console.log(`   ✅ Active Time: ${Math.floor((metrics.activeTime || 0) / 60)} min`)
+    console.log('📊 [SyncService] Next sync will only send NEW activity (delta)')
+    
+    // 🔧 Resume syncing after a brief delay (ensure metrics are fully loaded)
+    setTimeout(() => {
+      this.baselineReady = true
+      console.log('📊 [SyncService] ✅ Baseline ready - syncing resumed')
+    }, 1000) // Wait 1 second
+    
+    console.log('📊 [SyncService] ========================================')
+  }
+
+  /**
+   * Reset sync state (called on clock-in to start fresh)
+   */
+  reset() {
+    console.log('🔄 [SyncService] ========================================')
+    console.log('🔄 [SyncService] RESETTING SYNC STATE (CLOCK-IN DETECTED)')
+    console.log('🔄 [SyncService] ========================================')
+    
+    // Clear the last synced metrics snapshot
+    // This forces the next sync to be treated as a "first sync"
+    // and send all metrics as-is (not as deltas)
+    this.lastSyncedMetrics = null
+    this.retryCount = 0
+    this.lastSyncTime = null
+    this.baselineReady = true // Ready for syncing (no baseline load needed)
+    
+    // Force an immediate sync after reset to establish new baseline
+    console.log('🔄 [SyncService] Scheduling immediate sync in 2 seconds...')
+    setTimeout(() => {
+      if (this.syncEnabled) {
+        console.log('🔄 [SyncService] Running post-clock-in sync...')
+        this.sync()
+      }
+    }, 2000) // Wait 2 seconds for clock-in API to complete
+    
+    console.log('🔄 [SyncService] Sync state reset complete - starting fresh tracking session')
   }
 
   log(message) {

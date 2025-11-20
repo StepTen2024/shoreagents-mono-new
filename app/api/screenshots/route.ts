@@ -93,23 +93,50 @@ export async function POST(request: NextRequest) {
       .from('staff')
       .getPublicUrl(filePath)
 
-    // Increment clipboardActions in today's performance metrics
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // ✅ Get active time entry to find shift date (same logic as analytics API)
+    const activeTimeEntry = await prisma.time_entries.findFirst({
+      where: {
+        staffUserId: staffUser.id,
+        clockOut: null
+      },
+      select: {
+        shiftDate: true,
+        shiftDayOfWeek: true
+      }
+    })
 
-    console.log(`[Screenshots API] Looking for metric between ${today.toISOString()} and ${tomorrow.toISOString()}`)
+    // If no active time entry, staff is not clocked in - don't save screenshot
+    if (!activeTimeEntry) {
+      console.log('[Screenshots API] ⚠️ No active time entry - staff not clocked in, screenshot not saved to metrics')
+      return NextResponse.json({ 
+        success: false, 
+        message: "Not clocked in - screenshot uploaded but not tracked in metrics",
+        screenshot: {
+          fileUrl: urlData.publicUrl,
+          capturedAt: timestamp ? new Date(parseInt(timestamp)) : new Date(),
+        }
+      }, { status: 200 })
+    }
 
-    // Find or create today's performance metric
+    const shiftDate = activeTimeEntry.shiftDate
+
+    console.log(`[Screenshots API] Looking for metric with shiftDate: ${shiftDate}`)
+
+    // ✅ Find performance metric using shiftDate (matches shift, not calendar day)
+    const startOfShiftDate = shiftDate ? new Date(shiftDate) : new Date()
+    startOfShiftDate.setHours(0, 0, 0, 0)
+    const endOfShiftDate = new Date(startOfShiftDate)
+    endOfShiftDate.setDate(endOfShiftDate.getDate() + 1)
+
     const existingMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
-        date: {
-          gte: today,
-          lt: tomorrow
-        }
-      }
+        shiftDate: {
+          gte: startOfShiftDate,
+          lt: endOfShiftDate,
+        },
+      },
+      orderBy: { date: 'desc' }, // Get the MOST RECENT shift (in case of multiple clock-ins same day)
     })
 
     console.log(`[Screenshots API] Existing metric found: ${existingMetric ? existingMetric.id : 'none'}`)
@@ -148,47 +175,18 @@ export async function POST(request: NextRequest) {
         }
       }
     } else {
-      // Create new metric with clipboardActions = 1
-      const newMetric = await prisma.performance_metrics.create({
-        data: {
-          id: randomUUID(),
-          staffUserId: staffUser.id,
-          date: today,
-          clipboardActions: 1,
-          mouseMovements: 0,
-          mouseClicks: 0,
-          keystrokes: 0,
-          activeTime: 0,
-          idleTime: 0,
-          screenTime: 0,
-          downloads: 0,
-          uploads: 0,
-          bandwidth: 0,
-          filesAccessed: 0,
-          urlsVisited: 0,
-          tabsSwitched: 0,
-          productivityScore: 0,
-          screenshoturls: [urlData.publicUrl]
-        } as any
-      })
-      console.log('[Screenshots API] Created new metric with clipboardActions = 1')
-      console.log(`[Screenshots API] Added screenshot URL: ${urlData.publicUrl}`)
-      console.log(`[Screenshots API] Total screenshot URLs: 1`)
+      // ❌ This should NEVER happen - performance row should be created at clock-in
+      console.error(`[Screenshots API] ❌ No performance metric found for shift! This should never happen.`)
+      console.error(`[Screenshots API] StaffUserId: ${staffUser.id}, ShiftDate: ${shiftDate}`)
       
-      // Emit real-time update for new metric
-      if (global.emitPerformanceUpdate) {
-        try {
-          global.emitPerformanceUpdate({
-            staffUserId: staffUser.id,
-            type: 'latest',
-            metrics: newMetric,
-            isActive: true,
-            lastActivity: new Date().toISOString()
-          })
-        } catch (wsError) {
-          console.error('[Screenshots API] Error emitting real-time update:', wsError)
+      return NextResponse.json({ 
+        success: false, 
+        error: "No performance metric found for current shift. Please clock out and clock in again.",
+        screenshot: {
+          fileUrl: urlData.publicUrl,
+          capturedAt: timestamp ? new Date(parseInt(timestamp)) : new Date(),
         }
-      }
+      }, { status: 500 })
     }
 
     const capturedAt = timestamp ? new Date(parseInt(timestamp)) : new Date()

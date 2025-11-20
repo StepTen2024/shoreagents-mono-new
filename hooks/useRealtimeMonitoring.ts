@@ -192,17 +192,26 @@ export function useRealtimeMonitoring(selectedDays: number) {
               }
             }
             
-            // Recalculate productivity score
+            // Recalculate productivity score using Electron's weighted formula
+            // Formula: 40% active time ratio + 30% keystrokes + 30% mouse clicks
             if (updatedStaff.metrics?.latest) {
               const latest = updatedStaff.metrics.latest
-              const productivityScore = Math.min(100, Math.max(0, 
-                (latest.mouseClicks * 0.1) + 
-                (latest.keystrokes * 0.05) + 
-                (latest.activeTime * 0.2) + 
-                (latest.urlsVisited * 0.1) + 
-                (latest.clipboardActions * 0.05)
-              ))
-              updatedStaff.productivityScore = Math.round(productivityScore)
+              const totalTime = latest.activeTime + latest.idleTime
+              
+              if (totalTime > 0) {
+                // Active time percentage (40% weight)
+                const activePercent = (latest.activeTime / totalTime) * 40
+                
+                // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+                const keystrokeScore = Math.min((latest.keystrokes / 5000) * 30, 30)
+                
+                // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+                const mouseScore = Math.min((latest.mouseClicks / 1000) * 30, 30)
+                
+                updatedStaff.productivityScore = Math.round(activePercent + keystrokeScore + mouseScore)
+              } else {
+                updatedStaff.productivityScore = 0
+              }
             }
           }
           

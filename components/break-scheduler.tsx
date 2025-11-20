@@ -67,6 +67,40 @@ export function BreakScheduler({ isOpen, timeEntryId, onScheduled, onSkip }: Bre
     }
   }
   
+  const handleSkipWithDefaults = async () => {
+    // Save the default break times to database
+    setLoading(true)
+    try {
+      const response = await fetch('/api/time-tracking/schedule-breaks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          timeEntryId, 
+          breaks: breaks.map(b => ({
+            type: b.type,
+            scheduledStart: convertTo12Hour(b.scheduledStart),
+            scheduledEnd: calculateEndTime(b.scheduledStart, b.duration)
+          }))
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        console.log('✅ Default breaks scheduled successfully:', data)
+        onScheduled()
+      } else {
+        console.error('❌ Failed to schedule default breaks:', data)
+        alert(data.error || 'Failed to schedule breaks')
+      }
+    } catch (error) {
+      console.error('Error scheduling default breaks:', error)
+      alert('Failed to schedule breaks')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
   const convertTo12Hour = (time24: string) => {
     const [hours, minutes] = time24.split(':')
     const hour = parseInt(hours)
@@ -96,7 +130,7 @@ export function BreakScheduler({ isOpen, timeEntryId, onScheduled, onSkip }: Bre
                 Breaks will be locked in
               </p>
               <p className="text-xs text-slate-400">
-                Once you set your break schedule, it cannot be changed for today's shift.
+                Both options will save and lock your breaks for today's shift. Customize times or use the defaults (10:00 AM, 12:00 PM, 3:00 PM).
               </p>
             </div>
           </div>
@@ -137,12 +171,12 @@ export function BreakScheduler({ isOpen, timeEntryId, onScheduled, onSkip }: Bre
           
           <div className="flex gap-3">
             <Button
-              onClick={onSkip}
+              onClick={handleSkipWithDefaults}
               variant="outline"
               className="flex-1 border-slate-700 hover:bg-slate-800"
               disabled={loading}
             >
-              Skip (Default Times)
+              {loading ? 'Saving...' : 'Use Default Times'}
             </Button>
             <Button
               onClick={handleSchedule}

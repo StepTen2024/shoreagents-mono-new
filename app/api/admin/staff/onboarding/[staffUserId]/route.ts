@@ -29,13 +29,29 @@ export async function GET(
       where: { id: staffUserId },
       include: {
         staff_onboarding: true,
-        staff_profiles: true
+        staff_profiles: {
+          include: {
+            work_schedules: true
+          }
+        }
       }
     })
 
     if (!staffUser) {
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
+
+    // Get job acceptance data (for custom hours and employment details)
+    const jobAcceptance = await prisma.job_acceptances.findFirst({
+      where: { 
+        candidateEmail: staffUser.email,
+        staffUserId: staffUser.id
+      },
+      include: {
+        interview_requests: true
+      },
+      orderBy: { createdAt: 'desc' }
+    })
 
     // Calculate admin-specific progress based on APPROVED/REJECTED statuses only
     let adminProgress = 0
@@ -63,6 +79,14 @@ export async function GET(
       adminProgress = Math.round(adminProgress)
     }
 
+    // Parse customHours if available
+    let customHours = null
+    if (jobAcceptance?.customHours) {
+      customHours = typeof jobAcceptance.customHours === 'string' 
+        ? JSON.parse(jobAcceptance.customHours) 
+        : jobAcceptance.customHours
+    }
+
     // Transform to match frontend expectations (camelCase)
     return NextResponse.json({ 
       staff: {
@@ -81,7 +105,25 @@ export async function GET(
         daysEmployed: staffUser.staff_profiles.startDate 
           ? Math.floor((new Date().getTime() - new Date(staffUser.staff_profiles.startDate).getTime()) / (1000 * 60 * 60 * 24))
           : 0
-      } : null
+      } : null,
+      jobAcceptance: jobAcceptance ? {
+        position: jobAcceptance.position,
+        companyId: jobAcceptance.companyId,
+        workDays: jobAcceptance.workDays,
+        workStartTime: jobAcceptance.workStartTime,
+        workEndTime: jobAcceptance.workEndTime,
+        customHours: customHours,
+        clientTimezone: jobAcceptance.clientTimezone,
+        isDefaultSchedule: jobAcceptance.isDefaultSchedule,
+        salary: jobAcceptance.salary ? Number(jobAcceptance.salary) : null,
+        shiftType: jobAcceptance.shiftType,
+        workLocation: jobAcceptance.workLocation,
+        hmoIncluded: jobAcceptance.hmoIncluded,
+        leaveCredits: jobAcceptance.leaveCredits,
+        preferredStartDate: jobAcceptance.preferredStartDate,
+        finalStartDate: jobAcceptance.interview_requests?.finalStartDate || null
+      } : null,
+      workSchedules: staffUser.staff_profiles?.work_schedules || []
     })
 
   } catch (error) {

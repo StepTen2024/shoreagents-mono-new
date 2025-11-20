@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { randomUUID } from "crypto"
+import { getStaffDayStart } from "@/lib/timezone-helpers"
 
 // Function to emit performance updates (will be set by server.js)
 declare global {
@@ -17,44 +18,61 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get the StaffUser record using authUserId
+    // Get the StaffUser record using authUserId with staff profile
     const staffUser = await prisma.staff_users.findUnique({
-      where: { authUserId: session.user.id }
+      where: { authUserId: session.user.id },
+      include: {
+        staff_profiles: {
+          select: {
+            timezone: true
+          }
+        }
+      }
     })
 
     if (!staffUser) {
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
 
-    // Get metrics for the last 7 days
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    // ✅ FIX: Use staff timezone (default to Asia/Manila for Filipino staff)
+    const staffTimezone = staffUser.staff_profiles?.timezone || 'Asia/Manila'
+    
+    console.log(`📊 [Analytics API] Fetching metrics in timezone: ${staffTimezone}`)
+    
+    // ✅ FIX: Get midnight "today" in STAFF timezone (works same locally & deployed!)
+    const todayInStaffTz = getStaffDayStart(staffTimezone, 0)  // Today at midnight
+    const sevenDaysAgo = getStaffDayStart(staffTimezone, -7)   // 7 days ago at midnight
+    const tomorrow = getStaffDayStart(staffTimezone, 1)        // Tomorrow at midnight
+    
+    console.log(`📅 [Analytics API] Today midnight in ${staffTimezone}: ${todayInStaffTz.toISOString()}`)
+    console.log(`📅 [Analytics API] 7 days ago midnight: ${sevenDaysAgo.toISOString()}`)
+    console.log(`📅 [Analytics API] Tomorrow midnight: ${tomorrow.toISOString()}`)
 
+    // ✅ FIX: Query using shiftDate (timezone-aware) instead of date field
     const metrics = await prisma.performance_metrics.findMany({
       where: {
         staffUserId: staffUser.id,
-        date: {
+        shiftDate: {
           gte: sevenDaysAgo,
         },
       },
-      orderBy: { date: "desc" },
+      orderBy: { shiftDate: "desc" },
     })
 
-    // Get today's metrics
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // ✅ FIX: Get today's metrics using shiftDate (timezone-aware)
 
     const todayMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
-        date: {
-          gte: today,
+        shiftDate: {
+          gte: todayInStaffTz,
           lt: tomorrow,
         },
       },
+      orderBy: { date: 'desc' }, // Get the MOST RECENT shift (in case of multiple clock-ins today)
     })
+    
+    console.log(`📊 [Analytics API] Found ${metrics.length} metrics (last 7 days), today's metric: ${todayMetric ? 'YES' : 'NO'}`)
 
     // Calculate total screenshot count (sum of all clipboardActions)
     const allMetrics = await prisma.performance_metrics.findMany({
@@ -68,15 +86,18 @@ export async function GET(request: NextRequest) {
     const totalScreenshotCount = allMetrics.reduce((sum, m) => sum + m.clipboardActions, 0)
 
     // Format metrics for frontend (convert minutes to seconds for consistent display)
+    // ✅ FIX: Use shiftDate (timezone-aware) instead of date field
     const formattedMetrics = metrics.map((m) => ({
       id: m.id,
-      date: m.date.toISOString(),
+      date: m.shiftDate ? m.shiftDate.toISOString() : m.date.toISOString(), // Use shiftDate (staff timezone)
+      shiftDate: m.shiftDate ? m.shiftDate.toISOString() : null,
+      shiftDayOfWeek: m.shiftDayOfWeek,
       mouseMovements: m.mouseMovements,
       mouseClicks: m.mouseClicks,
       keystrokes: m.keystrokes,
-      activeTime: m.activeTime * 60, // Convert minutes to seconds
-      idleTime: m.idleTime * 60, // Convert minutes to seconds
-      screenTime: m.screenTime * 60, // Convert minutes to seconds
+      activeTime: m.activeTime, // ⏱️ Already in seconds
+      idleTime: m.idleTime, // ⏱️ Already in seconds
+      screenTime: m.screenTime, // ⏱️ Already in seconds
       downloads: m.downloads,
       uploads: m.uploads,
       bandwidth: m.bandwidth,
@@ -93,13 +114,15 @@ export async function GET(request: NextRequest) {
     const formattedToday = todayMetric
       ? {
           id: todayMetric.id,
-          date: todayMetric.date.toISOString(),
+          date: todayMetric.shiftDate ? todayMetric.shiftDate.toISOString() : todayMetric.date.toISOString(), // Use shiftDate (staff timezone)
+          shiftDate: todayMetric.shiftDate ? todayMetric.shiftDate.toISOString() : null,
+          shiftDayOfWeek: todayMetric.shiftDayOfWeek,
           mouseMovements: todayMetric.mouseMovements,
           mouseClicks: todayMetric.mouseClicks,
           keystrokes: todayMetric.keystrokes,
-          activeTime: todayMetric.activeTime * 60, // Convert minutes to seconds
-          idleTime: todayMetric.idleTime * 60, // Convert minutes to seconds
-          screenTime: todayMetric.screenTime * 60, // Convert minutes to seconds
+          activeTime: todayMetric.activeTime, // ⏱️ Already in seconds
+          idleTime: todayMetric.idleTime, // ⏱️ Already in seconds
+          screenTime: todayMetric.screenTime, // ⏱️ Already in seconds
           downloads: todayMetric.downloads,
           uploads: todayMetric.uploads,
           bandwidth: todayMetric.bandwidth,
@@ -203,6 +226,7 @@ export async function POST(request: NextRequest) {
 
     // ✅ SIMPLIFIED: Row is guaranteed to exist (created at clock-in)
     // Just find it and UPDATE (no creation logic needed)
+    // Use orderBy to get the MOST RECENT shift (in case of multiple clock-ins same day)
     const existingMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
@@ -211,6 +235,7 @@ export async function POST(request: NextRequest) {
           lt: endOfShiftDate,
         },
       },
+      orderBy: { date: 'desc' }, // Get the MOST RECENT shift
     })
 
     if (!existingMetric) {
@@ -242,15 +267,18 @@ export async function POST(request: NextRequest) {
     console.log(`🖱️  Mouse Movements: ${existingMetric.mouseMovements} + ${mouseMovements || 0} = ${existingMetric.mouseMovements + (mouseMovements || 0)}`)
     console.log(`🖱️  Mouse Clicks: ${existingMetric.mouseClicks} + ${mouseClicks || 0} = ${existingMetric.mouseClicks + (mouseClicks || 0)}`)
     console.log(`⌨️  Keystrokes: ${existingMetric.keystrokes} + ${keystrokes || 0} = ${existingMetric.keystrokes + (keystrokes || 0)}`)
-    console.log(`✅ Active Time: ${existingMetric.activeTime} min + ${activeTime || 0} sec (${Math.round((activeTime || 0) / 60)} min) = ${existingMetric.activeTime + Math.round((activeTime || 0) / 60)} min`)
+    
+    // 🔧 DATABASE NOW STORES SECONDS (not minutes!)
+    // Simply add the new seconds to existing seconds
+    const totalActiveSeconds = existingMetric.activeTime + (activeTime || 0)
+    const totalIdleSeconds = existingMetric.idleTime + (idleTime || 0)
+    const totalScreenSeconds = existingMetric.screenTime + (screenTime || 0)
+    
+    console.log(`✅ Active Time: ${existingMetric.activeTime}s + ${activeTime || 0}s = ${totalActiveSeconds}s (${Math.floor(totalActiveSeconds / 60)} min ${totalActiveSeconds % 60}s)`)
+    console.log(`😴 Idle Time: ${existingMetric.idleTime}s + ${idleTime || 0}s = ${totalIdleSeconds}s (${Math.floor(totalIdleSeconds / 60)} min ${totalIdleSeconds % 60}s)`)
+    console.log(`🖥️  Screen Time: ${existingMetric.screenTime}s + ${screenTime || 0}s = ${totalScreenSeconds}s (${Math.floor(totalScreenSeconds / 60)} min ${totalScreenSeconds % 60}s)`)
     console.log(`🌐 URLs Visited: ${existingMetric.urlsVisited} + ${urlsVisited || 0} = ${existingMetric.urlsVisited + (urlsVisited || 0)}`)
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
-    
-    // 🔧 Convert time values from SECONDS (received) to MINUTES (stored)
-    // Electron sends deltas in seconds, we store in minutes
-    const activeTimeMinutes = activeTime ? Math.round(activeTime / 60) : 0
-    const idleTimeMinutes = idleTime ? Math.round(idleTime / 60) : 0
-    const screenTimeMinutes = screenTime ? Math.round(screenTime / 60) : 0
 
     // ✅ UPDATE the existing row (created at clock-in)
     const metric = await prisma.performance_metrics.update({
@@ -260,10 +288,10 @@ export async function POST(request: NextRequest) {
         mouseMovements: existingMetric.mouseMovements + (mouseMovements || 0),
         mouseClicks: existingMetric.mouseClicks + (mouseClicks || 0),
         keystrokes: existingMetric.keystrokes + (keystrokes || 0),
-        // Time values: convert seconds to minutes before adding
-        activeTime: existingMetric.activeTime + activeTimeMinutes,
-        idleTime: existingMetric.idleTime + idleTimeMinutes,
-        screenTime: existingMetric.screenTime + screenTimeMinutes,
+        // ✅ Time values in SECONDS (stored as Int, just like mouse movements!)
+        activeTime: totalActiveSeconds,
+        idleTime: totalIdleSeconds,
+        screenTime: totalScreenSeconds,
         downloads: existingMetric.downloads + (downloads || 0),
         uploads: existingMetric.uploads + (uploads || 0),
         bandwidth: existingMetric.bandwidth + (bandwidth || 0),

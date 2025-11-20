@@ -239,9 +239,9 @@ export function PostCardStaff({ post, onReshare, onUpdate }: PostCardStaffProps)
             onClick={() => setShowReactionPicker(!showReactionPicker)}
             className="w-full flex items-center justify-center gap-2 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
           >
-            <Heart className="w-5 h-5" />
-            <span className="text-sm font-medium">React</span>
-          </button>
+          <Heart className="w-5 h-5" />
+          <span className="text-sm font-medium">React</span>
+        </button>
 
           {/* Reaction picker */}
           {showReactionPicker && (
