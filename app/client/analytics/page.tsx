@@ -7,7 +7,8 @@ import {
   Download, Upload, Wifi, Copy, FileText, Globe, Eye,
   TrendingUp, AlertCircle, BarChart3, Calendar, Filter,
   RefreshCw, Download as DownloadIcon, Settings, Users,
-  Target, Zap, Award, CheckCircle, XCircle, AlertTriangle, Search
+  Target, Zap, Award, CheckCircle, XCircle, AlertTriangle, Search,
+  Sparkles, Brain, FileText as Report
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -120,9 +121,15 @@ export default function ClientMonitoringPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'no-data'>('all')
   const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // AI Report state
+  const [showAIReport, setShowAIReport] = useState(false)
+  const [aiReportLoading, setAIReportLoading] = useState(false)
+  const [aiReportData, setAIReportData] = useState<any>(null)
+  const [aiReportError, setAIReportError] = useState<string | null>(null)
 
   // Use real-time monitoring hook
-  const { data, loading, error, lastUpdate, refresh, isConnected, isUpdating } = useRealtimeMonitoring(selectedDays)
+  const { data, loading, error, lastUpdate, refresh, isConnected, isUpdating} = useRealtimeMonitoring(selectedDays)
 
   const formatTime = (seconds: number) => {
     // ⏱️ Database now stores SECONDS (not minutes!)
@@ -151,6 +158,43 @@ export default function ClientMonitoringPage() {
       month: 'short',
       day: 'numeric'
     })
+  }
+  
+  // Generate AI Report
+  const generateAIReport = async (staff: StaffMember) => {
+    setShowAIReport(true)
+    setAIReportLoading(true)
+    setAIReportError(null)
+    setAIReportData(null)
+    
+    try {
+      console.log('🤖 Generating AI report for:', staff.name)
+      
+      const response = await fetch('/api/analytics/ai-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          staffId: staff.id,
+          days: selectedDays
+        })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to generate report')
+      }
+      
+      const data = await response.json()
+      setAIReportData(data)
+      console.log('✅ AI report generated successfully')
+    } catch (error) {
+      console.error('❌ AI report error:', error)
+      setAIReportError(error instanceof Error ? error.message : 'Failed to generate report')
+    } finally {
+      setAIReportLoading(false)
+    }
   }
 
   const getEmploymentStatusColor = (status: string) => {
@@ -725,6 +769,21 @@ export default function ClientMonitoringPage() {
                         <div className="text-xs text-gray-600">Clipboard</div>
                       </div>
                     </div>
+                    
+                    {/* AI Report Button */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          generateAIReport(staff)
+                        }}
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                        size="sm"
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Generate AI Productivity Report
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-6 text-gray-400">
@@ -1154,6 +1213,148 @@ export default function ClientMonitoringPage() {
               <p className="text-gray-600">This staff member has no recorded activity for today.</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* AI Report Modal */}
+      <Dialog open={showAIReport} onOpenChange={setShowAIReport}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <Brain className="h-6 w-6 text-purple-600" />
+              AI Productivity Analysis
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {aiReportLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="relative">
+                  <Sparkles className="h-16 w-16 text-purple-600 animate-pulse" />
+                  <div className="absolute inset-0 animate-spin">
+                    <div className="h-16 w-16 border-4 border-purple-200 border-t-purple-600 rounded-full" />
+                  </div>
+                </div>
+                <p className="mt-6 text-lg font-medium text-gray-900">Analyzing productivity data...</p>
+                <p className="mt-2 text-sm text-gray-600">Our AI is reviewing {selectedDays} days of performance metrics</p>
+              </div>
+            ) : aiReportError ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+                <p className="text-lg font-medium text-gray-900 mb-2">Unable to Generate Report</p>
+                <p className="text-sm text-gray-600">{aiReportError}</p>
+                <Button
+                  onClick={() => setShowAIReport(false)}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  Close
+                </Button>
+              </div>
+            ) : aiReportData ? (
+              <div className="space-y-6">
+                {/* Report Header */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border border-purple-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">{aiReportData.data.staffName}</h3>
+                      <p className="text-sm text-gray-600">
+                        Analysis Period: {aiReportData.data.period} • {aiReportData.data.recordCount} shift records
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-purple-600">
+                        {aiReportData.data.productivityScore}
+                      </div>
+                      <div className="text-sm text-gray-600">Productivity Score</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-purple-600 text-white">
+                      {aiReportData.data.rating}
+                    </Badge>
+                    <span className="text-sm text-gray-600">•</span>
+                    <span className="text-sm text-gray-600">
+                      Generated {new Date().toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* AI Report Content */}
+                <div className="prose max-w-none">
+                  <div className="bg-white rounded-lg p-6 border border-gray-200">
+                    <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
+                      {aiReportData.report}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Score Breakdown */}
+                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-purple-600" />
+                    Score Breakdown
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {aiReportData.data.breakdown.timeEfficiencyScore}/30
+                      </div>
+                      <div className="text-sm text-gray-600">Time Efficiency</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {aiReportData.data.breakdown.activityLevelScore}/20
+                      </div>
+                      <div className="text-sm text-gray-600">Activity Level</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {aiReportData.data.breakdown.workFocusScore}/25
+                      </div>
+                      <div className="text-sm text-gray-600">Work Focus</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {aiReportData.data.breakdown.taskCompletionScore}/15
+                      </div>
+                      <div className="text-sm text-gray-600">Task Completion</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-red-200">
+                      <div className="text-2xl font-bold text-red-600">
+                        -{aiReportData.data.breakdown.distractionPenalty}
+                      </div>
+                      <div className="text-sm text-gray-600">Distraction Penalty</div>
+                    </div>
+                    <div className="bg-purple-100 rounded-lg p-4 border border-purple-200">
+                      <div className="text-2xl font-bold text-purple-900">
+                        {aiReportData.data.productivityScore}/100
+                      </div>
+                      <div className="text-sm text-purple-700 font-medium">Overall Score</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => window.print()}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Report className="h-4 w-4 mr-2" />
+                    Print Report
+                  </Button>
+                  <Button
+                    onClick={() => setShowAIReport(false)}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
       </div>
