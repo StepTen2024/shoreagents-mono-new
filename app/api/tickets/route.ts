@@ -145,10 +145,23 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ Found staff user:', staffUser.name)
 
-    // Generate unique ticket ID
-    const ticketCount = await prisma.tickets.count()
-    const ticketId = `TKT-${String(ticketCount + 1).padStart(4, "0")}`
-    console.log('🎫 Generated ticket ID:', ticketId)
+    // Generate unique ticket ID - Find the highest existing ticket number
+    const lastTicket = await prisma.tickets.findFirst({
+      orderBy: { ticketId: 'desc' },
+      select: { ticketId: true }
+    })
+
+    let ticketNumber = 1
+    if (lastTicket) {
+      // Extract number from "TKT-0014" -> 14
+      const match = lastTicket.ticketId.match(/TKT-(\d+)/)
+      if (match) {
+        ticketNumber = parseInt(match[1], 10) + 1
+      }
+    }
+
+    const ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
+    console.log('🎫 Generated ticket ID:', ticketId, '(Last ticket:', lastTicket?.ticketId || 'none', ')')
 
     // 🎯 AUTO-ASSIGN: Map category to department and find manager
     const department = mapCategoryToDepartment(category)

@@ -83,8 +83,8 @@ export default function PerformanceDashboard() {
         if (ageInSeconds > 120) {
           const electronSync = (window as any).electron?.sync
           if (electronSync && typeof electronSync.loadFromDatabase === 'function') {
-            await electronSync.loadFromDatabase(data.today)
-            setHasLoadedBaseline(true)
+              await electronSync.loadFromDatabase(data.today)
+              setHasLoadedBaseline(true)
           }
         }
       }
@@ -231,7 +231,7 @@ export default function PerformanceDashboard() {
               <AlertCircle className="h-8 w-8 text-red-400" />
               <div>
                 <h2 className="text-xl font-bold text-red-400">Oops! Something went wrong</h2>
-                <p className="mt-2 text-red-300">{error}</p>
+            <p className="mt-2 text-red-300">{error}</p>
                 <Button onClick={() => window.location.reload()} className="mt-4 bg-red-600 hover:bg-red-700">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Try Again
@@ -267,11 +267,11 @@ export default function PerformanceDashboard() {
                 <h1 className="text-4xl font-bold text-white flex items-center gap-3">
                   <Flame className="h-10 w-10 animate-pulse text-orange-400" />
                   Your Productivity Journey
-                </h1>
+              </h1>
                 <p className="mt-2 text-purple-200 text-lg">
                   {isElectron && <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/50 mr-2"><Activity className="h-3 w-3 mr-1 animate-pulse" />LIVE</Badge>}
                   Level up your focus and crush your goals! 🚀
-                </p>
+              </p>
               </div>
             </div>
 
@@ -320,13 +320,13 @@ export default function PerformanceDashboard() {
             {/* Live Score Card */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 ring-1 ring-white/20">
-                <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
                   <span className="text-slate-200 font-semibold text-lg">Right Now</span>
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
                     <span className="text-xs text-emerald-300">LIVE</span>
                   </div>
-                </div>
+            </div>
                 <div className="flex items-end gap-4 mb-4">
                   <div className="text-7xl font-bold text-white">{productivity}</div>
                   <div className="text-2xl text-slate-300 mb-2">/100</div>
@@ -375,18 +375,18 @@ export default function PerformanceDashboard() {
                             : '0%'}
                         </div>
                       </div>
-                    </div>
+            </div>
                     <TrendingUp className="h-8 w-8 text-blue-400" />
-                  </div>
-                </div>
+            </div>
+          </div>
 
                 <div className="bg-purple-900/40 backdrop-blur-md rounded-2xl p-5 ring-1 ring-purple-500/30">
-                  <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-3 bg-purple-500/30 rounded-xl">
                         <Zap className="h-6 w-6 text-purple-300" />
                       </div>
-                      <div>
+                  <div>
                         <div className="text-sm text-purple-200">Session Length</div>
                         <div className="text-2xl font-bold text-white">
                           {formatTime(displayMetrics.activeTime + displayMetrics.idleTime)}
@@ -557,11 +557,11 @@ export default function PerformanceDashboard() {
                     {monthStats.totalActiveTime > 0 
                       ? Math.round((monthStats.totalActiveTime / (monthStats.totalActiveTime + monthStats.totalIdleTime)) * 100)
                       : 0}%
-                  </div>
+                          </div>
                   <Progress value={monthStats.totalActiveTime > 0 
                       ? Math.round((monthStats.totalActiveTime / (monthStats.totalActiveTime + monthStats.totalIdleTime)) * 100)
                       : 0} className="h-2 bg-white/20" />
-                </div>
+                        </div>
                 <div className="bg-white/10 rounded-xl p-4">
                   <div className="text-sm text-slate-300 mb-2">Active Days</div>
                   <div className="text-2xl font-bold text-white mb-2">{monthStats.daysActive} / 30 days</div>
@@ -577,13 +577,13 @@ export default function PerformanceDashboard() {
                 <div className="flex items-start gap-4">
                   <div className="p-3 rounded-xl bg-emerald-500/30">
                     <Star className="h-6 w-6 text-emerald-300" />
-                  </div>
+                              </div>
                   <div className="flex-1">
                     <h3 className="font-bold text-lg text-white">Amazing Growth! 🚀</h3>
                     <p className="mt-1 text-slate-300">
                       You've improved by {monthStats.trend}% this month! Keep this momentum going! 🔥
                     </p>
-                  </div>
+                    </div>
                 </div>
               </div>
             )}
@@ -601,7 +601,7 @@ export default function PerformanceDashboard() {
               <div className="p-2 bg-indigo-500/30 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-indigo-300" />
               </div>
-              <div>
+                      <div>
                 <div className="font-semibold text-white">Minimize Distractions</div>
                 <div className="text-sm text-slate-300">Close unnecessary tabs and apps. Focus on one task at a time!</div>
               </div>
@@ -609,12 +609,12 @@ export default function PerformanceDashboard() {
             <div className="flex items-start gap-3">
               <div className="p-2 bg-indigo-500/30 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-indigo-300" />
-              </div>
+                        </div>
               <div>
                 <div className="font-semibold text-white">Take Short Breaks</div>
                 <div className="text-sm text-slate-300">5-minute breaks every hour keep your mind fresh and focused!</div>
-              </div>
-            </div>
+                        </div>
+                      </div>
             <div className="flex items-start gap-3">
               <div className="p-2 bg-indigo-500/30 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-indigo-300" />
@@ -622,8 +622,8 @@ export default function PerformanceDashboard() {
               <div>
                 <div className="font-semibold text-white">Set Clear Goals</div>
                 <div className="text-sm text-slate-300">Know what you want to accomplish today. Clarity = productivity!</div>
-              </div>
-            </div>
+                      </div>
+                    </div>
             <div className="flex items-start gap-3">
               <div className="p-2 bg-indigo-500/30 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-indigo-300" />
@@ -631,7 +631,7 @@ export default function PerformanceDashboard() {
               <div>
                 <div className="font-semibold text-white">Stay Hydrated</div>
                 <div className="text-sm text-slate-300">Drink water regularly. Your brain needs it to perform at its best! 💧</div>
-              </div>
+                  </div>
             </div>
           </div>
         </div>

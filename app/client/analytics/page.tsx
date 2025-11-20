@@ -415,14 +415,14 @@ export default function ClientMonitoringPage() {
           <div className="px-8 py-8 border-b border-gray-200">
             <div className="flex items-center justify-between">
               {/* Left: Title */}
-              <div>
+                <div>
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
                   Team Analytics
                 </h1>
                 <p className="text-gray-600 text-lg">
                   AI-powered productivity insights for your staff
-                </p>
-              </div>
+                  </p>
+                </div>
               
               {/* Right: Actions */}
               <div className="flex items-center gap-3">
@@ -443,33 +443,33 @@ export default function ClientMonitoringPage() {
                   <Filter className="h-4 w-4 mr-2" />
                   {showFilters ? 'Hide Filters' : 'Show Filters'}
                 </Button>
-              </div>
             </div>
-            
+          </div>
+
             {/* Date Range & Status */}
             <div className="mt-6 flex items-center justify-between">
               <div className="flex items-center gap-2 bg-gradient-to-r from-purple-50 to-blue-50 px-4 py-2.5 rounded-xl border border-purple-200">
                 <Calendar className="h-4 w-4 text-purple-600" />
-                <select
-                  key={selectedDays}
-                  value={selectedDays}
-                  onChange={(e) => setSelectedDays(parseInt(e.target.value))}
+                  <select
+                    key={selectedDays}
+                    value={selectedDays}
+                    onChange={(e) => setSelectedDays(parseInt(e.target.value))}
                   className="bg-transparent border-none text-sm font-semibold text-gray-900 focus:outline-none focus:ring-0 cursor-pointer"
-                >
-                  <option value={1}>Today</option>
-                  <option value={7}>Last 7 days</option>
-                  <option value={30}>Last 30 days</option>
-                  <option value={90}>Last 90 days</option>
-                </select>
-              </div>
-              
-              {lastUpdate && (
+                  >
+                    <option value={1}>Today</option>
+                    <option value={7}>Last 7 days</option>
+                    <option value={30}>Last 30 days</option>
+                    <option value={90}>Last 90 days</option>
+                  </select>
+                </div>
+                
+                {lastUpdate && (
                 <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
                   <Clock className="h-4 w-4 text-gray-400" />
                   <span className="font-medium">Updated:</span>
                   <span>{lastUpdate.toLocaleTimeString()}</span>
-                </div>
-              )}
+                  </div>
+                )}
             </div>
 
             {/* Advanced Filters */}
@@ -523,7 +523,7 @@ export default function ClientMonitoringPage() {
 
         {/* Staff Grid */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredAndSortedStaff().map((staff) => {
             const performanceLevel = getPerformanceLevel(staff.productivityScore)
             const activityStatus = getActivityStatus(staff)
@@ -589,23 +589,23 @@ export default function ClientMonitoringPage() {
                 {staff.enhancedScore ? (
                   <div className="rounded-xl p-5 mb-4 border-2 border-purple-200 bg-gradient-to-br from-white to-purple-50 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <div>
+                    <div>
                         <div className="flex items-center gap-2 mb-1">
                           <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                             {staff.enhancedScore.overallScore}
-                          </div>
+                      </div>
                           <div className="text-gray-400">/100</div>
-                        </div>
+                    </div>
                         <div className="text-sm font-semibold text-gray-700">Productivity Score</div>
                         <Badge className={`mt-1 ${performanceLevel.bg} ${performanceLevel.color} border-0 text-xs`}>
                           {performanceLevel.level}
-                        </Badge>
-                      </div>
+                    </Badge>
+                  </div>
                       <div className="text-right">
                         <div className="p-3 bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl">
                           <TrendingUp className="h-7 w-7 text-purple-600" />
-                        </div>
-                      </div>
+                    </div>
+                </div>
                     </div>
                     
                     {/* Mini Score Breakdown */}
@@ -613,7 +613,7 @@ export default function ClientMonitoringPage() {
                       <div className="text-center">
                         <div className="text-xs font-semibold text-emerald-600">{staff.enhancedScore.timeEfficiencyScore}</div>
                         <div className="text-xs text-gray-500">Time</div>
-                      </div>
+                        </div>
                       <div className="text-center">
                         <div className="text-xs font-semibold text-blue-600">{staff.enhancedScore.activityLevelScore}</div>
                         <div className="text-xs text-gray-500">Activity</div>
@@ -621,7 +621,7 @@ export default function ClientMonitoringPage() {
                       <div className="text-center">
                         <div className="text-xs font-semibold text-purple-600">{staff.enhancedScore.workFocusScore}</div>
                         <div className="text-xs text-gray-500">Focus</div>
-                      </div>
+                        </div>
                       <div className="text-center">
                         <div className="text-xs font-semibold text-amber-600">{staff.enhancedScore.taskCompletionScore}</div>
                         <div className="text-xs text-gray-500">Tasks</div>
@@ -632,9 +632,9 @@ export default function ClientMonitoringPage() {
                       <div className="mt-2 text-xs text-red-600 flex items-center gap-1 justify-center">
                         <AlertTriangle className="h-3 w-3" />
                         <span>-{staff.enhancedScore.distractionPenalty} distraction penalty</span>
-                      </div>
+                        </div>
                     )}
-                  </div>
+                      </div>
                 ) : (
                   // Fallback to old score if enhanced score not available
                   <div className={`rounded-xl p-4 mb-4 border-2 ${performanceLevel.bg} ${performanceLevel.border}`}>
@@ -649,10 +649,10 @@ export default function ClientMonitoringPage() {
                       <div className="text-right">
                         <TrendingUp className="h-8 w-8 text-gray-400" />
                         <div className="text-xs text-gray-500 mt-1">Performance</div>
+                        </div>
                       </div>
-                    </div>
                     <Progress value={staff.productivityScore} className="h-2 mt-3" />
-                  </div>
+                    </div>
                 )}
 
 
@@ -732,14 +732,14 @@ export default function ClientMonitoringPage() {
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Avatar className="h-14 w-14 border-2 border-purple-200">
-                  <AvatarImage src={selectedStaff?.avatar || undefined} alt={selectedStaff?.name} />
+                <AvatarImage src={selectedStaff?.avatar || undefined} alt={selectedStaff?.name} />
                   <AvatarFallback className="bg-purple-100 text-purple-700 text-xl font-bold">
-                    {selectedStaff?.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{selectedStaff?.name}</div>
-                  <div className="text-sm text-gray-600 font-normal">{selectedStaff?.position} • {selectedStaff?.department}</div>
+                  {selectedStaff?.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{selectedStaff?.name}</div>
+                <div className="text-sm text-gray-600 font-normal">{selectedStaff?.position} • {selectedStaff?.department}</div>
                 </div>
               </div>
             </DialogTitle>
@@ -765,8 +765,8 @@ export default function ClientMonitoringPage() {
                       <TrendingUp className="h-12 w-12" />
                     </div>
                   </div>
-                </div>
-              </div>
+                    </div>
+                  </div>
               
               {/* Score Breakdown Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -783,9 +783,9 @@ export default function ClientMonitoringPage() {
                   <div className="text-xs text-emerald-700 space-y-1">
                     <div>Active: {selectedStaff.enhancedScore.timeEfficiency.activePercentage}%</div>
                     <div>Rating: {selectedStaff.enhancedScore.timeEfficiency.rating.toUpperCase()}</div>
-                  </div>
                 </div>
-                
+              </div>
+
                 {/* Activity Level */}
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 border-2 border-blue-200">
                   <div className="flex items-center gap-2 mb-2">
@@ -799,15 +799,15 @@ export default function ClientMonitoringPage() {
                   <div className="text-xs text-blue-700 space-y-1">
                     <div>Interactions: {selectedStaff.enhancedScore.activityLevel.totalInteractions.toLocaleString()}</div>
                     <div>Rating: {selectedStaff.enhancedScore.activityLevel.rating.toUpperCase()}</div>
-                  </div>
                 </div>
-                
+              </div>
+
                 {/* Work Focus */}
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-200">
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="h-5 w-5 text-purple-600" />
                     <div className="text-xs font-semibold text-purple-700 uppercase">Work Focus</div>
-                  </div>
+                </div>
                   <div className="text-4xl font-bold text-purple-900 mb-1">
                     {selectedStaff.enhancedScore.workFocusScore}
                   </div>
@@ -816,22 +816,22 @@ export default function ClientMonitoringPage() {
                     <div>Productive: {selectedStaff.enhancedScore.workFocus.productivePercentage}%</div>
                     <div>Distractions: {selectedStaff.enhancedScore.workFocus.distractionPercentage}%</div>
                   </div>
-                </div>
-                
+              </div>
+
                 {/* Task Completion */}
                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 border-2 border-amber-200">
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle className="h-5 w-5 text-amber-600" />
                     <div className="text-xs font-semibold text-amber-700 uppercase">Task Completion</div>
-                  </div>
+                    </div>
                   <div className="text-4xl font-bold text-amber-900 mb-1">
                     {selectedStaff.enhancedScore.taskCompletionScore}
-                  </div>
+                    </div>
                   <div className="text-sm text-amber-600 font-medium mb-2">out of 15 points</div>
                   <div className="text-xs text-amber-700 space-y-1">
                     <div>Files: {selectedStaff.enhancedScore.taskCompletion.fileActivity}</div>
                     <div>Rating: {selectedStaff.enhancedScore.taskCompletion.rating.toUpperCase()}</div>
-                  </div>
+                    </div>
                 </div>
                 
                 {/* Distractions */}
@@ -847,24 +847,24 @@ export default function ClientMonitoringPage() {
                   <div className="text-xs text-red-700 space-y-1">
                     <div>Count: {selectedStaff.enhancedScore.distractions.distractionCount}</div>
                     <div>Tab switches: {selectedStaff.enhancedScore.distractions.excessiveTabSwitching ? 'High' : 'Normal'}</div>
-                  </div>
                 </div>
-                
+              </div>
+
                 {/* Final Score */}
                 <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl p-5 border-2 border-purple-300 shadow-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <Award className="h-5 w-5 text-white" />
                     <div className="text-xs font-semibold text-white uppercase">Final Score</div>
-                  </div>
+                    </div>
                   <div className="text-4xl font-bold text-white mb-1">
                     {selectedStaff.enhancedScore.overallScore}
-                  </div>
+                    </div>
                   <div className="text-sm text-purple-100 font-medium mb-2">out of 100 points</div>
                   <div className="text-xs text-white space-y-1">
                     <div>Performance: {getProductivityRating(selectedStaff.enhancedScore.overallScore).rating}</div>
-                  </div>
-                </div>
-              </div>
+                    </div>
+                    </div>
+                    </div>
               
               {/* AI Report Button */}
               <div className="pt-6 border-t border-purple-200">
@@ -883,14 +883,14 @@ export default function ClientMonitoringPage() {
                 <p className="text-center text-sm text-gray-500 mt-3">
                   Get detailed AI-powered insights and personalized recommendations
                 </p>
-              </div>
-            </div>
+                    </div>
+                </div>
           ) : (
             <div className="py-12 text-center">
               <Activity className="h-16 w-16 mx-auto text-gray-300 mb-4" />
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Activity Data</h3>
               <p className="text-gray-600">This staff member has no recorded activity for today.</p>
-            </div>
+              </div>
           )}
         </DialogContent>
       </Dialog>
@@ -914,11 +914,11 @@ export default function ClientMonitoringPage() {
                   <Sparkles className="h-16 w-16 text-purple-600 animate-pulse" />
                   <div className="absolute inset-0 animate-spin">
                     <div className="h-16 w-16 border-4 border-purple-200 border-t-purple-600 rounded-full" />
-                  </div>
-                </div>
+                    </div>
+                    </div>
                 <p className="mt-6 text-lg font-medium text-gray-900">Analyzing productivity data...</p>
                 <p className="mt-2 text-sm text-gray-600">Our AI is reviewing {selectedDays} days of performance metrics</p>
-              </div>
+                    </div>
             ) : aiReportError ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
@@ -930,7 +930,7 @@ export default function ClientMonitoringPage() {
                       <strong>⚠️ Claude AI is temporarily overloaded.</strong><br />
                       This is a temporary issue with Anthropic's servers. Please wait 30 seconds and try again.
                     </p>
-                  </div>
+                    </div>
                 ) : null}
                 <div className="flex gap-3">
                   <Button
@@ -952,8 +952,8 @@ export default function ClientMonitoringPage() {
                   >
                     Close
                   </Button>
-                </div>
-              </div>
+                    </div>
+                    </div>
             ) : aiReportData ? (
               <div className="space-y-6">
                 {/* Report Header */}
@@ -964,23 +964,23 @@ export default function ClientMonitoringPage() {
                       <p className="text-purple-100 text-sm">
                         {aiReportData.data.period} analysis • {aiReportData.data.recordCount} shifts recorded
                       </p>
-                    </div>
+                </div>
                     <div className="text-center bg-white/20 backdrop-blur-sm rounded-xl p-4 border-2 border-white/30">
                       <div className="text-5xl font-bold">
                         {aiReportData.data.productivityScore}
-                      </div>
+              </div>
                       <div className="text-sm font-medium mt-1 text-purple-100">Overall Score</div>
                       <Badge className="mt-2 bg-white text-purple-600 font-semibold">
                         {aiReportData.data.rating}
-                      </Badge>
-                    </div>
+                          </Badge>
+                      </div>
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-purple-100 text-xs">
                     <Sparkles className="h-3 w-3" />
                     <span>AI-Powered Analysis Generated {new Date().toLocaleString()}</span>
                   </div>
                 </div>
-                
+
                 {/* AI Report Content - Formatted Sections */}
                 <div className="space-y-4">
                   {formatAIReport(aiReportData.report).map((section, index) => {
@@ -990,9 +990,9 @@ export default function ClientMonitoringPage() {
                         <div className="flex items-center gap-3 mb-4">
                           <div className={`p-3 bg-gradient-to-br ${section.color} rounded-lg`}>
                             <IconComponent className="h-6 w-6 text-white" />
-                          </div>
+                            </div>
                           <h3 className="text-xl font-bold text-gray-900">{section.title}</h3>
-                        </div>
+                          </div>
                         <div className="text-gray-700 leading-relaxed space-y-2">
                           {section.content.split('\n').map((line, i) => {
                             if (!line.trim()) return null
@@ -1002,17 +1002,17 @@ export default function ClientMonitoringPage() {
                                 <div key={i} className="flex items-start gap-2 ml-4">
                                   <div className={`mt-2 h-1.5 w-1.5 rounded-full bg-gradient-to-r ${section.color} flex-shrink-0`} />
                                   <p className="flex-1">{cleanLine}</p>
-                                </div>
+                      </div>
                               )
                             }
                             return <p key={i} className="font-medium">{cleanLine}</p>
                           })}
-                        </div>
+                  </div>
                       </div>
                     )
                   })}
                 </div>
-                
+
                 {/* Score Breakdown */}
                 <div className="bg-white rounded-xl p-6 border-2 border-purple-200 shadow-sm">
                   <h4 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
@@ -1070,12 +1070,12 @@ export default function ClientMonitoringPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <AlertCircle className="h-4 w-4 text-red-600" />
                         <div className="text-xs font-semibold text-red-700 uppercase">Distractions</div>
-                      </div>
+                                </div>
                       <div className="text-3xl font-bold text-red-900">
                         -{aiReportData.data.breakdown.distractionPenalty}
-                      </div>
+                              </div>
                       <div className="text-sm text-red-600 font-medium">penalty points</div>
-                    </div>
+                            </div>
                     
                     <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl p-5 border-2 border-purple-300 shadow-lg hover:shadow-xl transition-shadow">
                       <div className="flex items-center gap-2 mb-2">
@@ -1084,11 +1084,11 @@ export default function ClientMonitoringPage() {
                       </div>
                       <div className="text-3xl font-bold text-white">
                         {aiReportData.data.productivityScore}
-                      </div>
-                      <div className="text-sm text-purple-100 font-medium">out of 100 points</div>
-                    </div>
                   </div>
+                      <div className="text-sm text-purple-100 font-medium">out of 100 points</div>
                 </div>
+              </div>
+            </div>
                 
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t border-purple-200">
@@ -1108,7 +1108,7 @@ export default function ClientMonitoringPage() {
                   >
                     Close
                   </Button>
-                </div>
+            </div>
               </div>
             ) : null}
           </div>
