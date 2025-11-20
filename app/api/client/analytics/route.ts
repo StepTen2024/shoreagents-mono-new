@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { calculateEnhancedProductivityScore } from "@/lib/productivity-score"
 
 // GET /api/client/analytics - Get performance metrics for all assigned staff
 export async function GET(req: NextRequest) {
@@ -220,6 +221,45 @@ export async function GET(req: NextRequest) {
         productivityScore = Math.round(activePercent + keystrokeScore + mouseScore)
       }
       
+      // ✨ Calculate enhanced productivity score with breakdown
+      const allApps: string[] = []
+      const allUrls: string[] = []
+      
+      staffMetrics.forEach(metric => {
+        if ((metric as any).applicationsused && Array.isArray((metric as any).applicationsused)) {
+          (metric as any).applicationsused.forEach((app: any) => {
+            const appName = typeof app === 'string' ? app : app?.name
+            if (appName && !allApps.includes(appName)) {
+              allApps.push(appName)
+            }
+          })
+        }
+        if ((metric as any).visitedurls && Array.isArray((metric as any).visitedurls)) {
+          (metric as any).visitedurls.forEach((urlData: any) => {
+            const url = typeof urlData === 'string' ? urlData : urlData?.url
+            if (url && !allUrls.includes(url)) {
+              allUrls.push(url)
+            }
+          })
+        }
+      })
+      
+      const enhancedScore = calculateEnhancedProductivityScore({
+        activeTime: totals.activeTime,
+        idleTime: totals.idleTime,
+        screenTime: totals.screenTime,
+        mouseMovements: totals.mouseMovements,
+        mouseClicks: totals.mouseClicks,
+        keystrokes: totals.keystrokes,
+        clipboardActions: totals.clipboardActions,
+        downloads: totals.downloads,
+        uploads: totals.uploads,
+        urlsVisited: totals.urlsVisited,
+        tabsSwitched: totals.tabsSwitched,
+        applicationsUsed: allApps,
+        visitedUrls: allUrls
+      })
+      
       return {
         id: staff.id,
         name: staff.name,
@@ -278,6 +318,7 @@ export async function GET(req: NextRequest) {
           recordCount: staffMetrics.length
         } : null,
         productivityScore,
+        enhancedScore, // ✨ Add enhanced score with breakdown
         isActive: latestMetric && latestMetric.activeTime > 0,
         lastActivity: latestMetric ? latestMetric.date : null
       }

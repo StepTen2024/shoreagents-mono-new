@@ -725,23 +725,75 @@ export default function ClientMonitoringPage() {
                   </div>
                 </div>
 
-                {/* Productivity Score */}
-                <div className={`rounded-xl p-4 mb-4 border-2 ${performanceLevel.bg} ${performanceLevel.border}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-3xl font-bold text-gray-900">{staff.productivityScore}%</div>
-                      <div className="text-sm font-medium text-gray-700">Productivity Score</div>
-                      <div className={`text-xs font-medium ${performanceLevel.color} mt-1`}>
-                        {performanceLevel.level}
+                {/* Enhanced Productivity Score */}
+                {staff.enhancedScore ? (
+                  <div className="rounded-xl p-5 mb-4 border-2 border-purple-200 bg-gradient-to-br from-white to-purple-50 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                            {staff.enhancedScore.overallScore}
+                          </div>
+                          <div className="text-gray-400">/100</div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-700">Productivity Score</div>
+                        <Badge className={`mt-1 ${performanceLevel.bg} ${performanceLevel.color} border-0 text-xs`}>
+                          {performanceLevel.level}
+                        </Badge>
+                      </div>
+                      <div className="text-right">
+                        <div className="p-3 bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl">
+                          <TrendingUp className="h-7 w-7 text-purple-600" />
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <TrendingUp className="h-8 w-8 text-gray-400" />
-                      <div className="text-xs text-gray-500 mt-1">Performance</div>
+                    
+                    {/* Mini Score Breakdown */}
+                    <div className="grid grid-cols-4 gap-2 pt-3 border-t border-purple-200">
+                      <div className="text-center">
+                        <div className="text-xs font-semibold text-emerald-600">{staff.enhancedScore.timeEfficiencyScore}</div>
+                        <div className="text-xs text-gray-500">Time</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs font-semibold text-blue-600">{staff.enhancedScore.activityLevelScore}</div>
+                        <div className="text-xs text-gray-500">Activity</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs font-semibold text-purple-600">{staff.enhancedScore.workFocusScore}</div>
+                        <div className="text-xs text-gray-500">Focus</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs font-semibold text-amber-600">{staff.enhancedScore.taskCompletionScore}</div>
+                        <div className="text-xs text-gray-500">Tasks</div>
+                      </div>
                     </div>
+                    
+                    {staff.enhancedScore.distractionPenalty > 0 && (
+                      <div className="mt-2 text-xs text-red-600 flex items-center gap-1 justify-center">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>-{staff.enhancedScore.distractionPenalty} distraction penalty</span>
+                      </div>
+                    )}
                   </div>
-                  <Progress value={staff.productivityScore} className="h-2 mt-3" />
-                </div>
+                ) : (
+                  // Fallback to old score if enhanced score not available
+                  <div className={`rounded-xl p-4 mb-4 border-2 ${performanceLevel.bg} ${performanceLevel.border}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-bold text-gray-900">{staff.productivityScore}%</div>
+                        <div className="text-sm font-medium text-gray-700">Productivity Score</div>
+                        <div className={`text-xs font-medium ${performanceLevel.color} mt-1`}>
+                          {performanceLevel.level}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <TrendingUp className="h-8 w-8 text-gray-400" />
+                        <div className="text-xs text-gray-500 mt-1">Performance</div>
+                      </div>
+                    </div>
+                    <Progress value={staff.productivityScore} className="h-2 mt-3" />
+                  </div>
+                )}
 
                 {/* Activity Status */}
                 <div className="mb-4">
