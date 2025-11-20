@@ -795,112 +795,21 @@ export default function ClientMonitoringPage() {
                   </div>
                 )}
 
-                {/* Activity Status */}
-                <div className="mb-4">
-                  <div className="flex items-center gap-2">
-                    <Badge className={`${activityStatus.bg} ${activityStatus.color} border-0`}>
-                      <StatusIcon className="h-3 w-3 mr-1" />
-                      {activityStatus.status}
-                    </Badge>
-                  </div>
-                  {staff.lastActivity && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      Last activity: {formatDate(staff.lastActivity)}
-                    </div>
-                  )}
-                </div>
 
-                {/* Quick Metrics */}
+                {/* AI Report Button */}
                 {staff.metrics ? (
-                  <div className="space-y-4">
-                    {/* Data Summary */}
-                    <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
-                      <span className="flex items-center gap-1">
-                        <BarChart3 className="h-3 w-3" />
-                        {staff.metrics.recordCount} records
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {viewMode === 'latest' ? 'Latest day' : 'Total period'}
-                      </span>
-                    </div>
-                    
-                    {/* Primary Metrics */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
-                        <MousePointer className="h-4 w-4 mx-auto text-blue-600 mb-2" />
-                        <div className="text-lg font-bold text-blue-900">
-                          {viewMode === 'latest' && staff.metrics.latest
-                            ? staff.metrics.latest.mouseClicks.toLocaleString()
-                            : staff.metrics.totals.mouseClicks.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-blue-700 font-medium">Mouse Clicks</div>
-                      </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
-                        <Keyboard className="h-4 w-4 mx-auto text-purple-600 mb-2" />
-                        <div className="text-lg font-bold text-purple-900">
-                          {viewMode === 'latest' && staff.metrics.latest
-                            ? staff.metrics.latest.keystrokes.toLocaleString()
-                            : staff.metrics.totals.keystrokes.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-purple-700 font-medium">Keystrokes</div>
-                      </div>
-                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3 border border-emerald-200">
-                        <Clock className="h-4 w-4 mx-auto text-emerald-600 mb-2" />
-                        <div className="text-lg font-bold text-emerald-900">
-                          {formatTime(viewMode === 'latest' && staff.metrics.latest
-                            ? staff.metrics.latest.activeTime
-                            : staff.metrics.totals.activeTime)}
-                        </div>
-                        <div className="text-xs text-emerald-700 font-medium">Active Time</div>
-                      </div>
-                    </div>
-                    
-                    {/* Secondary Metrics */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-gray-50 rounded-lg p-2 text-center">
-                        <Monitor className="h-3 w-3 mx-auto text-gray-600 mb-1" />
-                        <div className="text-sm font-bold text-gray-900">
-                          {formatTime(viewMode === 'latest' && staff.metrics.latest
-                            ? staff.metrics.latest.screenTime
-                            : staff.metrics.totals.screenTime)}
-                        </div>
-                        <div className="text-xs text-gray-600">Screen</div>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2 text-center">
-                        <Globe className="h-3 w-3 mx-auto text-gray-600 mb-1" />
-                        <div className="text-sm font-bold text-gray-900">
-                          {viewMode === 'latest' && staff.metrics.latest
-                            ? staff.metrics.latest.urlsVisited
-                            : staff.metrics.totals.urlsVisited}
-                        </div>
-                        <div className="text-xs text-gray-600">Web Pages</div>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-2 text-center">
-                        <Copy className="h-3 w-3 mx-auto text-gray-600 mb-1" />
-                        <div className="text-sm font-bold text-gray-900">
-                          {viewMode === 'latest' && staff.metrics.latest
-                            ? staff.metrics.latest.clipboardActions
-                            : staff.metrics.totals.clipboardActions}
-                        </div>
-                        <div className="text-xs text-gray-600">Clipboard</div>
-                      </div>
-                    </div>
-                    
-                    {/* AI Report Button */}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          generateAIReport(staff)
-                        }}
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                        size="sm"
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate AI Productivity Report
-                      </Button>
-                    </div>
+                  <div className="mt-4">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        generateAIReport(staff)
+                      }}
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
+                      size="lg"
+                    >
+                      <Sparkles className="h-5 w-5 mr-2" />
+                      Generate AI Productivity Report
+                    </Button>
                   </div>
                 ) : (
                   <div className="text-center py-6 text-gray-400">
