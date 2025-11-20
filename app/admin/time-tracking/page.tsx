@@ -30,12 +30,26 @@ interface TimeEntry {
   clockIn: string
   clockOut: string | null
   totalHours: number | null
+  expectedClockIn: string | null
+  expectedClockOut: string | null
   wasLate: boolean
   lateBy: number | null
+  lateReason: string | null
   wasEarly: boolean
   earlyBy: number | null
+  wasEarlyClockOut: boolean
+  earlyClockOutBy: number | null
+  overtimeMinutes: number | null
+  workedFullShift: boolean
+  clockOutReason: string | null
+  shiftDate: string | null
+  shiftDayOfWeek: string | null
   notes: string | null
   createdAt: string
+  // ✨ NEW: Real-time fields
+  currentHours: number | null
+  isCurrentlyOvertime: boolean
+  liveOvertimeMinutes: number
   staff_users: {
     id: string
     name: string
@@ -49,6 +63,12 @@ interface TimeEntry {
       logo: string | null
     } | null
   }
+  work_schedules: {
+    startTime: string
+    endTime: string
+    dayOfWeek: string
+    shiftType: string
+  } | null
   breaks: {
     id: string
     type: string
@@ -69,6 +89,19 @@ export default function AdminTimeTrackingPage() {
   useEffect(() => {
     fetchTimeEntries()
   }, [daysFilter])
+
+  // ✨ NEW: Auto-refresh every 30 seconds for real-time overtime updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const hasActiveEntries = timeEntries.some(e => !e.clockOut)
+      if (hasActiveEntries) {
+        console.log('[Admin Time Tracking] Auto-refreshing for real-time data...')
+        fetchTimeEntries()
+      }
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [timeEntries])
 
   const fetchTimeEntries = async () => {
     setLoading(true)
@@ -155,6 +188,8 @@ export default function AdminTimeTrackingPage() {
     completed: timeEntries.filter(e => e.clockOut).length,
     lateToday: timeEntries.filter(e => e.wasLate).length,
     earlyToday: timeEntries.filter(e => e.wasEarly).length,
+    overtimeToday: timeEntries.filter(e => e.overtimeMinutes && e.overtimeMinutes > 0).length,
+    totalOvertimeMinutes: timeEntries.reduce((sum, e) => sum + (e.overtimeMinutes || 0), 0),
   }
 
   if (loading) {
@@ -185,7 +220,7 @@ export default function AdminTimeTrackingPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card className="p-4 border-border bg-card">
           <div className="text-sm text-muted-foreground">Total Entries</div>
           <div className="text-2xl font-semibold text-foreground mt-1">{stats.total}</div>
@@ -205,6 +240,13 @@ export default function AdminTimeTrackingPage() {
         <Card className="p-4 border-border bg-card">
           <div className="text-sm text-muted-foreground">Early Clock-Ins</div>
           <div className="text-2xl font-semibold text-emerald-600 mt-1">{stats.earlyToday}</div>
+        </Card>
+        <Card className="p-4 border-purple-500/30 bg-gradient-to-br from-purple-950/50 to-pink-950/50">
+          <div className="text-sm text-purple-300 font-semibold">⭐ Overtime</div>
+          <div className="text-2xl font-semibold text-purple-400 mt-1">{stats.overtimeToday}</div>
+          <div className="text-xs text-purple-400/80 mt-1">
+            {(stats.totalOvertimeMinutes / 60).toFixed(1)}h total
+          </div>
         </Card>
       </div>
 
@@ -300,8 +342,17 @@ export default function AdminTimeTrackingPage() {
                   </div>
                 </div>
 
+                {/* Shift Schedule Info */}
+                {entry.work_schedules && (
+                  <div className="p-2 bg-gradient-to-r from-indigo-950/40 to-purple-950/40 rounded border border-indigo-500/30 mb-3">
+                    <p className="text-xs font-semibold text-indigo-300">
+                      📅 {entry.work_schedules.startTime} - {entry.work_schedules.endTime}
+                    </p>
+                  </div>
+                )}
+
                 {/* Status Badge */}
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
                   {isActive ? (
                     <Badge className="bg-emerald-600 gap-1">
                       <PlayCircle className="h-3 w-3" />
@@ -314,13 +365,34 @@ export default function AdminTimeTrackingPage() {
                     </Badge>
                   )}
                   {entry.wasLate && (
-                    <Badge variant="outline" className="text-amber-500 border-amber-500/50">
-                      Late {entry.lateBy}m
+                    <Badge variant="outline" className="text-amber-400 border-amber-500/50 bg-amber-950/20">
+                      ⚠️ Late {entry.lateBy}m
                     </Badge>
                   )}
                   {entry.wasEarly && (
-                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/50">
-                      Early {entry.earlyBy}m
+                    <Badge variant="outline" className="text-emerald-400 border-emerald-500/50 bg-emerald-950/20">
+                      ✨ Early {entry.earlyBy}m
+                    </Badge>
+                  )}
+                  {entry.overtimeMinutes && entry.overtimeMinutes > 0 && (
+                    <Badge variant="outline" className="text-purple-400 border-purple-500/50 bg-purple-950/30">
+                      🌟 +{entry.overtimeMinutes}m OT
+                    </Badge>
+                  )}
+                  {/* ✨ NEW: LIVE OVERTIME - For active entries working past shift end */}
+                  {isActive && entry.isCurrentlyOvertime && entry.liveOvertimeMinutes > 0 && (
+                    <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold animate-pulse">
+                      🌟 LIVE OT +{entry.liveOvertimeMinutes}m
+                    </Badge>
+                  )}
+                  {entry.wasEarlyClockOut && entry.earlyClockOutBy && (
+                    <Badge variant="outline" className="text-yellow-400 border-yellow-500/50 bg-yellow-950/20">
+                      ⏰ Left {entry.earlyClockOutBy}m early
+                    </Badge>
+                  )}
+                  {entry.workedFullShift && (
+                    <Badge variant="outline" className="text-green-400 border-green-500/50 bg-green-950/30">
+                      ✅ Full Shift
                     </Badge>
                   )}
                 </div>
@@ -358,7 +430,12 @@ export default function AdminTimeTrackingPage() {
                       <Timer className="h-3 w-3" />
                       Duration:
                     </span>
-                    <span className="font-semibold text-foreground">{duration.total}</span>
+                    <span className="font-semibold text-foreground">
+                      {isActive && entry.currentHours !== null
+                        ? `${entry.currentHours.toFixed(2)}h (live)`
+                        : duration.total
+                      }
+                    </span>
                   </div>
                   {entry.breaks.length > 0 && (
                     <div className="flex items-center justify-between">

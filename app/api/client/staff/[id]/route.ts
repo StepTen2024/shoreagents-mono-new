@@ -88,6 +88,7 @@ export async function GET(
           orderBy: { createdAt: 'desc' },
           take: 5,
         },
+        staff_interests: true,
       },
     })
 
@@ -293,6 +294,24 @@ export async function GET(
         open: user.tickets.filter(t => t.status === 'OPEN').length,
         resolved: user.tickets.filter(t => t.status === 'RESOLVED').length,
       },
+
+      // Fun Facts - Staff Interests (from Welcome Form)
+      interests: user.staff_interests && user.staff_interests.completed ? {
+        favoriteColor: user.staff_interests.favoriteColor,
+        favoriteFastFood: user.staff_interests.favoriteFastFood,
+        favoriteMovie: user.staff_interests.favoriteMovie,
+        favoriteBook: user.staff_interests.favoriteBook,
+        favoriteMusic: user.staff_interests.favoriteMusic,
+        favoriteSport: user.staff_interests.favoriteSport,
+        favoriteGame: user.staff_interests.favoriteGame,
+        favoriteSeason: user.staff_interests.favoriteSeason,
+        favoriteQuote: user.staff_interests.favoriteQuote,
+        hobby: user.staff_interests.hobby,
+        petName: user.staff_interests.petName,
+        dreamDestination: user.staff_interests.dreamDestination,
+        funFact: user.staff_interests.funFact,
+        additionalInfo: user.staff_interests.additionalInfo,
+      } : null,
     }
 
     console.log("📤 [CLIENT/STAFF/DETAIL] Returning staff detail data")

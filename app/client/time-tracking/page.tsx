@@ -50,9 +50,26 @@ type TimeEntry = {
   clockIn: Date
   clockOut: Date | null
   totalHours: number
+  expectedClockIn: Date | null
+  expectedClockOut: Date | null
   wasLate: boolean
   lateBy: number | null
+  wasEarly: boolean
+  earlyBy: number | null
+  wasEarlyClockOut: boolean
+  earlyClockOutBy: number | null
+  overtimeMinutes: number | null
+  workedFullShift: boolean
+  lateReason: string | null
   clockOutReason: string | null
+  shiftDate: Date | null
+  shiftDayOfWeek: string | null
+  workSchedule: {
+    startTime: string
+    endTime: string
+    dayOfWeek: string
+    shiftType: string
+  } | null
   breaks: Break[]
 }
 
@@ -71,6 +88,23 @@ type StaffTimeEntry = {
   currentEntry: {
     id: string
     clockIn: Date
+    currentHours: number
+    expectedClockIn: Date | null
+    expectedClockOut: Date | null
+    wasLate: boolean
+    lateBy: number | null
+    wasEarly: boolean
+    earlyBy: number | null
+    lateReason: string | null
+    // ✨ NEW: Real-time overtime tracking
+    isCurrentlyOvertime: boolean
+    liveOvertimeMinutes: number
+    workSchedule: {
+      startTime: string
+      endTime: string
+      dayOfWeek: string
+      shiftType: string
+    } | null
     breaks: Break[]
   } | null
   timeEntries: TimeEntry[]
@@ -103,6 +137,18 @@ export default function ClientTimeTrackingPage() {
   useEffect(() => {
     fetchTimeEntries()
   }, [selectedDate])
+
+  // ✨ NEW: Auto-refresh every 30 seconds for real-time overtime updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (staffData.some(s => s.isClockedIn)) {
+        console.log('[Time Tracking] Auto-refreshing for real-time overtime...')
+        fetchTimeEntries(true) // Silent refresh
+      }
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [staffData])
 
   // WebSocket real-time event handlers
   useEffect(() => {
@@ -150,6 +196,25 @@ export default function ClientTimeTrackingPage() {
       const res = await fetch(`/api/client/time-tracking?startDate=${selectedDate}&endDate=${selectedDate}`)
       if (res.ok) {
         const data = await res.json()
+        console.log('📊 [Client Time Tracking] Received data:', data)
+        console.log('👥 [Client Time Tracking] Staff entries:', data.staffTimeEntries?.length || 0)
+        if (data.staffTimeEntries && data.staffTimeEntries.length > 0) {
+          data.staffTimeEntries.forEach((entry: any) => {
+            if (entry.currentEntry) {
+              console.log(`   📌 ${entry.staff.name}:`, {
+                isClockedIn: entry.isClockedIn,
+                clockIn: entry.currentEntry.clockIn,
+                wasLate: entry.currentEntry.wasLate,
+                lateBy: entry.currentEntry.lateBy,
+                wasEarly: entry.currentEntry.wasEarly,
+                earlyBy: entry.currentEntry.earlyBy,
+                isCurrentlyOvertime: entry.currentEntry.isCurrentlyOvertime,
+                liveOvertimeMinutes: entry.currentEntry.liveOvertimeMinutes,
+                workSchedule: entry.currentEntry.workSchedule
+              })
+            }
+          })
+        }
         setAllStaffData(data.staffTimeEntries)
         setSummary(data.summary)
       }
@@ -533,6 +598,12 @@ export default function ClientTimeTrackingPage() {
                           <span className="text-gray-600">Breaks:</span>
                           <span className="font-semibold">{staffEntry.currentEntry.breaks.length}</span>
                         </div>
+                        {/* ✨ NEW: LIVE OVERTIME (Grid View) */}
+                        {staffEntry.currentEntry.isCurrentlyOvertime && staffEntry.currentEntry.liveOvertimeMinutes > 0 && (
+                          <Badge className="w-full justify-center bg-gradient-to-r from-purple-100 to-pink-100 text-purple-900 border-purple-300 text-xs font-bold animate-pulse mt-2">
+                            🌟 OVERTIME +{staffEntry.currentEntry.liveOvertimeMinutes}m
+                          </Badge>
+                        )}
                       </div>
                     )}
 
@@ -574,32 +645,75 @@ export default function ClientTimeTrackingPage() {
                   </div>
 
                   {staffEntry.currentEntry && (
-                    <div className="grid grid-cols-3 gap-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
-                      <div>
-                        <p className="text-xs text-gray-600 mb-1">Clock In</p>
-                        <div className="flex items-center gap-2">
-                          <Play className="h-4 w-4 text-green-600" />
-                          <p className="font-semibold text-green-600">{formatTime(staffEntry.currentEntry.clockIn)}</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-gray-600 mb-1">Breaks</p>
-                        <div className="flex items-center gap-2">
-                          <Coffee className="h-4 w-4 text-orange-600" />
-                          <p className="font-semibold text-gray-900">
-                            {staffEntry.currentEntry.breaks.length} breaks
+                    <div className="space-y-3">
+                      {/* Shift Schedule Info */}
+                      {staffEntry.currentEntry.workSchedule && (
+                        <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                          <p className="text-xs font-semibold text-indigo-900 mb-1">📅 Shift Schedule</p>
+                          <p className="text-sm font-bold text-indigo-700">
+                            {staffEntry.currentEntry.workSchedule.startTime} - {staffEntry.currentEntry.workSchedule.endTime}
                           </p>
                         </div>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-gray-600 mb-1">Status</p>
-                        {staffEntry.isOnBreak ? (
-                          <p className="font-semibold text-yellow-600">On Break</p>
-                        ) : (
-                          <p className="font-semibold text-green-600">Working</p>
+                      )}
+                      
+                      <div className="space-y-3">
+                        {/* ✨ LIVE OVERTIME BANNER - Show prominently at top */}
+                        {staffEntry.currentEntry.isCurrentlyOvertime && staffEntry.currentEntry.liveOvertimeMinutes > 0 && (
+                          <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border-2 border-purple-400 animate-pulse">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl">🌟</span>
+                                <div>
+                                  <p className="text-sm font-black text-purple-900">WORKING OVERTIME</p>
+                                  <p className="text-xs text-purple-700">+{staffEntry.currentEntry.liveOvertimeMinutes} min past shift end</p>
+                                </div>
+                              </div>
+                              <Badge className="bg-purple-900 text-white font-bold text-sm px-3 py-1">
+                                +{(staffEntry.currentEntry.liveOvertimeMinutes / 60).toFixed(1)}h
+                              </Badge>
+                            </div>
+                          </div>
                         )}
+                        
+                        <div className="grid grid-cols-3 gap-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Clock In</p>
+                            <div className="flex items-center gap-2">
+                              <Play className="h-4 w-4 text-green-600" />
+                              <p className="font-semibold text-green-600">{formatTime(staffEntry.currentEntry.clockIn)}</p>
+                            </div>
+                            {/* Late/Early Badges */}
+                            {staffEntry.currentEntry.wasLate && staffEntry.currentEntry.lateBy && (
+                              <Badge className="bg-red-100 text-red-700 border-red-200 text-xs mt-1">
+                                ⚠️ {staffEntry.currentEntry.lateBy}m late
+                              </Badge>
+                            )}
+                            {staffEntry.currentEntry.wasEarly && staffEntry.currentEntry.earlyBy && (
+                              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs mt-1">
+                                ✨ {staffEntry.currentEntry.earlyBy}m early
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Breaks</p>
+                            <div className="flex items-center gap-2">
+                              <Coffee className="h-4 w-4 text-orange-600" />
+                              <p className="font-semibold text-gray-900">
+                                {staffEntry.currentEntry.breaks.length} breaks
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Status</p>
+                            {staffEntry.isOnBreak ? (
+                              <p className="font-semibold text-yellow-600">On Break</p>
+                            ) : (
+                              <p className="font-semibold text-green-600">Working</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -680,23 +794,73 @@ export default function ClientTimeTrackingPage() {
                       Today's Session
                     </h3>
                     
+                    {/* Shift Schedule - Show at top if available */}
+                    {selectedStaff.currentEntry.workSchedule && (
+                      <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-2 border-indigo-200 mb-4">
+                        <p className="text-xs font-semibold text-indigo-900 mb-2">📅 TODAY'S SHIFT SCHEDULE</p>
+                        <p className="text-xl font-bold text-indigo-700">
+                          {selectedStaff.currentEntry.workSchedule.startTime} - {selectedStaff.currentEntry.workSchedule.endTime}
+                        </p>
+                        <p className="text-xs text-indigo-600 mt-1">
+                          {selectedStaff.currentEntry.workSchedule.shiftType === 'NIGHT_SHIFT' ? '🌙 Night Shift' : 
+                           selectedStaff.currentEntry.workSchedule.shiftType === 'MID_SHIFT' ? '🌅 Mid Shift' : '☀️ Day Shift'}
+                        </p>
+                      </div>
+                    )}
+                    
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
                         <p className="text-sm text-gray-600 mb-1">Clock In</p>
                         <p className="text-2xl font-bold text-blue-900">{formatTime(selectedStaff.currentEntry.clockIn)}</p>
-                        {selectedStaff.timeEntries[0]?.wasLate && (
+                        {selectedStaff.currentEntry.expectedClockIn && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Expected: {formatTime(selectedStaff.currentEntry.expectedClockIn)}
+                          </p>
+                        )}
+                        {/* Accountability Badges */}
+                        {selectedStaff.currentEntry.wasLate && selectedStaff.currentEntry.lateBy && (
                           <Badge className="bg-red-100 text-red-700 border-red-200 text-xs mt-2">
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                            Late {selectedStaff.timeEntries[0].lateBy}m
-                                </Badge>
-                              )}
-                            </div>
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            ⚠️ {selectedStaff.currentEntry.lateBy}m late
+                            {selectedStaff.currentEntry.lateReason && ` (${selectedStaff.currentEntry.lateReason})`}
+                          </Badge>
+                        )}
+                        {selectedStaff.currentEntry.wasEarly && selectedStaff.currentEntry.earlyBy && (
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs mt-2">
+                            ✨ {selectedStaff.currentEntry.earlyBy}m early
+                          </Badge>
+                        )}
+                      </div>
                       <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
                         <p className="text-sm text-gray-600 mb-1">Hours Worked</p>
-                        <p className="text-2xl font-bold text-green-900">{getDisplayHours(selectedStaff)}h</p>
+                        <p className="text-2xl font-bold text-green-900">{selectedStaff.currentEntry.currentHours.toFixed(2)}h</p>
                         <p className="text-xs text-gray-600 mt-1">Updates in real-time</p>
+                        {selectedStaff.currentEntry.expectedClockOut && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            Expected out: {formatTime(selectedStaff.currentEntry.expectedClockOut)}
+                          </p>
+                        )}
                       </div>
                     </div>
+
+                    {/* ✨ NEW: LIVE OVERTIME BANNER (Detail Modal) */}
+                    {selectedStaff.currentEntry.isCurrentlyOvertime && selectedStaff.currentEntry.liveOvertimeMinutes > 0 && (
+                      <div className="p-6 bg-gradient-to-r from-purple-100 via-pink-100 to-purple-100 rounded-xl border-4 border-purple-400 mb-4 animate-pulse shadow-lg shadow-purple-500/30">
+                        <div className="flex items-center justify-center gap-4">
+                          <div className="text-5xl">🌟</div>
+                          <div>
+                            <p className="text-2xl font-black text-purple-900 mb-1">WORKING OVERTIME!</p>
+                            <p className="text-lg font-bold text-purple-700">
+                              +{selectedStaff.currentEntry.liveOvertimeMinutes} minutes past shift end
+                              {' '}({(selectedStaff.currentEntry.liveOvertimeMinutes / 60).toFixed(2)} hours)
+                            </p>
+                            <p className="text-xs text-purple-600 mt-1">
+                              Shift ended at: {formatTime(selectedStaff.currentEntry.expectedClockOut!)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Current Break Info */}
                     {selectedStaff.isOnBreak && selectedStaff.currentEntry.breaks && (

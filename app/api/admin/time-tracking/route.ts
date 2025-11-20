@@ -56,19 +56,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Get time entries with staff and company info
+    console.log("🔍 [ADMIN] Fetching time entries with complex query...")
     const entries = await prisma.time_entries.findMany({
       where: dateFilter,
-      select: {
-        id: true,
-        clockIn: true,
-        clockOut: true,
-        totalHours: true,
-        notes: true,
-        wasLate: true,
-        lateBy: true,
-        wasEarly: true,
-        earlyBy: true,
-        createdAt: true,
+      include: {
         staff_users: {
           select: {
             id: true,
@@ -76,26 +67,13 @@ export async function GET(req: NextRequest) {
             email: true,
             avatar: true,
             role: true,
-            company: {
-              select: {
-                id: true,
-                companyName: true,
-                tradingName: true,
-                logo: true,
-              },
-            },
+            company: true,
           },
         },
+        work_schedules: true,
         breaks: {
-          select: {
-            id: true,
-            type: true,
-            actualStart: true,
-            actualEnd: true,
-            duration: true,
-          },
           orderBy: {
-            actualStart: 'asc',
+            createdAt: 'asc',
           },
         },
       },
@@ -104,12 +82,61 @@ export async function GET(req: NextRequest) {
       },
       take: 100,
     })
+    
+    console.log(`✅ [ADMIN] Found ${entries.length} time entries`)
 
-    return NextResponse.json({ success: true, entries })
+    // ✨ NEW: Add real-time calculations for active entries
+    const now = new Date()
+    const enrichedEntries = entries.map((entry: any) => {
+      const isActive = !entry.clockOut
+      let currentHours = 0
+      let liveOvertimeMinutes = 0
+      let isCurrentlyOvertime = false
+
+      if (isActive) {
+        // Calculate current hours worked (excluding breaks)
+        const clockInTime = new Date(entry.clockIn).getTime()
+        const nowTime = now.getTime()
+        const totalMs = nowTime - clockInTime
+        
+        // Subtract completed break time
+        const breakTimeMs = entry.breaks
+          .filter((b: any) => b.actualStart && b.actualEnd)
+          .reduce((sum: number, b: any) => {
+            const breakDuration = new Date(b.actualEnd).getTime() - new Date(b.actualStart).getTime()
+            return sum + breakDuration
+          }, 0)
+        
+        currentHours = Math.round(((totalMs - breakTimeMs) / (1000 * 60 * 60)) * 100) / 100
+
+        // ✨ Calculate LIVE overtime if past expected clock-out
+        if (entry.expectedClockOut) {
+          const expectedClockOutTime = new Date(entry.expectedClockOut).getTime()
+          if (nowTime > expectedClockOutTime) {
+            isCurrentlyOvertime = true
+            liveOvertimeMinutes = Math.floor((nowTime - expectedClockOutTime) / (1000 * 60))
+          }
+        }
+      }
+
+      return {
+        ...entry,
+        // Add calculated real-time fields
+        currentHours: isActive ? currentHours : null,
+        isCurrentlyOvertime: isActive ? isCurrentlyOvertime : false,
+        liveOvertimeMinutes: isActive ? liveOvertimeMinutes : 0,
+      }
+    })
+
+    console.log(`📊 [ADMIN] Enriched with real-time data. Active entries: ${enrichedEntries.filter((e: any) => !e.clockOut).length}`)
+
+    return NextResponse.json({ success: true, entries: enrichedEntries })
   } catch (error) {
-    console.error("Error fetching time entries:", error)
+    console.error("❌ [ADMIN TIME TRACKING] Error fetching time entries:", error)
+    console.error("❌ [ADMIN TIME TRACKING] Stack:", error instanceof Error ? error.stack : 'No stack')
+    console.error("❌ [ADMIN TIME TRACKING] Message:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

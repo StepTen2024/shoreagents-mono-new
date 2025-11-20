@@ -129,12 +129,23 @@ export async function POST(request: NextRequest) {
     let wasEarly = false
     let earlyBy = 0
     let expectedClockIn: Date | null = null
+    let expectedClockOut: Date | null = null
     
     // ✅ FIX #9: Calculate expected clock-in time for the SHIFT DATE
     if (workSchedule.startTime && workSchedule.startTime.trim() !== '') {
       try {
         // Create expected clock-in time using helper function
         expectedClockIn = createExpectedClockIn(shiftDate, workSchedule.startTime)
+        
+        // ✅ NEW: Calculate expected clock-out time from work schedule
+        if (workSchedule.endTime && workSchedule.endTime.trim() !== '') {
+          expectedClockOut = createExpectedClockIn(shiftDate, workSchedule.endTime)
+          console.log(`⏰ Expected clock-out:`, {
+            expectedTime: expectedClockOut.toISOString(),
+            expectedTimeManila: expectedClockOut.toLocaleString('en-US', { timeZone: staffTimezone }),
+            timezone: staffTimezone
+          })
+        }
         
         console.log(`⏰ Expected clock-in:`, {
           expectedTime: expectedClockIn.toISOString(),
@@ -195,12 +206,14 @@ export async function POST(request: NextRequest) {
         shiftDayOfWeek: shiftDayOfWeek, // ✅ NEW! "Thursday", "Friday", etc.
         updatedAt: new Date(),
         expectedClockIn,
+        expectedClockOut,              // ✅ NEW! Expected shift end time
         wasLate,
         lateBy: wasLate ? lateBy : null,
         wasEarly,
         earlyBy: wasEarly ? earlyBy : null,
         lateReason: wasLate ? lateReason : null,
-        workedFullShift: false
+        workedFullShift: false,
+        overtimeMinutes: null          // ✅ NEW! Will be calculated at clock-out
       },
     })
     

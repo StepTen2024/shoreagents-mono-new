@@ -65,9 +65,10 @@ async function getTimeEntry(id: string) {
             },
           },
         },
+        work_schedules: true,
         breaks: {
           orderBy: {
-            actualStart: 'asc',
+            createdAt: 'asc',
           },
         },
       },
@@ -210,6 +211,31 @@ export default async function TimeEntryDetailPage({
             </Card>
           )}
 
+          {/* Shift Schedule Card */}
+          {entry.work_schedules && (
+            <Card className="p-6 border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 to-purple-950/40">
+              <h3 className="text-lg font-semibold text-indigo-300 mb-4">📅 Shift Schedule</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-indigo-400/70 mb-1">Start Time</div>
+                  <div className="text-2xl font-bold text-indigo-300">{entry.work_schedules.startTime}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-indigo-400/70 mb-1">End Time</div>
+                  <div className="text-2xl font-bold text-indigo-300">{entry.work_schedules.endTime}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-indigo-400/70 mb-1">Day</div>
+                  <div className="text-sm font-medium text-indigo-200">{entry.work_schedules.dayOfWeek}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-indigo-400/70 mb-1">Shift Type</div>
+                  <Badge className="bg-indigo-600">{entry.work_schedules.shiftType || 'Regular'}</Badge>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Time Details Card */}
           <Card className="p-6 border-border bg-card">
             <h3 className="text-lg font-semibold text-foreground mb-4">Time Details</h3>
@@ -233,6 +259,14 @@ export default async function TimeEntryDetailPage({
                       year: 'numeric'
                     })}
                   </div>
+                  {entry.expectedClockIn && (
+                    <div className="text-xs text-muted-foreground/70 mt-1">
+                      Expected: {new Date(entry.expectedClockIn).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -256,6 +290,14 @@ export default async function TimeEntryDetailPage({
                         year: 'numeric'
                       })}
                     </div>
+                    {entry.expectedClockOut && (
+                      <div className="text-xs text-muted-foreground/70 mt-1">
+                        Expected: {new Date(entry.expectedClockOut).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -360,7 +402,7 @@ export default async function TimeEntryDetailPage({
         <div className="space-y-6">
           {/* Status Card */}
           <Card className="p-6 border-border bg-card">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Status</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Accountability</h3>
             <div className="space-y-3">
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Entry Status</div>
@@ -370,14 +412,81 @@ export default async function TimeEntryDetailPage({
                   <Badge variant="secondary">Completed</Badge>
                 )}
               </div>
-              {entry.wasLate && (
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <div className="flex items-center gap-2 text-amber-500 mb-1">
+              
+              {/* Late Clock-In */}
+              {entry.wasLate && entry.lateBy && (
+                <div className="p-3 rounded-lg bg-amber-950/20 border border-amber-500/30">
+                  <div className="flex items-center gap-2 text-amber-400 mb-1">
                     <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Late Clock-In</span>
+                    <span className="text-sm font-medium">⚠️ Late Clock-In</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {formatLateTime(entry.lateBy)} late
+                  </p>
+                  {entry.lateReason && (
+                    <p className="text-xs text-amber-300/70 mt-1">
+                      Reason: {entry.lateReason.replace(/_/g, ' ')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Early Clock-In */}
+              {entry.wasEarly && entry.earlyBy && (
+                <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30">
+                  <div className="flex items-center gap-2 text-emerald-400 mb-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">✨ Early Clock-In</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatLateTime(entry.earlyBy)} early
+                  </p>
+                </div>
+              )}
+
+              {/* Overtime */}
+              {entry.overtimeMinutes && entry.overtimeMinutes > 0 && (
+                <div className="p-3 rounded-lg bg-purple-950/30 border border-purple-500/30">
+                  <div className="flex items-center gap-2 text-purple-400 mb-1">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-sm font-medium">🌟 Overtime Worked</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatLateTime(entry.overtimeMinutes)} overtime
+                  </p>
+                  <p className="text-xs text-purple-300/70 mt-1">
+                    ({(entry.overtimeMinutes / 60).toFixed(2)} hours)
+                  </p>
+                </div>
+              )}
+
+              {/* Early Clock-Out */}
+              {entry.wasEarlyClockOut && entry.earlyClockOutBy && (
+                <div className="p-3 rounded-lg bg-yellow-950/20 border border-yellow-500/30">
+                  <div className="flex items-center gap-2 text-yellow-400 mb-1">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">⏰ Early Clock-Out</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Left {formatLateTime(entry.earlyClockOutBy)} early
+                  </p>
+                  {entry.clockOutReason && (
+                    <p className="text-xs text-yellow-300/70 mt-1">
+                      Reason: {entry.clockOutReason.replace(/_/g, ' ')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Full Shift Worked */}
+              {entry.workedFullShift && (
+                <div className="p-3 rounded-lg bg-green-950/30 border border-green-500/30">
+                  <div className="flex items-center gap-2 text-green-400 mb-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">✅ Full Shift Completed</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Staff worked the complete shift
                   </p>
                 </div>
               )}

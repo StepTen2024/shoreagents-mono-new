@@ -770,10 +770,12 @@ model time_entries {
   breaksScheduled  Boolean         @default(false)
   clockOutReason   ClockOutReason?
   expectedClockIn  DateTime?
+  expectedClockOut DateTime?
   lateBy           Int?
   wasLate          Boolean         @default(false)
   earlyBy          Int?
   earlyClockOutBy  Int?
+  overtimeMinutes  Int?
   lateReason       LateReason?
   wasEarly         Boolean         @default(false)
   wasEarlyClockOut Boolean         @default(false)

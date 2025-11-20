@@ -20,10 +20,20 @@ interface TimeEntry {
   clockOut: string | null
   totalHours: number | null
   createdAt: string
+  expectedClockIn?: string
+  expectedClockOut?: string
   wasLate?: boolean
   lateBy?: number
-  expectedClockIn?: string
+  lateReason?: string
+  wasEarly?: boolean
+  earlyBy?: number
+  wasEarlyClockOut?: boolean
+  earlyClockOutBy?: number
+  overtimeMinutes?: number
+  workedFullShift?: boolean
   breaksScheduled?: boolean
+  shiftDate?: string
+  shiftDayOfWeek?: string
 }
 
 interface TimeStats {
@@ -110,6 +120,11 @@ export default function TimeTracking() {
   const [timeUntilShiftEnd, setTimeUntilShiftEnd] = useState<string>('')
   const [countdownDisplay, setCountdownDisplay] = useState<string>('')
   const [autoClockOutTimer, setAutoClockOutTimer] = useState<NodeJS.Timeout | null>(null)
+  
+  // NEW: Shift end reminder modal
+  const [showShiftEndModal, setShowShiftEndModal] = useState(false)
+  const [showContinueWorkingModal, setShowContinueWorkingModal] = useState(false)
+  const [continueWorkingReason, setContinueWorkingReason] = useState<string>('')
   
   // Away reason selector states
   const [showAwayReasonModal, setShowAwayReasonModal] = useState(false)
@@ -346,8 +361,9 @@ export default function TimeTracking() {
       const minutesUntilEnd = Math.floor(timeDiff / (1000 * 60))
       
       if (minutesUntilEnd <= 0) {
-        // Shift has ended - auto clock out
-        handleAutoClockOut()
+        // Shift has ended - show reminder modal instead of auto clock-out
+        handleShiftEndReached()
+        stopAutoClockOutTimer() // Stop the timer after showing modal
         return
       }
       
@@ -394,67 +410,80 @@ export default function TimeTracking() {
     setCountdownDisplay('')
   }
   
-  const handleAutoClockOut = async () => {
+  // NEW: Show shift end reminder modal instead of auto clock-out
+  const handleShiftEndReached = () => {
     if (!isClockedIn) return
     
-    console.log("🕐 AUTO CLOCK OUT - Shift end reached")
+    console.log("🕐 SHIFT END REACHED - Showing reminder modal")
     
     // Check if on active break
     if (activeBreak) {
-      console.log("⚠️ Auto clock-out blocked - user is on active break")
+      console.log("⚠️ User is on active break - showing reminder anyway")
+    }
+    
+    // Show the shift end reminder modal
+    setShowShiftEndModal(true)
+    setShowShiftEndWarning(false)
+    setShowFinalWarning(false)
+  }
+  
+  // Handle clock out from shift end modal
+  const handleClockOutFromModal = async () => {
+    setShowShiftEndModal(false)
+    
+    if (activeBreak) {
       toast({
-        title: "Cannot Auto Clock Out",
-        description: "Please end your active break first, then clock out manually.",
+        title: "End Your Break First",
+        description: "Please end your active break before clocking out.",
         variant: "destructive",
-        duration: 8000
+        duration: 5000
       })
       return
     }
     
-    try {
-      // Auto clock out with "END_OF_SHIFT" reason
-      const response = await fetch("/api/time-tracking/clock-out", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          reason: "END_OF_SHIFT",
-          notes: "Auto clock-out at shift end time"
-        }),
+    // Trigger regular clock out
+    await clockOut("END_OF_SHIFT")
+  }
+  
+  // Handle continue working
+  const handleContinueWorking = () => {
+    setShowShiftEndModal(false)
+    setShowContinueWorkingModal(true)
+  }
+  
+  // Submit continue working reason
+  const handleSubmitContinueReason = () => {
+    if (!continueWorkingReason) {
+      toast({
+        title: "Reason Required",
+        description: "Please select why you're continuing to work.",
+        variant: "destructive",
+        duration: 3000
       })
-      
-      const data = await response.json()
-      
-      if (response.ok) {
-        // Update UI optimistically
-        setShowShiftEndWarning(false)
-        setShowFinalWarning(false)
-        
-        // WebSocket will handle the actual state updates
-        
+      return
+    }
+    
+    console.log("✅ Staff continuing work:", continueWorkingReason)
+    
+    toast({
+      title: "Shift Extended",
+      description: `You're now working overtime. Don't forget to clock out when done!`,
+      duration: 6000
+    })
+    
+    setShowContinueWorkingModal(false)
+    setContinueWorkingReason('')
+    
+    // Set reminder to check again in 30 minutes
+    setTimeout(() => {
+      if (isClockedIn) {
         toast({
-          title: "Auto Clock Out",
-          description: "You have been automatically clocked out at shift end time.",
-          duration: 5000
-        })
-        
-      } else {
-        console.log("⚠️ Auto clock-out failed:", data.error)
-        toast({
-          title: "Auto Clock Out Failed",
-          description: "Please clock out manually.",
-          variant: "destructive",
+          title: "⏰ Reminder",
+          description: "Don't forget to clock out when you're finished!",
           duration: 5000
         })
       }
-    } catch (error) {
-      console.log("⚠️ Auto clock-out error:", error)
-      toast({
-        title: "Auto Clock Out Error",
-        description: "Please clock out manually.",
-        variant: "destructive",
-        duration: 5000
-      })
-    }
+    }, 30 * 60 * 1000) // 30 minutes
   }
   
   // Away reason selector functions
@@ -1836,7 +1865,7 @@ export default function TimeTracking() {
                           </div>
                         </div>
 
-                        {/* Badges: Late, Early, etc. */}
+                        {/* Badges: Late, Early, Overtime, etc. */}
                         <div className="flex flex-wrap items-center gap-2 mb-4">
                           {entry.wasLate && (
                             <span className="text-xs font-bold text-red-300 bg-red-500/30 px-3 py-1.5 rounded-lg border border-red-400/50 ring-1 ring-red-400/30 hover:scale-105 hover:ring-2 hover:ring-red-400 transition-all cursor-default">
@@ -1851,6 +1880,11 @@ export default function TimeTracking() {
                           {entry.wasEarly && (
                             <span className="text-xs font-bold text-blue-300 bg-blue-500/30 px-3 py-1.5 rounded-lg border border-blue-400/50 ring-1 ring-blue-400/30 hover:scale-105 hover:ring-2 hover:ring-blue-400 transition-all cursor-default">
                               🌅 Early {entry.earlyBy}m
+                            </span>
+                          )}
+                          {entry.overtimeMinutes && entry.overtimeMinutes > 0 && (
+                            <span className="text-xs font-black text-purple-300 bg-gradient-to-r from-purple-500/30 to-pink-500/30 px-4 py-2 rounded-lg border-2 border-purple-400/50 ring-2 ring-purple-400/50 hover:scale-110 hover:ring-4 hover:ring-purple-400 hover:shadow-lg hover:shadow-purple-500/50 transition-all cursor-default animate-pulse">
+                              🌟 OVERTIME +{entry.overtimeMinutes}m ({(entry.overtimeMinutes / 60).toFixed(1)}h)
                             </span>
                           )}
                           {entry.wasEarlyClockOut && (
@@ -1971,7 +2005,7 @@ export default function TimeTracking() {
                             </div>
                           </div>
                           {/* Shift Details */}
-                          <div className="flex items-center gap-4 mt-2">
+                          <div className="flex items-center flex-wrap gap-2 mt-2">
                             {entry.wasLate && (
                               <span className="text-xs font-medium text-red-300 bg-red-500/20 px-2 py-0.5 rounded border border-red-400/30">
                                 ⏰ Late {entry.lateBy}m {entry.lateReason && `- ${formatLateReason(entry.lateReason)}`}
@@ -1980,6 +2014,11 @@ export default function TimeTracking() {
                             {entry.wasEarly && (
                               <span className="text-xs font-medium text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded border border-blue-400/30">
                                 🌅 Early {entry.earlyBy}m
+                              </span>
+                            )}
+                            {entry.overtimeMinutes && entry.overtimeMinutes > 0 && (
+                              <span className="text-xs font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-400/30">
+                                🌟 +{entry.overtimeMinutes}m OT
                               </span>
                             )}
                             {entry.wasEarlyClockOut && (
@@ -2149,12 +2188,133 @@ export default function TimeTracking() {
         type="break-reminder"
         data={{
           title: "Final Warning - Shift Ending",
-          message: `Your shift ends in 5 minutes at ${shiftEndTime?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. You will be automatically clocked out.`,
+          message: `Your shift ends in 5 minutes at ${shiftEndTime?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. Don't forget to clock out!`,
           timeRemaining: countdownDisplay
         }}
         onAction={() => setShowFinalWarning(false)}
         onDismiss={() => setShowFinalWarning(false)}
       />
+      
+      {/* NEW: Shift End Reminder Modal */}
+      {showShiftEndModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-amber-500/50 shadow-2xl shadow-amber-500/20 p-8 w-full max-w-lg">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30 animate-pulse">
+                <Clock className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Your Shift Has Ended!</h2>
+                <p className="text-amber-400 text-sm font-medium">
+                  {shiftEndTime?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+            
+            {/* Message */}
+            <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-4 mb-6">
+              <p className="text-slate-300 text-center text-lg">
+                ⏰ <strong>Don't forget to clock out!</strong>
+              </p>
+              <p className="text-slate-400 text-center text-sm mt-2">
+                If you're continuing to work, let us know why.
+              </p>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleClockOutFromModal}
+                size="lg"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-lg h-14 shadow-lg hover:shadow-xl transition-all"
+              >
+                🏁 Clock Out Now
+              </Button>
+              
+              <Button
+                onClick={handleContinueWorking}
+                size="lg"
+                variant="outline"
+                className="w-full border-2 border-amber-500/50 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500 font-semibold h-12 transition-all"
+              >
+                ⏰ Continue Working
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* NEW: Continue Working Reason Modal */}
+      {showContinueWorkingModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20 p-8 w-full max-w-lg">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <AlertCircle className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Why are you staying?</h2>
+                <p className="text-purple-400 text-sm font-medium">
+                  Select a reason for continuing work
+                </p>
+              </div>
+            </div>
+            
+            {/* Reason Options */}
+            <div className="space-y-3 mb-6">
+              {[
+                { value: "FINISHING_TASKS", label: "📋 Finishing up tasks", icon: "📋" },
+                { value: "APPROVED_OVERTIME", label: "✅ Approved overtime", icon: "✅" },
+                { value: "URGENT_WORK", label: "🚨 Urgent work", icon: "🚨" },
+                { value: "MANAGER_REQUESTED", label: "💼 Manager requested", icon: "💼" },
+                { value: "OTHER", label: "📝 Other reason", icon: "📝" }
+              ].map((reason) => (
+                <button
+                  key={reason.value}
+                  onClick={() => setContinueWorkingReason(reason.value)}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                    continueWorkingReason === reason.value
+                      ? "border-purple-500 bg-purple-500/20 shadow-lg shadow-purple-500/20"
+                      : "border-slate-700 hover:border-purple-500/50 hover:bg-slate-800/50"
+                  }`}
+                >
+                  <span className={`font-medium ${
+                    continueWorkingReason === reason.value ? "text-purple-300" : "text-slate-300"
+                  }`}>
+                    {reason.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowContinueWorkingModal(false)
+                  setContinueWorkingReason('')
+                  setShowShiftEndModal(true)
+                }}
+                size="lg"
+                variant="outline"
+                className="flex-1 border-slate-700 text-slate-400 hover:bg-slate-800"
+              >
+                ← Back
+              </Button>
+              
+              <Button
+                onClick={handleSubmitContinueReason}
+                size="lg"
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold shadow-lg hover:shadow-xl transition-all"
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Away Reason Selector Modal */}
       {showAwayReasonModal && (
