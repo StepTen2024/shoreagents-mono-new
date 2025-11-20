@@ -19,7 +19,7 @@ interface TimeTrackingState {
   }
 }
 
-export function useTimeTrackingWebSocket() {
+export function useTimeTrackingWebSocket(enableAutoStart: boolean = false) {
   const { socket, isConnected, emit, on, off } = useWebSocket()
   
   const [state, setState] = useState<TimeTrackingState>({
@@ -646,6 +646,12 @@ export function useTimeTrackingWebSocket() {
       return
     }
     
+    // ✅ NEW FIX: Only auto-start if the time tracking page is active (enableAutoStart = true)
+    if (!enableAutoStart) {
+      console.log('[WebSocket] Auto-start disabled (not on time tracking page), ignoring trigger')
+      return
+    }
+    
     console.log('[WebSocket] Break auto-start for current user, proceeding...')
     try {
       const response = await fetch('/api/breaks/start', {
@@ -665,7 +671,7 @@ export function useTimeTrackingWebSocket() {
     } catch (error) {
       console.error('[WebSocket] Error auto-starting break:', error)
     }
-  }, [currentStaffUserId])
+  }, [currentStaffUserId, enableAutoStart])
 
   // Set up event listeners
   useEffect(() => {
