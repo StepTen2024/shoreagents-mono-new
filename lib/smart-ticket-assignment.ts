@@ -71,10 +71,12 @@ export function getSmartDepartment(
 /**
  * Finds the best person in a department to assign the ticket to
  * Uses workload balancing - assigns to person with fewest open tickets
+ * If no manager in primary department, falls back to OPERATIONS
  */
 export async function assignTicketToPerson(
-  department: Department
-): Promise<string | null> {
+  department: Department,
+  allowFallback: boolean = true
+): Promise<{ managerId: string | null; usedFallback: boolean; fallbackDepartment?: Department }> {
   try {
     // Get all management users in this department
     const managers = await prisma.management_users.findMany({
@@ -87,9 +89,21 @@ export async function assignTicketToPerson(
       }
     })
     
+    // If no managers found, try fallback to OPERATIONS
     if (managers.length === 0) {
       console.log(`⚠️  [SMART ASSIGN] No managers found in department: ${department}`)
-      return null
+      
+      if (allowFallback && department !== "OPERATIONS") {
+        console.log(`🔄 [SMART ASSIGN] Falling back to OPERATIONS department...`)
+        const fallbackResult = await assignTicketToPerson("OPERATIONS", false) // Prevent infinite loop
+        return {
+          managerId: fallbackResult.managerId,
+          usedFallback: true,
+          fallbackDepartment: "OPERATIONS"
+        }
+      }
+      
+      return { managerId: null, usedFallback: false }
     }
     
     console.log(`📋 [SMART ASSIGN] Found ${managers.length} manager(s) in ${department}:`, managers.map(m => m.name))
@@ -97,7 +111,7 @@ export async function assignTicketToPerson(
     // If only one manager, assign to them
     if (managers.length === 1) {
       console.log(`✅ [SMART ASSIGN] Only one manager, assigning to: ${managers[0].name}`)
-      return managers[0].id
+      return { managerId: managers[0].id, usedFallback: false }
     }
     
     // Multiple managers - find who has the least open tickets (workload balancing)
@@ -127,10 +141,10 @@ export async function assignTicketToPerson(
     console.log(`✅ [SMART ASSIGN] Workload balancing - Assigning to: ${assignedManager.managerName} (${assignedManager.openTickets} open tickets)`)
     console.log(`📊 [SMART ASSIGN] Workload distribution:`, managerWorkloads.map(m => `${m.managerName}: ${m.openTickets}`).join(', '))
     
-    return assignedManager.managerId
+    return { managerId: assignedManager.managerId, usedFallback: false }
   } catch (error) {
     console.error(`❌ [SMART ASSIGN] Error finding manager in ${department}:`, error)
-    return null
+    return { managerId: null, usedFallback: false }
   }
 }
 
@@ -163,25 +177,30 @@ export async function smartAssignTicket(
   
   console.log(`🏢 [SMART ASSIGN] Department determined: ${department}`)
   
-  // Step 2: Find best person in department
-  const managementUserId = await assignTicketToPerson(department)
+  // Step 2: Find best person in department (with fallback)
+  const assignmentResult = await assignTicketToPerson(department)
   
-  if (!managementUserId) {
-    console.log(`⚠️  [SMART ASSIGN] No available manager in ${department}`)
+  if (!assignmentResult.managerId) {
+    console.log(`⚠️  [SMART ASSIGN] No available manager in ${department} and fallback failed`)
     return { department, managementUserId: null }
   }
   
   // Get manager name for logging
   const manager = await prisma.management_users.findUnique({
-    where: { id: managementUserId },
-    select: { name: true }
+    where: { id: assignmentResult.managerId },
+    select: { name: true, department: true }
   })
   
-  console.log(`✅ [SMART ASSIGN] Ticket assigned to: ${manager?.name} (${department})`)
+  if (assignmentResult.usedFallback) {
+    console.log(`🔄 [SMART ASSIGN] No manager in ${department}, used FALLBACK`)
+    console.log(`✅ [SMART ASSIGN] Ticket assigned to: ${manager?.name} (${manager?.department}) [FALLBACK]`)
+  } else {
+    console.log(`✅ [SMART ASSIGN] Ticket assigned to: ${manager?.name} (${department})`)
+  }
   
   return {
-    department,
-    managementUserId,
+    department: assignmentResult.usedFallback ? assignmentResult.fallbackDepartment : department,
+    managementUserId: assignmentResult.managerId,
     assignedToName: manager?.name
   }
 }
