@@ -175,12 +175,12 @@ export default function PerformanceDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 pt-20 md:p-8 lg:pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div className="h-48 rounded-3xl bg-gradient-to-r from-purple-100 to-blue-100 animate-pulse" />
+          <div className="h-48 rounded-3xl bg-slate-800/50 animate-pulse" />
           <div className="grid gap-4 md:grid-cols-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-40 rounded-2xl bg-gray-100 animate-pulse" />
+              <div key={i} className="h-40 rounded-2xl bg-slate-800/50 animate-pulse" />
             ))}
           </div>
         </div>
@@ -190,14 +190,14 @@ export default function PerformanceDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 pt-20 md:p-8 lg:pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
         <div className="mx-auto max-w-5xl">
-          <Card className="p-8 border-red-200 bg-red-50">
+          <Card className="p-8 bg-red-500/10 border-red-500/30 ring-1 ring-red-500/30">
             <div className="flex items-start gap-4">
-              <AlertCircle className="h-8 w-8 text-red-500" />
+              <AlertCircle className="h-8 w-8 text-red-400" />
               <div>
-                <h2 className="text-xl font-bold text-red-900">Oops! Something went wrong</h2>
-                <p className="mt-2 text-red-700">{error}</p>
+                <h2 className="text-xl font-bold text-red-400">Oops! Something went wrong</h2>
+                <p className="mt-2 text-red-300">{error}</p>
                 <Button onClick={() => window.location.reload()} className="mt-4 bg-red-600 hover:bg-red-700">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Try Again
@@ -220,11 +220,11 @@ export default function PerformanceDashboard() {
   const streak = getStreakData(productivity)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4 pt-20 md:p-8 lg:pt-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4 pt-20 md:p-8 lg:pt-8">
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Hero Header - Gamified */}
-        <Card className="relative overflow-hidden border-none bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 p-8 shadow-2xl">
-          <div className="absolute top-0 right-0 opacity-10">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-purple-900/50 p-8 shadow-xl backdrop-blur-xl ring-1 ring-white/10">
+          <div className="absolute top-0 right-0 opacity-5">
             <Sparkles className="h-64 w-64" />
           </div>
           
@@ -232,19 +232,19 @@ export default function PerformanceDashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-                  <Flame className="h-10 w-10 animate-pulse" />
+                  <Flame className="h-10 w-10 animate-pulse text-orange-400" />
                   Your Productivity Journey
                 </h1>
-                <p className="mt-2 text-white/90 text-lg">
+                <p className="mt-2 text-purple-200 text-lg">
                   Level up your focus and crush your goals! 🚀
                 </p>
               </div>
               <div className="text-right">
-                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-2xl">
-                  <Star className="h-6 w-6 text-yellow-300" />
+                <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-2xl ring-1 ring-white/20">
+                  <Star className="h-6 w-6 text-yellow-400" />
                   <div>
                     <div className="text-3xl font-bold text-white">{streak.current}</div>
-                    <div className="text-xs text-white/80">Day Streak 🔥</div>
+                    <div className="text-xs text-slate-300">Day Streak 🔥</div>
                   </div>
                 </div>
               </div>
@@ -252,51 +252,51 @@ export default function PerformanceDashboard() {
 
             {/* Productivity Score - BIG & FUN */}
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white/20 backdrop-blur-md rounded-3xl p-6 border-2 border-white/30">
+              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 ring-1 ring-white/20">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-white/90 font-semibold text-lg">Today's Score</span>
+                  <span className="text-slate-200 font-semibold text-lg">Today's Score</span>
                   <span className="text-6xl">{level.emoji}</span>
                 </div>
                 <div className="flex items-end gap-4 mb-4">
                   <div className="text-7xl font-bold text-white">{productivity}</div>
-                  <div className="text-2xl text-white/80 mb-2">/100</div>
+                  <div className="text-2xl text-slate-300 mb-2">/100</div>
                 </div>
                 <Progress value={productivity} className="h-4 bg-white/20" />
                 <div className="mt-3 flex items-center gap-2">
                   <Badge className={`bg-gradient-to-r ${level.color} text-white border-none px-4 py-1`}>
                     {level.level}
                   </Badge>
-                  <span className="text-white/90 font-medium">{level.message}</span>
+                  <span className="text-slate-200 font-medium">{level.message}</span>
                 </div>
               </div>
 
               {/* Time Stats - Simplified */}
               <div className="space-y-3">
-                <div className="bg-white/20 backdrop-blur-md rounded-2xl p-5 border border-white/30">
+                <div className="bg-emerald-900/40 backdrop-blur-md rounded-2xl p-5 ring-1 ring-emerald-500/30">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 bg-green-500/30 rounded-xl">
-                        <Clock className="h-6 w-6 text-white" />
+                      <div className="p-3 bg-emerald-500/30 rounded-xl">
+                        <Clock className="h-6 w-6 text-emerald-300" />
                       </div>
                       <div>
-                        <div className="text-sm text-white/80">Active Time</div>
+                        <div className="text-sm text-emerald-200">Active Time</div>
                         <div className="text-2xl font-bold text-white">
                           {displayMetrics ? formatTime(displayMetrics.activeTime) : '0m'}
                         </div>
                       </div>
                     </div>
-                    <CheckCircle className="h-8 w-8 text-green-300" />
+                    <CheckCircle className="h-8 w-8 text-emerald-400" />
                   </div>
                 </div>
 
-                <div className="bg-white/20 backdrop-blur-md rounded-2xl p-5 border border-white/30">
+                <div className="bg-blue-900/40 backdrop-blur-md rounded-2xl p-5 ring-1 ring-blue-500/30">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-3 bg-blue-500/30 rounded-xl">
-                        <Target className="h-6 w-6 text-white" />
+                        <Target className="h-6 w-6 text-blue-300" />
                       </div>
                       <div>
-                        <div className="text-sm text-white/80">Focus Level</div>
+                        <div className="text-sm text-blue-200">Focus Level</div>
                         <div className="text-2xl font-bold text-white">
                           {displayMetrics && (displayMetrics.activeTime + displayMetrics.idleTime) > 0
                             ? `${Math.round((displayMetrics.activeTime / (displayMetrics.activeTime + displayMetrics.idleTime)) * 100)}%`
@@ -304,128 +304,132 @@ export default function PerformanceDashboard() {
                         </div>
                       </div>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-blue-300" />
+                    <TrendingUp className="h-8 w-8 text-blue-400" />
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Motivational Tip Card */}
         {tip && (
-          <Card className={`p-6 border-2 ${
-            tip.type === 'warning' ? 'border-amber-300 bg-amber-50' :
-            tip.type === 'success' ? 'border-green-300 bg-green-50' :
-            'border-blue-300 bg-blue-50'
+          <div className={`rounded-2xl p-6 ring-1 ${
+            tip.type === 'warning' ? 'bg-amber-900/30 ring-amber-500/30' :
+            tip.type === 'success' ? 'bg-emerald-900/30 ring-emerald-500/30' :
+            'bg-blue-900/30 ring-blue-500/30'
           }`}>
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-xl ${
-                tip.type === 'warning' ? 'bg-amber-200' :
-                tip.type === 'success' ? 'bg-green-200' :
-                'bg-blue-200'
+                tip.type === 'warning' ? 'bg-amber-500/30' :
+                tip.type === 'success' ? 'bg-emerald-500/30' :
+                'bg-blue-500/30'
               }`}>
-                <tip.icon className={`h-6 w-6 ${tip.color}`} />
+                <tip.icon className={`h-6 w-6 ${
+                  tip.type === 'warning' ? 'text-amber-300' :
+                  tip.type === 'success' ? 'text-emerald-300' :
+                  'text-blue-300'
+                }`} />
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-lg text-gray-900">{tip.title}</h3>
-                <p className="mt-1 text-gray-700">{tip.message}</p>
+                <h3 className="font-bold text-lg text-white">{tip.title}</h3>
+                <p className="mt-1 text-slate-300">{tip.message}</p>
               </div>
             </div>
-          </Card>
+          </div>
         )}
 
         {/* Achievement Cards - Gamified */}
         <div className="grid md:grid-cols-3 gap-6">
-          <Card className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
+          <div className="rounded-2xl bg-gradient-to-br from-amber-900/40 to-orange-900/40 p-6 ring-1 ring-amber-500/30">
             <div className="flex items-center gap-4">
-              <div className="p-4 bg-yellow-500 rounded-2xl">
-                <Trophy className="h-8 w-8 text-white" />
+              <div className="p-4 bg-amber-500/30 rounded-2xl">
+                <Trophy className="h-8 w-8 text-amber-300" />
               </div>
               <div>
-                <div className="text-sm text-gray-600">Best Streak</div>
-                <div className="text-3xl font-bold text-gray-900">{streak.best} days</div>
+                <div className="text-sm text-amber-200">Best Streak</div>
+                <div className="text-3xl font-bold text-white">{streak.best} days</div>
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+          <div className="rounded-2xl bg-gradient-to-br from-purple-900/40 to-pink-900/40 p-6 ring-1 ring-purple-500/30">
             <div className="flex items-center gap-4">
-              <div className="p-4 bg-purple-500 rounded-2xl">
-                <Zap className="h-8 w-8 text-white" />
+              <div className="p-4 bg-purple-500/30 rounded-2xl">
+                <Zap className="h-8 w-8 text-purple-300" />
               </div>
               <div>
-                <div className="text-sm text-gray-600">This Week</div>
-                <div className="text-3xl font-bold text-gray-900">{streak.thisWeek} days</div>
+                <div className="text-sm text-purple-200">This Week</div>
+                <div className="text-3xl font-bold text-white">{streak.thisWeek} days</div>
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+          <div className="rounded-2xl bg-gradient-to-br from-blue-900/40 to-cyan-900/40 p-6 ring-1 ring-blue-500/30">
             <div className="flex items-center gap-4">
-              <div className="p-4 bg-blue-500 rounded-2xl">
-                <Award className="h-8 w-8 text-white" />
+              <div className="p-4 bg-blue-500/30 rounded-2xl">
+                <Award className="h-8 w-8 text-blue-300" />
               </div>
               <div>
-                <div className="text-sm text-gray-600">Productivity Rank</div>
-                <div className="text-3xl font-bold text-gray-900">Top 25%</div>
+                <div className="text-sm text-blue-200">Productivity Rank</div>
+                <div className="text-3xl font-bold text-white">Top 25%</div>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* Quick Tips Section */}
-        <Card className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Brain className="h-6 w-6 text-indigo-600" />
+        <div className="rounded-2xl bg-gradient-to-br from-indigo-900/40 to-purple-900/40 p-6 ring-1 ring-indigo-500/30">
+          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Brain className="h-6 w-6 text-indigo-400" />
             Pro Tips to Boost Your Productivity
           </h3>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-indigo-200 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              <div className="p-2 bg-indigo-500/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-300" />
               </div>
               <div>
-                <div className="font-semibold text-gray-900">Minimize Distractions</div>
-                <div className="text-sm text-gray-600">Close unnecessary tabs and apps. Focus on one task at a time!</div>
+                <div className="font-semibold text-white">Minimize Distractions</div>
+                <div className="text-sm text-slate-300">Close unnecessary tabs and apps. Focus on one task at a time!</div>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-indigo-200 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              <div className="p-2 bg-indigo-500/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-300" />
               </div>
               <div>
-                <div className="font-semibold text-gray-900">Take Short Breaks</div>
-                <div className="text-sm text-gray-600">5-minute breaks every hour keep your mind fresh and focused!</div>
+                <div className="font-semibold text-white">Take Short Breaks</div>
+                <div className="text-sm text-slate-300">5-minute breaks every hour keep your mind fresh and focused!</div>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-indigo-200 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              <div className="p-2 bg-indigo-500/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-300" />
               </div>
               <div>
-                <div className="font-semibold text-gray-900">Set Clear Goals</div>
-                <div className="text-sm text-gray-600">Know what you want to accomplish today. Clarity = productivity!</div>
+                <div className="font-semibold text-white">Set Clear Goals</div>
+                <div className="text-sm text-slate-300">Know what you want to accomplish today. Clarity = productivity!</div>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-indigo-200 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-indigo-700" />
+              <div className="p-2 bg-indigo-500/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-indigo-300" />
               </div>
               <div>
-                <div className="font-semibold text-gray-900">Stay Hydrated</div>
-                <div className="text-sm text-gray-600">Drink water regularly. Your brain needs it to perform at its best! 💧</div>
+                <div className="font-semibold text-white">Stay Hydrated</div>
+                <div className="text-sm text-slate-300">Drink water regularly. Your brain needs it to perform at its best! 💧</div>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Footer - Encouraging */}
         <div className="text-center py-8">
-          <p className="text-gray-600 text-lg">
+          <p className="text-slate-300 text-lg">
             Keep going! Every day is a new opportunity to improve. 💪✨
           </p>
-          <p className="text-gray-500 text-sm mt-2">
+          <p className="text-slate-400 text-sm mt-2">
             Remember: Progress, not perfection!
           </p>
         </div>
