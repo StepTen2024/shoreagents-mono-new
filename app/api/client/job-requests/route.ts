@@ -46,38 +46,32 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    // First, let's check the actual structure of the job_requests table
-    try {
-      const tableStructure = await bpocPool.query(
-        `SELECT column_name, data_type, is_nullable 
-         FROM information_schema.columns 
-         WHERE table_name = 'job_requests' 
-         ORDER BY ordinal_position`
-      )
-      console.log("📋 BPOC job_requests table structure:", tableStructure.rows)
-    } catch (structureError) {
-      console.error("Error checking table structure:", structureError)
-    }
+    // Use the client's actual company ID from Shore Agents database
+    const companyId = clientUser.company.id
+    console.log("📋 Creating job request for company:", companyId, clientUser.company.companyName)
 
-    // For now, use a default company ID since BPOC database schema is different
-    // TODO: Map Supabase company IDs to BPOC company IDs properly
-    let bpocCompanyId = '1' // Default company ID for BPOC database
-    
+    // Ensure company exists in BPOC members table (create if doesn't exist)
     try {
-      // Check if we can find any existing company in BPOC
-      const companyCheck = await bpocPool.query(
-        `SELECT company_id FROM job_requests LIMIT 1`
+      const memberCheck = await bpocPool.query(
+        `SELECT company_id FROM members WHERE company_id = $1`,
+        [companyId]
       )
-      
-      if (companyCheck.rows.length > 0) {
-        bpocCompanyId = companyCheck.rows[0].company_id
-        console.log("✅ Using existing company ID from BPOC:", bpocCompanyId)
+
+      if (memberCheck.rows.length === 0) {
+        console.log("🏢 Company not found in BPOC members, creating...")
+        await bpocPool.query(
+          `INSERT INTO members (company_id, company, created_at, updated_at) 
+           VALUES ($1, $2, NOW(), NOW())
+           ON CONFLICT (company_id) DO NOTHING`,
+          [companyId, clientUser.company.companyName]
+        )
+        console.log("✅ Company created in BPOC members")
       } else {
-        console.log("✅ Using default company ID:", bpocCompanyId)
+        console.log("✅ Company already exists in BPOC members")
       }
-    } catch (companyError) {
-      console.error("Error checking BPOC companies:", companyError)
-      // Use default company ID
+    } catch (memberError) {
+      console.error("Error ensuring company in BPOC members:", memberError)
+      // Continue anyway - the INSERT might still work
     }
 
     // Insert into BPOC database
@@ -114,7 +108,7 @@ export async function POST(request: NextRequest) {
       )
       RETURNING *`,
       [
-        bpocCompanyId, // Use the verified company ID
+        companyId, // Use the client's actual company ID
         body.job_title,
         body.job_description,
         body.work_type,
@@ -143,9 +137,16 @@ export async function POST(request: NextRequest) {
       jobRequest: result.rows[0]
     })
   } catch (error) {
-    console.error("Error creating job request:", error)
+    console.error("❌ Error creating job request:", error)
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
-      { error: "Failed to create job request" },
+      { 
+        error: "Failed to create job request",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
@@ -180,32 +181,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Client user or company not found" }, { status: 404 })
     }
 
-    // Use the same company ID logic as POST method
-    let bpocCompanyId = '1' // Default company ID for BPOC database
-    
-    try {
-      // Check if we can find any existing company in BPOC
-      const companyCheck = await bpocPool.query(
-        `SELECT company_id FROM job_requests LIMIT 1`
-      )
-      
-      if (companyCheck.rows.length > 0) {
-        bpocCompanyId = companyCheck.rows[0].company_id
-        console.log("✅ GET: Using existing company ID from BPOC:", bpocCompanyId)
-      } else {
-        console.log("✅ GET: Using default company ID:", bpocCompanyId)
-      }
-    } catch (companyError) {
-      console.error("Error checking BPOC companies in GET:", companyError)
-      // Use default company ID
-    }
+    // Use the client's actual company ID from Shore Agents database
+    const companyId = clientUser.company.id
 
     // Fetch job requests from BPOC database
     const result = await bpocPool.query(
       `SELECT * FROM job_requests 
        WHERE company_id = $1 
        ORDER BY created_at DESC`,
-      [bpocCompanyId]
+      [companyId]
     )
 
     return NextResponse.json(result.rows)
