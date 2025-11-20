@@ -63,13 +63,13 @@ export async function GET(
         },
         performance_metrics: {
           where: {
-            date: {
+            shiftDate: {              // ✅ FIX: Use shiftDate (timezone-aware) instead of date
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            date: "desc",
+            shiftDate: "desc",        // ✅ FIX: Order by shiftDate
           },
         },
         time_entries: {
@@ -203,7 +203,7 @@ export async function GET(
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
 
-      const dayMetrics = metrics.filter((m) => m.date >= date && m.date <= dayEnd)
+      const dayMetrics = metrics.filter((m) => m.shiftDate && m.shiftDate >= date && m.shiftDate <= dayEnd)  // ✅ FIX: Use shiftDate for filtering
       const dayEntries = timeEntries.filter((e) => e.clockIn >= date && e.clockIn <= dayEnd)
 
       const dayStats = {

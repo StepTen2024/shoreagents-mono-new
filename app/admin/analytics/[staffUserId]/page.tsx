@@ -31,7 +31,7 @@ export default function StaffAnalyticsDetailPage() {
 
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(1)  // ✅ Default to "Today"
 
   useEffect(() => {
     if (staffUserId) {

@@ -174,13 +174,21 @@ export default function PerformanceDashboard() {
   const calculateProductivityScore = (metric: PerformanceMetric) => {
     if (!metric) return 0
     
-    // Prevent NaN by checking for zero division
+    // Use Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
+    // This matches admin analytics and ensures consistency
     const totalTime = metric.activeTime + metric.idleTime
-    const activePercent = totalTime > 0 ? (metric.activeTime / totalTime) * 100 : 0
-    const keystrokesScore = Math.min((metric.keystrokes / 5000) * 100, 100)
-    const clicksScore = Math.min((metric.mouseClicks / 1000) * 100, 100)
+    if (totalTime === 0) return 0
+
+    // Active time percentage (40% weight)
+    const activePercent = (metric.activeTime / totalTime) * 40
+
+    // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+    const keystrokesScore = Math.min((metric.keystrokes / 5000) * 30, 30)
+
+    // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+    const clicksScore = Math.min((metric.mouseClicks / 1000) * 30, 30)
     
-    return Math.round((activePercent + keystrokesScore + clicksScore) / 3)
+    return Math.round(activePercent + keystrokesScore + clicksScore)
   }
 
   if (loading) {

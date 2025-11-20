@@ -84,13 +84,13 @@ export async function GET(request: NextRequest) {
         },
         performance_metrics: {
           where: {
-            date: {
+            shiftDate: {              // ✅ FIX: Use shiftDate (timezone-aware) instead of date
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            date: "desc",
+            shiftDate: "desc",        // ✅ FIX: Order by shiftDate
           },
         },
         time_entries: {
@@ -123,8 +123,9 @@ export async function GET(request: NextRequest) {
       console.log(`   📊 Performance Metrics: ${s.performance_metrics.length} records`)
       if (s.performance_metrics.length > 0) {
         s.performance_metrics.forEach((m, i) => {
-          console.log(`      ${i + 1}. Date (UTC): ${m.date.toISOString()}`)
-          console.log(`         Date (PH):  ${new Date(m.date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+          console.log(`      ${i + 1}. Clock-in (UTC): ${m.date.toISOString()}`)
+          console.log(`         Clock-in (PH):  ${new Date(m.date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+          console.log(`         ShiftDate: ${m.shiftDate?.toISOString() || 'null'}`)
           console.log(`         Clicks: ${m.mouseClicks}, Keys: ${m.keystrokes}, Active: ${m.activeTime}s`)
         })
       } else {
@@ -145,11 +146,25 @@ export async function GET(request: NextRequest) {
       const totalIdleTime = metrics.reduce((sum, m) => sum + m.idleTime, 0)
       const totalUrlsVisited = metrics.reduce((sum, m) => sum + m.urlsVisited, 0)
 
-      // Get latest productivity score
-      const latestProductivity = metrics[0]?.productivityScore || 0
-
-      // Calculate productivity percentage (active time / total time)
+      // Calculate productivity score using Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
+      // This ensures consistency with client analytics and Electron tracking
       const totalTime = totalActiveTime + totalIdleTime
+      let productivityScore = 0
+      
+      if (totalTime > 0) {
+        // Active time percentage (40% weight)
+        const activePercent = (totalActiveTime / totalTime) * 40
+        
+        // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+        const keystrokeScore = Math.min((totalKeystrokes / 5000) * 30, 30)
+        
+        // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+        const mouseScore = Math.min((totalMouseClicks / 1000) * 30, 30)
+        
+        productivityScore = Math.round(activePercent + keystrokeScore + mouseScore)
+      }
+      
+      // Also calculate simple percentage for reference
       const productivityPercentage = totalTime > 0 ? Math.round((totalActiveTime / totalTime) * 100) : 0
 
       // Check if currently clocked in
@@ -188,8 +203,8 @@ export async function GET(request: NextRequest) {
         currentRole: staffMember.staff_profiles?.currentRole,
         isClockedIn,
         stats: {
-          productivityScore: latestProductivity,
-          productivityPercentage,
+          productivityScore: productivityScore,        // ✅ Use calculated weighted score (matches client analytics)
+          productivityPercentage,                      // Keep for reference
           totalMouseClicks,
           totalKeystrokes,
           totalActiveTime,

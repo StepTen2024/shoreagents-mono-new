@@ -137,7 +137,8 @@ export async function GET(req: NextRequest) {
       metricsByStaff.get(metric.staffUserId).push(metric)
     })
 
-    // Calculate productivity score (same as admin: active time / total time)
+    // Calculate productivity score using Electron's weighted formula (same as admin)
+    // Formula: 40% active time ratio + 30% keystrokes + 30% mouse clicks
     const calculateProductivityScore = (metrics: any[]) => {
       if (!metrics || metrics.length === 0) return 0
       
@@ -145,17 +146,30 @@ export async function GET(req: NextRequest) {
       const totals = metrics.reduce((acc, metric) => {
         acc.activeTime += metric.activeTime
         acc.idleTime += metric.idleTime
+        acc.keystrokes += metric.keystrokes
+        acc.mouseClicks += metric.mouseClicks
         return acc
       }, {
         activeTime: 0,
-        idleTime: 0
+        idleTime: 0,
+        keystrokes: 0,
+        mouseClicks: 0
       })
 
-      // Calculate productivity percentage (active time / total time) - same as admin
+      // Use Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
       const totalTime = totals.activeTime + totals.idleTime
-      const productivityScore = totalTime > 0 ? Math.round((totals.activeTime / totalTime) * 100) : 0
-      
-      return productivityScore
+      if (totalTime === 0) return 0
+
+      // Active time percentage (40% weight)
+      const activePercent = (totals.activeTime / totalTime) * 40
+
+      // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+      const keystrokeScore = Math.min((totals.keystrokes / 5000) * 30, 30)
+
+      // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+      const mouseScore = Math.min((totals.mouseClicks / 1000) * 30, 30)
+
+      return Math.round(activePercent + keystrokeScore + mouseScore)
     }
 
     // Combine staff data with their metrics
@@ -195,9 +209,16 @@ export async function GET(req: NextRequest) {
         tabsSwitched: 0
       })
       
-      // Calculate productivity percentage like admin does (active time / total time)
+      // Calculate productivity using Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
       const totalTime = totals.activeTime + totals.idleTime
-      const productivityScore = totalTime > 0 ? Math.round((totals.activeTime / totalTime) * 100) : 0
+      let productivityScore = 0
+      
+      if (totalTime > 0) {
+        const activePercent = (totals.activeTime / totalTime) * 40
+        const keystrokeScore = Math.min((totals.keystrokes / 5000) * 30, 30)
+        const mouseScore = Math.min((totals.mouseClicks / 1000) * 30, 30)
+        productivityScore = Math.round(activePercent + keystrokeScore + mouseScore)
+      }
       
       return {
         id: staff.id,
