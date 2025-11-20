@@ -360,14 +360,26 @@ export default function StaffAnalyticsDetailPage() {
               <CardContent>
                 <div className="space-y-2">
                   {suspiciousUrls.slice(0, 20).map((urlData: any, index: number) => {
-                    const displayUrl = typeof urlData === 'string' ? urlData : urlData.url || urlData
-                    const cleanUrl = displayUrl.replace('page:', '')
+                    // Handle different URL formats from database
+                    let displayUrl = ''
+                    if (typeof urlData === 'string') {
+                      displayUrl = urlData
+                    } else if (urlData && typeof urlData.url === 'string') {
+                      displayUrl = urlData.url
+                    } else if (urlData && typeof urlData === 'object') {
+                      displayUrl = JSON.stringify(urlData)
+                    } else {
+                      displayUrl = 'Unknown URL'
+                    }
+                    
+                    const cleanUrl = typeof displayUrl === 'string' ? displayUrl.replace('page:', '') : displayUrl
+                    
                     return (
                       <div key={index} className="flex items-center justify-between p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
                         <div className="flex-1">
                           <p className="font-medium text-red-900 dark:text-red-300">{cleanUrl}</p>
                           <p className="text-xs text-red-600 dark:text-red-400">
-                            {formatAdminDateTime(urlData.date)} 
+                            {urlData.date ? formatAdminDateTime(urlData.date) : 'N/A'}
                             {urlData.reason && ` • Flagged: ${urlData.reason}`}
                           </p>
                         </div>
@@ -389,14 +401,26 @@ export default function StaffAnalyticsDetailPage() {
               {visitedUrls.length > 0 ? (
                 <div className="space-y-2">
                   {visitedUrls.map((urlData: any, index: number) => {
-                    const displayUrl = typeof urlData === 'string' ? urlData : urlData.url || urlData
-                    const cleanUrl = displayUrl.replace('page:', '')
+                    // Handle different URL formats from database
+                    let displayUrl = ''
+                    if (typeof urlData === 'string') {
+                      displayUrl = urlData
+                    } else if (urlData && typeof urlData.url === 'string') {
+                      displayUrl = urlData.url
+                    } else if (urlData && typeof urlData === 'object') {
+                      displayUrl = JSON.stringify(urlData)
+                    } else {
+                      displayUrl = 'Unknown URL'
+                    }
+                    
+                    const cleanUrl = typeof displayUrl === 'string' ? displayUrl.replace('page:', '') : displayUrl
+                    
                     return (
                       <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                         <div className="flex-1">
                           <p className="font-medium">{cleanUrl}</p>
                           <p className="text-xs text-muted-foreground">
-                            {formatAdminDateTime(urlData.date)}
+                            {urlData.date ? formatAdminDateTime(urlData.date) : 'N/A'}
                           </p>
                         </div>
                         <Globe className="h-4 w-4 text-muted-foreground" />

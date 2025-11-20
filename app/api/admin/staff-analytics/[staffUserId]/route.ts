@@ -125,12 +125,22 @@ export async function GET(
     const allVisitedUrls: any[] = []
     metrics.forEach((metric) => {
       if (metric.visitedurls && Array.isArray(metric.visitedurls)) {
-        allVisitedUrls.push(
-          ...metric.visitedurls.map((urlData: any) => ({
-            ...urlData,
-            date: metric.date,
-          }))
-        )
+        metric.visitedurls.forEach((urlData: any) => {
+          // Handle different formats: string or object
+          if (typeof urlData === 'string') {
+            allVisitedUrls.push({
+              url: urlData,
+              date: metric.date,
+            })
+          } else if (urlData && typeof urlData === 'object') {
+            allVisitedUrls.push({
+              url: urlData.url || urlData.title || 'Unknown',
+              title: urlData.title || urlData.url,
+              date: metric.date,
+              ...urlData
+            })
+          }
+        })
       }
     })
 
@@ -152,13 +162,17 @@ export async function GET(
     ]
     const suspiciousUrls = allVisitedUrls
       .filter((urlData: any) => {
-        const url = urlData.url?.toLowerCase() || ""
+        const url = (typeof urlData.url === 'string' ? urlData.url : String(urlData.url || '')).toLowerCase()
         return suspiciousKeywords.some((keyword) => url.includes(keyword))
       })
       .map((urlData: any) => ({
         ...urlData,
+        url: typeof urlData.url === 'string' ? urlData.url : String(urlData.url || 'Unknown'),
         isSuspicious: true,
-        reason: suspiciousKeywords.find((k) => urlData.url?.toLowerCase().includes(k)),
+        reason: suspiciousKeywords.find((k) => {
+          const url = (typeof urlData.url === 'string' ? urlData.url : String(urlData.url || '')).toLowerCase()
+          return url.includes(k)
+        }),
       }))
 
     // Collect all applications used
