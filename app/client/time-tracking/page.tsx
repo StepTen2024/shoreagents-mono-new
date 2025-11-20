@@ -26,7 +26,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  Activity
+  Activity,
+  Globe
 } from "lucide-react"
 import { useWebSocket } from "@/lib/websocket-provider"
 

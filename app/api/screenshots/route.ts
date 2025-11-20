@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
           lt: endOfShiftDate,
         },
       },
+      orderBy: { date: 'desc' }, // Get the MOST RECENT shift (in case of multiple clock-ins same day)
     })
 
     console.log(`[Screenshots API] Existing metric found: ${existingMetric ? existingMetric.id : 'none'}`)

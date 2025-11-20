@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
           lt: tomorrow,
         },
       },
+      orderBy: { date: 'desc' }, // Get the MOST RECENT shift (in case of multiple clock-ins today)
     })
     
     console.log(`📊 [Analytics API] Found ${metrics.length} metrics (last 7 days), today's metric: ${todayMetric ? 'YES' : 'NO'}`)
@@ -225,6 +226,7 @@ export async function POST(request: NextRequest) {
 
     // ✅ SIMPLIFIED: Row is guaranteed to exist (created at clock-in)
     // Just find it and UPDATE (no creation logic needed)
+    // Use orderBy to get the MOST RECENT shift (in case of multiple clock-ins same day)
     const existingMetric = await prisma.performance_metrics.findFirst({
       where: {
         staffUserId: staffUser.id,
@@ -233,6 +235,7 @@ export async function POST(request: NextRequest) {
           lt: endOfShiftDate,
         },
       },
+      orderBy: { date: 'desc' }, // Get the MOST RECENT shift
     })
 
     if (!existingMetric) {

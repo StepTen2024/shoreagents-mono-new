@@ -24,14 +24,33 @@ export async function GET(request: NextRequest) {
     const companyFilter = searchParams.get("company") || "all"
     const days = parseInt(searchParams.get("days") || "1") // Default to Today
 
-    // Calculate date range
-    const endDate = new Date()
-    endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    // For "Today" (days=1), we want today's data, not yesterday's
-    // So subtract (days - 1) instead of days
+    // Calculate date range based on Philippines timezone
+    // ✅ FIX: Calculate date range based on Philippines timezone (UTC+8)
+    const nowUTC = new Date()
+    const nowInPH = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+    
+    // Get midnight today in PH time, then convert to UTC
+    const startOfTodayPH = new Date(nowInPH)
+    startOfTodayPH.setHours(0, 0, 0, 0)
+    
+    const startDate = new Date(startOfTodayPH.getTime() - (8 * 60 * 60 * 1000))
     startDate.setDate(startDate.getDate() - (days - 1))
-    startDate.setHours(0, 0, 0, 0)
+    
+    const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Current time + 1hr buffer
+    
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📊 [Staff Analytics] DATE RANGE CALCULATION')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`🔍 Filtering for: ${days} day(s)`)
+    console.log(`⏰ Current UTC Time: ${nowUTC.toISOString()}`)
+    console.log(`🇵🇭 Current PH Time: ${nowInPH.toISOString()}`)
+    console.log(`📅 Query Date Range (UTC):`)
+    console.log(`   Start: ${startDate.toISOString()}`)
+    console.log(`   End:   ${endDate.toISOString()}`)
+    console.log(`📅 Query Date Range (PH Time):`)
+    console.log(`   Start: ${new Date(startDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+    console.log(`   End:   ${new Date(endDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     const where: any = {}
 
@@ -65,13 +84,13 @@ export async function GET(request: NextRequest) {
         },
         performance_metrics: {
           where: {
-            shiftDate: {
+            shiftDate: {              // ✅ FIX: Use shiftDate (timezone-aware) instead of date
               gte: startDate,
               lte: endDate,
             },
           },
           orderBy: {
-            shiftDate: "desc",
+            shiftDate: "desc",        // ✅ FIX: Order by shiftDate
           },
         },
         time_entries: {
@@ -94,6 +113,27 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📈 [Staff Analytics] DATABASE QUERY RESULTS')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`👥 Total Staff Found: ${staff.length}`)
+    
+    staff.forEach((s, index) => {
+      console.log(`\n${index + 1}. ${s.name}:`)
+      console.log(`   📊 Performance Metrics: ${s.performance_metrics.length} records`)
+      if (s.performance_metrics.length > 0) {
+        s.performance_metrics.forEach((m, i) => {
+          console.log(`      ${i + 1}. Clock-in (UTC): ${m.date.toISOString()}`)
+          console.log(`         Clock-in (PH):  ${new Date(m.date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}`)
+          console.log(`         ShiftDate: ${m.shiftDate?.toISOString() || 'null'}`)
+          console.log(`         Clicks: ${m.mouseClicks}, Keys: ${m.keystrokes}, Active: ${m.activeTime}s`)
+        })
+      } else {
+        console.log(`      ❌ No metrics found in date range`)
+      }
+    })
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+
     // Calculate stats for each staff member
     const staffWithStats = staff.map((staffMember) => {
       const metrics = staffMember.performance_metrics
@@ -106,11 +146,25 @@ export async function GET(request: NextRequest) {
       const totalIdleTime = metrics.reduce((sum, m) => sum + m.idleTime, 0)
       const totalUrlsVisited = metrics.reduce((sum, m) => sum + m.urlsVisited, 0)
 
-      // Get latest productivity score
-      const latestProductivity = metrics[0]?.productivityScore || 0
-
-      // Calculate productivity percentage (active time / total time)
+      // Calculate productivity score using Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
+      // This ensures consistency with client analytics and Electron tracking
       const totalTime = totalActiveTime + totalIdleTime
+      let productivityScore = 0
+      
+      if (totalTime > 0) {
+        // Active time percentage (40% weight)
+        const activePercent = (totalActiveTime / totalTime) * 40
+        
+        // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+        const keystrokeScore = Math.min((totalKeystrokes / 5000) * 30, 30)
+        
+        // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+        const mouseScore = Math.min((totalMouseClicks / 1000) * 30, 30)
+        
+        productivityScore = Math.round(activePercent + keystrokeScore + mouseScore)
+      }
+      
+      // Also calculate simple percentage for reference
       const productivityPercentage = totalTime > 0 ? Math.round((totalActiveTime / totalTime) * 100) : 0
 
       // Check if currently clocked in
@@ -146,11 +200,11 @@ export async function GET(request: NextRequest) {
         avatar: staffMember.avatar,
         role: staffMember.role,
         company: staffMember.company,
-        currentRole: staffMember.profile?.currentRole,
+        currentRole: staffMember.staff_profiles?.currentRole,
         isClockedIn,
         stats: {
-          productivityScore: latestProductivity,
-          productivityPercentage,
+          productivityScore: productivityScore,        // ✅ Use calculated weighted score (matches client analytics)
+          productivityPercentage,                      // Keep for reference
           totalMouseClicks,
           totalKeystrokes,
           totalActiveTime,
@@ -160,9 +214,22 @@ export async function GET(request: NextRequest) {
           hasSuspiciousActivity,
           suspiciousUrlCount: suspiciousUrls.length,
         },
-        lastActivity: metrics[0]?.shiftDate || timeEntries[0]?.clockIn || null,
+        lastActivity: metrics[0]?.date || timeEntries[0]?.clockIn || null,
       }
     })
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('📤 [Staff Analytics] RESPONSE SUMMARY')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`✅ Returning ${staffWithStats.length} staff members to frontend`)
+    staffWithStats.forEach((s, i) => {
+      console.log(`${i + 1}. ${s.name}:`)
+      console.log(`   Productivity: ${s.stats.productivityPercentage}%`)
+      console.log(`   Active Time: ${s.stats.totalActiveTime}s`)
+      console.log(`   Mouse Clicks: ${s.stats.totalMouseClicks}`)
+      console.log(`   Last Activity: ${s.lastActivity ? new Date(s.lastActivity).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : 'None'}`)
+    })
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     return NextResponse.json({ success: true, staff: staffWithStats })
   } catch (error) {

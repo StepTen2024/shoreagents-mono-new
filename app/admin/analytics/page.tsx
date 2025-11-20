@@ -116,7 +116,7 @@ export default function StaffAnalyticsPage() {
   const totalStaff = staff.length
   const activeStaff = staff.filter((s) => s.isClockedIn).length
   const avgProductivity =
-    staff.length > 0 ? Math.round(staff.reduce((sum, s) => sum + s.stats.productivityPercentage, 0) / staff.length) : 0
+    staff.length > 0 ? Math.round(staff.reduce((sum, s) => sum + s.stats.productivityScore, 0) / staff.length) : 0  // ✅ FIX: Use productivityScore (weighted) instead of productivityPercentage
   const staffWithIssues = staff.filter((s) => s.stats.hasSuspiciousActivity || s.stats.lateBreaks > 0).length
 
   const companies = Array.from(new Set(staff.map((s) => s.company?.id).filter(Boolean)))
@@ -273,9 +273,9 @@ export default function StaffAnalyticsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Productivity</span>
                   <div className="flex items-center gap-2">
-                    {getProductivityBadge(staffMember.stats.productivityPercentage)}
-                    <span className={`text-lg font-bold ${getProductivityColor(staffMember.stats.productivityPercentage)}`}>
-                      {staffMember.stats.productivityPercentage}%
+                    {getProductivityBadge(staffMember.stats.productivityScore)}
+                    <span className={`text-lg font-bold ${getProductivityColor(staffMember.stats.productivityScore)}`}>
+                      {staffMember.stats.productivityScore}%
                     </span>
                   </div>
                 </div>

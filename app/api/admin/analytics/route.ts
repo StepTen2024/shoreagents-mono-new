@@ -29,13 +29,32 @@ export async function GET(req: NextRequest) {
     // Get date range (default to Today)
     const url = new URL(req.url)
     const days = parseInt(url.searchParams.get('days') || '1')
-    const endDate = new Date()
-    endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    // For "Today" (days=1), we want today's data, not yesterday's
-    // So subtract (days - 1) instead of days
+    
+    // ✅ FIX: Calculate date range based on Philippines timezone (UTC+8)
+    // Get current date/time in Philippines
+    const nowUTC = new Date()
+    const nowInPH = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+    
+    // For "Today", we need to capture all records from midnight PH time to now
+    // Midnight today in PH = midnight - 8 hours in UTC (since PH is UTC+8)
+    const startOfTodayPH = new Date(nowInPH)
+    startOfTodayPH.setHours(0, 0, 0, 0)
+    
+    // Convert PH midnight to UTC by subtracting 8 hours
+    const startDate = new Date(startOfTodayPH.getTime() - (8 * 60 * 60 * 1000))
     startDate.setDate(startDate.getDate() - (days - 1))
-    startDate.setHours(0, 0, 0, 0)
+    
+    // End date should be current time + some buffer
+    const endDate = new Date(nowUTC.getTime() + (60 * 60 * 1000)) // Add 1 hour buffer
+    
+    console.log(`[Admin Analytics] 🔍 Date Range Debug for ${days} days:`, {
+      serverTime: nowUTC.toISOString(),
+      phTime: nowInPH.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      startDatePH: new Date(startDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
+      endDatePH: new Date(endDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
+    })
 
     // Get all staff users
     const staffUsers = await prisma.staff_users.findMany({
@@ -43,7 +62,7 @@ export async function GET(req: NextRequest) {
         company: true,
         performance_metrics: {
           where: {
-            shiftDate: {
+            shiftDate: {              // ✅ FIX: Use shiftDate (timezone-aware) instead of date
               gte: startDate,
               lte: endDate
             }
@@ -60,7 +79,7 @@ export async function GET(req: NextRequest) {
           include: {
             performance_metrics: {
               where: {
-                shiftDate: {
+                shiftDate: {          // ✅ FIX: Use shiftDate (timezone-aware) instead of date
                   gte: startDate,
                   lte: endDate
                 }
@@ -74,9 +93,19 @@ export async function GET(req: NextRequest) {
     // Calculate overall statistics
     const allMetrics = staffUsers.flatMap(staff => staff.performance_metrics)
     
+    console.log(`[Admin Analytics] 📊 Found ${allMetrics.length} performance metrics:`, {
+      sampleDates: allMetrics.slice(0, 5).map(m => ({
+        clockInDate: m.date.toISOString(),
+        shiftDate: m.shiftDate?.toISOString() || 'null',
+        datePH: new Date(m.date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
+        staffUserId: m.staffUserId,
+        mouseClicks: m.mouseClicks
+      }))
+    })
+    
     const totalStaff = staffUsers.length
-    // ✅ FIX: Use shiftDate (timezone-aware) instead of date
-    const today = new Date()
+    // ✅ FIX: Use shiftDate field for active staff calculation (timezone-aware)
+    const today = new Date(nowInPH)
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
@@ -137,7 +166,7 @@ export async function GET(req: NextRequest) {
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
       
-      // ✅ FIX: Use shiftDate (timezone-aware) instead of date
+      // ✅ FIX: Use shiftDate field for filtering (timezone-aware)
       const dayMetrics = allMetrics.filter(metric => 
         metric.shiftDate && metric.shiftDate >= date && metric.shiftDate <= dayEnd
       )
@@ -241,7 +270,7 @@ export async function GET(req: NextRequest) {
       return {
         companyName: company.companyName || 'Unknown Company',
         staffCount: companyStaff.length,
-        // ✅ FIX: Use shiftDate (timezone-aware) instead of date
+        // ✅ FIX: Use shiftDate field for filtering (timezone-aware)
         activeStaff: companyStaff.filter(staff => 
           staff.performance_metrics.some(metric => 
             metric.shiftDate && metric.shiftDate >= today && metric.shiftDate < tomorrow
@@ -281,7 +310,7 @@ export async function GET(req: NextRequest) {
       const dayEnd = new Date(date)
       dayEnd.setHours(23, 59, 59, 999)
       
-      // ✅ FIX: Use shiftDate (timezone-aware) instead of date
+      // ✅ FIX: Use shiftDate field for filtering (timezone-aware)
       const dayMetrics = allMetrics.filter(metric => 
         metric.shiftDate && metric.shiftDate >= date && metric.shiftDate <= dayEnd
       )

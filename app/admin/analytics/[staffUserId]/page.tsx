@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { formatAdminDate, formatAdminDateTime } from "@/lib/utils"
 import {
   ArrowLeft,
   Activity,
@@ -30,7 +31,7 @@ export default function StaffAnalyticsDetailPage() {
 
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(1)  // ✅ Default to "Today"
 
   useEffect(() => {
     if (staffUserId) {
@@ -68,15 +69,7 @@ export default function StaffAnalyticsDetailPage() {
     return "text-red-600"
   }
 
-  function formatDateTime(dateString: string): string {
-    const date = new Date(dateString)
-    return date.toLocaleString()
-  }
-
-  function formatDate(dateString: string): string {
-    const date = new Date(dateString)
-    return date.toLocaleDateString()
-  }
+  // ✅ Admin displays dates in Philippines timezone using utility functions
 
   if (loading || !data) {
     return (
@@ -252,7 +245,7 @@ export default function StaffAnalyticsDetailPage() {
               <div className="space-y-2">
                 {dailyActivity.map((day: any) => (
                   <div key={day.date} className="flex items-center gap-4">
-                    <div className="w-24 text-sm text-muted-foreground">{formatDate(day.date)}</div>
+                    <div className="w-24 text-sm text-muted-foreground">{formatAdminDate(day.date)}</div>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
@@ -317,7 +310,7 @@ export default function StaffAnalyticsDetailPage() {
                         <TableCell>
                           <Badge variant="destructive">{urlData.reason || "suspicious"}</Badge>
                         </TableCell>
-                        <TableCell className="text-sm">{formatDateTime(urlData.date)}</TableCell>
+                        <TableCell className="text-sm">{formatAdminDateTime(urlData.date)}</TableCell>
                         <TableCell className="text-sm">{urlData.duration ? `${urlData.duration}s` : "N/A"}</TableCell>
                       </TableRow>
                     ))}
@@ -347,7 +340,7 @@ export default function StaffAnalyticsDetailPage() {
                     <TableRow key={index}>
                       <TableCell className="font-mono text-sm max-w-md truncate">{urlData.url || "N/A"}</TableCell>
                       <TableCell className="max-w-xs truncate">{urlData.title || "-"}</TableCell>
-                      <TableCell className="text-sm">{formatDateTime(urlData.date)}</TableCell>
+                      <TableCell className="text-sm">{formatAdminDateTime(urlData.date)}</TableCell>
                       <TableCell className="text-sm">{urlData.duration ? `${urlData.duration}s` : "N/A"}</TableCell>
                     </TableRow>
                   ))}
@@ -422,7 +415,7 @@ export default function StaffAnalyticsDetailPage() {
                           {brk.scheduledStart} - {brk.scheduledEnd}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {brk.actualStart ? formatDateTime(brk.actualStart) : "N/A"} - {brk.actualEnd ? formatDateTime(brk.actualEnd) : "Ongoing"}
+                          {brk.actualStart ? formatAdminDateTime(brk.actualStart) : "N/A"} - {brk.actualEnd ? formatAdminDateTime(brk.actualEnd) : "Ongoing"}
                         </TableCell>
                         <TableCell className="text-red-600 font-semibold">{brk.lateBy ? `${brk.lateBy} min` : "N/A"}</TableCell>
                       </TableRow>
@@ -453,8 +446,8 @@ export default function StaffAnalyticsDetailPage() {
                   {breaks.map((brk: any) => (
                     <TableRow key={brk.id}>
                       <TableCell className="font-medium">{brk.type}</TableCell>
-                      <TableCell className="text-sm">{brk.actualStart ? formatDateTime(brk.actualStart) : "N/A"}</TableCell>
-                      <TableCell className="text-sm">{brk.actualEnd ? formatDateTime(brk.actualEnd) : "Ongoing"}</TableCell>
+                      <TableCell className="text-sm">{brk.actualStart ? formatAdminDateTime(brk.actualStart) : "N/A"}</TableCell>
+                      <TableCell className="text-sm">{brk.actualEnd ? formatAdminDateTime(brk.actualEnd) : "Ongoing"}</TableCell>
                       <TableCell>{brk.duration ? `${brk.duration} min` : "N/A"}</TableCell>
                       <TableCell>
                         {brk.isLate ? (
@@ -485,7 +478,7 @@ export default function StaffAnalyticsDetailPage() {
                   {screenshots.map((screenshot: any, index: number) => (
                     <div key={index} className="border rounded-lg p-2">
                       <img src={screenshot.url} alt={`Screenshot ${index + 1}`} className="w-full h-auto rounded" />
-                      <p className="text-xs text-muted-foreground mt-1">{formatDateTime(screenshot.date)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatAdminDateTime(screenshot.date)}</p>
                     </div>
                   ))}
                 </div>

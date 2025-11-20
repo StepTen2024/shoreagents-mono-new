@@ -101,16 +101,29 @@ export default function PerformanceDashboard() {
       // ONLY load database into Electron on FIRST page load (not every 10 seconds)
       // This initializes Electron with database baseline so it continues from there
       if (shouldLoadBaseline && !hasLoadedBaseline && data.today) {
-        const electronSync = (window as any).electron?.sync
-        if (electronSync && typeof electronSync.loadFromDatabase === 'function') {
-          try {
-            console.log('[Dashboard] 📥 First load: Loading database metrics into Electron for live tracking baseline')
-            await electronSync.loadFromDatabase(data.today)
-            setHasLoadedBaseline(true)
-            console.log('[Dashboard] ✅ Electron metrics initialized with database values')
-            console.log('[Dashboard] 🔄 Electron will now accumulate NEW activity on top of this baseline')
-          } catch (loadError) {
-            console.error('[Dashboard] Failed to load metrics into Electron:', loadError)
+        // 🔧 IMPORTANT: Check if metrics are brand new (just created by clock-in)
+        // If created within last 2 minutes, DON'T load - Electron is already tracking fresh!
+        const metricsCreatedAt = new Date(data.today.date)
+        const now = new Date()
+        const ageInSeconds = (now.getTime() - metricsCreatedAt.getTime()) / 1000
+        
+        if (ageInSeconds < 120) { // Less than 2 minutes old
+          console.log('[Dashboard] ⏭️ Skipping baseline load - metrics are brand new (just clocked in)')
+          console.log(`[Dashboard] Metrics age: ${ageInSeconds.toFixed(0)}s - Electron already tracking fresh`)
+          setHasLoadedBaseline(true) // Mark as loaded so we don't try again
+        } else {
+          const electronSync = (window as any).electron?.sync
+          if (electronSync && typeof electronSync.loadFromDatabase === 'function') {
+            try {
+              console.log('[Dashboard] 📥 First load: Loading database metrics into Electron for live tracking baseline')
+              console.log(`[Dashboard] Metrics age: ${ageInSeconds.toFixed(0)}s - Safe to load baseline`)
+              await electronSync.loadFromDatabase(data.today)
+              setHasLoadedBaseline(true)
+              console.log('[Dashboard] ✅ Electron metrics initialized with database values')
+              console.log('[Dashboard] 🔄 Electron will now accumulate NEW activity on top of this baseline')
+            } catch (loadError) {
+              console.error('[Dashboard] Failed to load metrics into Electron:', loadError)
+            }
           }
         }
       } else if (hasLoadedBaseline) {
@@ -161,13 +174,21 @@ export default function PerformanceDashboard() {
   const calculateProductivityScore = (metric: PerformanceMetric) => {
     if (!metric) return 0
     
-    // Prevent NaN by checking for zero division
+    // Use Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
+    // This matches admin analytics and ensures consistency
     const totalTime = metric.activeTime + metric.idleTime
-    const activePercent = totalTime > 0 ? (metric.activeTime / totalTime) * 100 : 0
-    const keystrokesScore = Math.min((metric.keystrokes / 5000) * 100, 100)
-    const clicksScore = Math.min((metric.mouseClicks / 1000) * 100, 100)
+    if (totalTime === 0) return 0
+
+    // Active time percentage (40% weight)
+    const activePercent = (metric.activeTime / totalTime) * 40
+
+    // Keystroke activity (30% weight) - normalized to 5000 keystrokes = 100%
+    const keystrokesScore = Math.min((metric.keystrokes / 5000) * 30, 30)
+
+    // Mouse activity (30% weight) - normalized to 1000 clicks = 100%
+    const clicksScore = Math.min((metric.mouseClicks / 1000) * 30, 30)
     
-    return Math.round((activePercent + keystrokesScore + clicksScore) / 3)
+    return Math.round(activePercent + keystrokesScore + clicksScore)
   }
 
   if (loading) {

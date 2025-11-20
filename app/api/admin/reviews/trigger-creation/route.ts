@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
           createDate.setDate(createDate.getDate() - 7)
           
           const now = new Date()
-          const shouldCreate = now >= createDate && now < recurringDueDate
+          const shouldCreate = now >= createDate
           
           if (shouldCreate) {
             const review = await prisma.reviews.create({

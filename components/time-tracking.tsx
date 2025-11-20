@@ -57,6 +57,7 @@ export default function TimeTracking() {
   const { socket } = useWebSocket()
   
   // Use WebSocket hook for all time tracking data
+  // Enable auto-start of scheduled breaks when on this page
   const {
     isClockedIn,
     activeEntry,
@@ -77,7 +78,7 @@ export default function TimeTracking() {
     resumeBreak,
     resetBreakScheduler,
     refreshScheduledBreaks
-  } = useTimeTrackingWebSocket()
+  } = useTimeTrackingWebSocket(true)
   
   // Local UI state
   const [currentSessionTime, setCurrentSessionTime] = useState("00:00:00")
@@ -272,62 +273,9 @@ export default function TimeTracking() {
     }
   }
   
-  // Auto-start scheduled breaks at their scheduled time
-  useEffect(() => {
-    if (!isClockedIn || !scheduledBreaks.length || activeBreak) return
-    
-    const checkScheduledBreaks = () => {
-      const now = new Date()
-      
-      console.log("🕐 CHECKING SCHEDULED BREAKS - Current time:", now.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true
-      }))
-      
-      // Find a break that should start now
-      const breakToStart = scheduledBreaks.find(b => {
-        // Skip if already started or completed
-        if (b.actualStart || b.actualEnd) {
-          console.log(`  ⏭️ Skipping ${b.type} - already started/completed`)
-          return false
-        }
-        
-        // Parse scheduled start time
-        const scheduledStartDate = parseTimeString(b.scheduledStart)
-        if (!scheduledStartDate) {
-          console.warn(`  ⚠️ Failed to parse scheduled time: ${b.scheduledStart}`)
-          return false
-        }
-        
-        // Check if current time is within 1 minute of scheduled start (before or after)
-        const timeDiff = Math.abs(now.getTime() - scheduledStartDate.getTime())
-        const minutesDiff = timeDiff / (1000 * 60)
-        const shouldStart = minutesDiff <= 1
-        
-        if (shouldStart) {
-          console.log("🚨 BREAK SHOULD START NOW:", b.type, "scheduled:", b.scheduledStart)
-        }
-        
-        return shouldStart
-      })
-      
-      if (breakToStart) {
-        console.log("🎯 AUTO-STARTING SCHEDULED BREAK:", breakToStart.type, breakToStart.id)
-        // For scheduled AWAY breaks, use the stored awayReason
-        const awayReason = breakToStart.type === "AWAY" ? breakToStart.awayReason : undefined
-        handleStartBreak(breakToStart.id, breakToStart.type, awayReason)
-      }
-    }
-    
-    // Check every 30 seconds for better accuracy
-    const interval = setInterval(checkScheduledBreaks, 30000)
-    
-    // Also check immediately
-    checkScheduledBreaks()
-    
-    return () => clearInterval(interval)
-  }, [isClockedIn, scheduledBreaks, activeBreak])
+  // NOTE: Auto-start of scheduled breaks is now handled by the backend WebSocket system
+  // (server.js startBreakAutoStartJob) and will only trigger when this page is active.
+  // This prevents breaks from auto-starting when the user is on a different page.
 
   // Reset clocking out state immediately when clock-out completes
   useEffect(() => {
