@@ -255,6 +255,17 @@ export async function GET(
         )
       }
     })
+    
+    // 🔍 DEBUG: Log sample screenshot URLs
+    console.log(`📸 [Staff Analytics] Total screenshots: ${allScreenshots.length}`)
+    if (allScreenshots.length > 0) {
+      console.log(`📸 Sample screenshot URLs (first 3):`)
+      allScreenshots.slice(0, 3).forEach((s, i) => {
+        console.log(`   ${i+1}. ${s.url}`)
+      })
+    } else {
+      console.log(`⚠️  No screenshots found in database`)
+    }
 
     return NextResponse.json({
       success: true,

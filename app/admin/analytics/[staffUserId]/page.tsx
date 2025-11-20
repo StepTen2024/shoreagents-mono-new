@@ -495,6 +495,12 @@ export default function StaffAnalyticsDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {screenshots.map((screenshot: any, index: number) => {
                     const imageUrl = typeof screenshot === 'string' ? screenshot : screenshot.url
+                    
+                    // 🔍 DEBUG: Log screenshot URL to console
+                    if (index < 5) {
+                      console.log(`📸 Screenshot ${index + 1}:`, imageUrl)
+                    }
+                    
                     return (
                       <div key={index} className="group relative border rounded-lg overflow-hidden hover:shadow-lg transition-all">
                         <div className="aspect-video bg-muted relative overflow-hidden">
@@ -504,7 +510,13 @@ export default function StaffAnalyticsDetailPage() {
                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
+                              console.error(`❌ Screenshot ${index + 1} failed to load:`, imageUrl)
                               target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23f0f0f0" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="Arial" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E'
+                            }}
+                            onLoad={() => {
+                              if (index < 5) {
+                                console.log(`✅ Screenshot ${index + 1} loaded successfully`)
+                              }
                             }}
                           />
                         </div>
