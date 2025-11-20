@@ -212,7 +212,7 @@ function createWindow() {
     
     // Load with proper user agent
     mainWindow.loadURL(productionUrl, {
-      userAgent: 'ShoreAgentsAI-Desktop/1.0.2 (Electron)'
+      userAgent: 'ShoreAgentsAI-Desktop/1.0.3 (Electron)'
     })
     
     // Open dev tools in production to debug
