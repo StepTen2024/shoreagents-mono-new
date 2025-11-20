@@ -1,5 +1,63 @@
 # 🎫 STAFF TICKETS SYSTEM - COMPREHENSIVE RESEARCH
 
+## ✅ **LATEST UPDATE: Smart Ticket Assignment System (Nov 21, 2025)**
+
+### 🎯 **What Was Fixed:**
+1. **Unique Constraint Error (P2002)** - Fixed ticket ID generation to prevent duplicates
+2. **Smart Auto-Assignment** - Tickets now intelligently assign to the right person based on:
+   - **Keyword Analysis**: Detects software vs hardware issues
+   - **Department Matching**: Routes to correct team automatically
+   - **Workload Balancing**: Assigns to least busy manager
+
+### 🧠 **How Smart Assignment Works:**
+
+#### **IT Tickets (Category: IT)**
+```
+Title: "App login bug"
+↓
+Detects: "bug", "app" (software keywords)
+↓
+Routes to: NERDS_DEPARTMENT (Team Nerds)
+↓
+Assigns to: Developer with least open tickets
+```
+
+```
+Title: "Computer won't turn on"
+↓
+Detects: "computer", "won't turn on" (hardware keywords)
+↓
+Routes to: IT_DEPARTMENT
+↓
+Assigns to: IT staff with least open tickets
+```
+
+#### **Other Categories**
+```
+Category: CLINIC → NURSE_DEPARTMENT → Nurse staff
+Category: HR → HR_DEPARTMENT → HR manager
+Category: EQUIPMENT → OPERATIONS → Operations team
+Category: MANAGEMENT → CEO_EXECUTIVE → Executive team
+```
+
+### ⚖️ **Workload Balancing:**
+- If 3 managers in HR Department:
+  - Manager A: 5 open tickets
+  - Manager B: 2 open tickets ✅ (Assigns here!)
+  - Manager C: 8 open tickets
+- Always assigns to the person with fewest open/in-progress tickets
+
+### 📊 **Enhanced Logging:**
+```
+🎯 [SMART ASSIGN] Starting smart assignment...
+🤓 [SMART ASSIGN] Detected software issue → Routing to NERDS_DEPARTMENT
+📋 [SMART ASSIGN] Found 2 manager(s) in NERDS_DEPARTMENT: [Dev1, Dev2]
+✅ [SMART ASSIGN] Workload balancing - Assigning to: Dev2 (3 open tickets)
+📊 [SMART ASSIGN] Workload distribution: Dev1: 5, Dev2: 3
+```
+
+---
+
 **Research Date:** November 20, 2025  
 **URL:** `http://localhost:3000/tickets`  
 **Portal:** Staff Portal (Indigo/Purple Theme)
