@@ -39,8 +39,8 @@ export function mapCategoryToDepartment(category: TicketCategory): Department | 
     // Meeting room bookings go to Operations
     MEETING_ROOM: "OPERATIONS",
     
-    // General management requests go to CEO/Executive
-    MANAGEMENT: "CEO_EXECUTIVE",
+    // General management requests go to Account Management (Kath/Jose) with load balancing
+    MANAGEMENT: "ACCOUNT_MANAGEMENT",
     
     // Software bugs/features go to Nerds (Software Team)
     // Note: This category might not exist yet, add if needed
