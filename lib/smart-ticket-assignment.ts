@@ -114,9 +114,13 @@ export async function assignTicketToPerson(
       return { managerId: managers[0].id, usedFallback: false }
     }
     
-    // Multiple managers - find who has the least open tickets (workload balancing)
+    // Multiple managers - TRUE LOAD BALANCING with 3 criteria:
+    // 1. Open tickets (primary)
+    // 2. Total assigned (secondary - historical balance)
+    // 3. Random when tied (fairness)
     const managerWorkloads = await Promise.all(
       managers.map(async (manager) => {
+        // Count OPEN + IN_PROGRESS tickets (current workload)
         const openTicketsCount = await prisma.tickets.count({
           where: {
             managementUserId: manager.id,
@@ -126,20 +130,47 @@ export async function assignTicketToPerson(
           }
         })
         
+        // Count TOTAL tickets ever assigned (historical balance)
+        const totalTicketsCount = await prisma.tickets.count({
+          where: {
+            managementUserId: manager.id
+          }
+        })
+        
         return {
           managerId: manager.id,
           managerName: manager.name,
-          openTickets: openTicketsCount
+          openTickets: openTicketsCount,
+          totalTickets: totalTicketsCount,
+          randomTiebreaker: Math.random() // For fair distribution when tied
         }
       })
     )
     
-    // Sort by workload (ascending) and pick the one with least tickets
-    managerWorkloads.sort((a, b) => a.openTickets - b.openTickets)
+    // Sort by:
+    // 1st: Least open tickets (current workload)
+    // 2nd: Least total tickets (historical balance)
+    // 3rd: Random (fair distribution when tied)
+    managerWorkloads.sort((a, b) => {
+      // Primary: Compare open tickets
+      if (a.openTickets !== b.openTickets) {
+        return a.openTickets - b.openTickets
+      }
+      // Secondary: Compare total tickets (historical balance)
+      if (a.totalTickets !== b.totalTickets) {
+        return a.totalTickets - b.totalTickets
+      }
+      // Tertiary: Random when completely tied
+      return a.randomTiebreaker - b.randomTiebreaker
+    })
     
     const assignedManager = managerWorkloads[0]
-    console.log(`✅ [SMART ASSIGN] Workload balancing - Assigning to: ${assignedManager.managerName} (${assignedManager.openTickets} open tickets)`)
-    console.log(`📊 [SMART ASSIGN] Workload distribution:`, managerWorkloads.map(m => `${m.managerName}: ${m.openTickets}`).join(', '))
+    console.log(`✅ [SMART ASSIGN] Workload balancing - Assigning to: ${assignedManager.managerName}`)
+    console.log(`   📊 Open: ${assignedManager.openTickets} | Total: ${assignedManager.totalTickets}`)
+    console.log(`📊 [SMART ASSIGN] Full workload distribution:`)
+    managerWorkloads.forEach(m => {
+      console.log(`   - ${m.managerName}: ${m.openTickets} open, ${m.totalTickets} total`)
+    })
     
     return { managerId: assignedManager.managerId, usedFallback: false }
   } catch (error) {
