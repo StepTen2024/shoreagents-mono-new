@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { mapCategoryToDepartment } from "@/lib/category-department-map"
+import { smartAssignTicket } from "@/lib/smart-ticket-assignment"
 import { randomUUID } from "crypto"
 
 // GET /api/tickets - Get all tickets for current user
@@ -163,23 +163,14 @@ export async function POST(request: NextRequest) {
     const ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
     console.log('🎫 Generated ticket ID:', ticketId, '(Last ticket:', lastTicket?.ticketId || 'none', ')')
 
-    // 🎯 AUTO-ASSIGN: Map category to department and find manager
-    const department = mapCategoryToDepartment(category)
-    console.log('🏢 Mapped department:', department)
-    let managementUserId: string | null = null
+    // 🎯 SMART AUTO-ASSIGN: Intelligently assign ticket to right person
+    const assignment = await smartAssignTicket(category, title, description)
+    const managementUserId = assignment.managementUserId
 
-    if (department) {
-      // Find a management user with matching department
-      const manager = await prisma.management_users.findFirst({
-        where: { department },
-      })
-
-      if (manager) {
-        managementUserId = manager.id
-        console.log(`✅ Auto-assigned ticket to ${manager.name} (${department})`)
-      } else {
-        console.log(`⚠️  No manager found for department: ${department}`)
-      }
+    if (assignment.assignedToName) {
+      console.log(`✅ [TICKETS API] Smart-assigned to: ${assignment.assignedToName} (${assignment.department})`)
+    } else {
+      console.log(`⚠️  [TICKETS API] No available manager for ${assignment.department || category}`)
     }
 
     console.log('💾 Creating ticket in database...')
