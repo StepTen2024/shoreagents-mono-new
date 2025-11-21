@@ -180,10 +180,21 @@ export async function GET(
     metrics.forEach((metric) => {
       if (metric.applicationsused && Array.isArray(metric.applicationsused)) {
         allApplications.push(
-          ...metric.applicationsused.map((appData: any) => ({
-            ...appData,
-            date: metric.date,
-          }))
+          ...metric.applicationsused.map((appData: any) => {
+            // Handle both string format (current) and object format (future)
+            if (typeof appData === 'string') {
+              return {
+                name: appData,
+                date: metric.date,
+                duration: 0,
+              }
+            } else {
+              return {
+                ...appData,
+                date: metric.date,
+              }
+            }
+          })
         )
       }
     })
@@ -191,7 +202,8 @@ export async function GET(
     // Group applications by name and sum time
     const applicationStats: Record<string, any> = {}
     allApplications.forEach((appData: any) => {
-      const appName = appData.name || "Unknown"
+      // Handle both string and object formats
+      const appName = typeof appData === 'string' ? appData : (appData.name || "Unknown")
       if (!applicationStats[appName]) {
         applicationStats[appName] = {
           name: appName,
@@ -204,7 +216,7 @@ export async function GET(
     })
 
     const topApplications = Object.values(applicationStats)
-      .sort((a: any, b: any) => b.totalTime - a.totalTime)
+      .sort((a: any, b: any) => b.count - a.count) // Sort by usage count since we don't have duration data
       .slice(0, 10)
 
     // Analyze breaks

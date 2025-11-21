@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { formatAdminDate, formatAdminDateTime } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -25,6 +26,7 @@ import {
   TrendingDown,
   Coffee,
   Trash2,
+  Search,
 } from "lucide-react"
 
 export default function StaffAnalyticsDetailPage() {
@@ -38,6 +40,12 @@ export default function StaffAnalyticsDetailPage() {
   const [days, setDays] = useState(1)  // ✅ Default to "Today"
   const [selectedScreenshots, setSelectedScreenshots] = useState<string[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
+  const [selectedUrls, setSelectedUrls] = useState<string[]>([])
+  const [isDeletingUrls, setIsDeletingUrls] = useState(false)
+  const [selectedApps, setSelectedApps] = useState<string[]>([])
+  const [isDeletingApps, setIsDeletingApps] = useState(false)
+  const [urlSearchQuery, setUrlSearchQuery] = useState("")
+  const [appSearchQuery, setAppSearchQuery] = useState("")
 
   useEffect(() => {
     if (staffUserId) {
@@ -100,6 +108,69 @@ export default function StaffAnalyticsDetailPage() {
     }
   }
 
+  // URL selection handlers
+  function toggleUrl(urlData: any) {
+    const urlString = typeof urlData === 'string' ? urlData : urlData?.url || ''
+    setSelectedUrls(prev => 
+      prev.includes(urlString) 
+        ? prev.filter(url => url !== urlString)
+        : [...prev, urlString]
+    )
+  }
+
+  function toggleSelectAllUrls() {
+    const filtered = getFilteredUrls()
+    if (selectedUrls.length === filtered.length) {
+      setSelectedUrls([])
+    } else {
+      setSelectedUrls(filtered.map((urlData: any) => {
+        return typeof urlData === 'string' ? urlData : urlData?.url || ''
+      }))
+    }
+  }
+
+  // Application selection handlers
+  function toggleApp(appData: any) {
+    const appName = typeof appData === 'string' ? appData : appData?.name || ''
+    setSelectedApps(prev => 
+      prev.includes(appName) 
+        ? prev.filter(app => app !== appName)
+        : [...prev, appName]
+    )
+  }
+
+  function toggleSelectAllApps() {
+    const filtered = getFilteredApps()
+    if (selectedApps.length === filtered.length) {
+      setSelectedApps([])
+    } else {
+      setSelectedApps(filtered.map((appData: any) => {
+        return typeof appData === 'string' ? appData : appData?.name || ''
+      }))
+    }
+  }
+
+  // Filter functions
+  function getFilteredUrls() {
+    if (!data?.visitedUrls) return []
+    if (!urlSearchQuery.trim()) return data.visitedUrls
+    
+    return data.visitedUrls.filter((urlData: any) => {
+      const urlString = typeof urlData === 'string' ? urlData : urlData?.url || ''
+      return urlString.toLowerCase().includes(urlSearchQuery.toLowerCase())
+    })
+  }
+
+  function getFilteredApps() {
+    if (!data?.applications) return []
+    if (!appSearchQuery.trim()) return data.applications
+    
+    return data.applications.filter((appData: any) => {
+      const appName = typeof appData === 'string' ? appData : appData?.name || ''
+      return appName.toLowerCase().includes(appSearchQuery.toLowerCase())
+    })
+  }
+
   async function deleteSelectedScreenshots() {
     if (selectedScreenshots.length === 0) {
       toast({
@@ -156,6 +227,126 @@ export default function StaffAnalyticsDetailPage() {
       })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  async function deleteSelectedUrls() {
+    if (selectedUrls.length === 0) {
+      toast({
+        title: "No URLs selected",
+        description: "Please select at least one URL to delete.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const confirmDelete = confirm(
+      `Are you sure you want to delete ${selectedUrls.length} URL record(s)? This action cannot be undone.`
+    )
+
+    if (!confirmDelete) return
+
+    setIsDeletingUrls(true)
+
+    try {
+      const res = await fetch("/api/admin/urls/bulk-delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          urlsToDelete: selectedUrls,
+          staffUserId: staffUserId,
+        }),
+      })
+
+      const result = await res.json()
+
+      if (res.ok && result.success) {
+        toast({
+          title: "URLs deleted",
+          description: `Successfully deleted ${result.deleted} URL record(s).`,
+        })
+        setSelectedUrls([])
+        setUrlSearchQuery("")
+        // Refresh data
+        fetchStaffDetail()
+      } else {
+        toast({
+          title: "Deletion failed",
+          description: result.error || "Failed to delete URLs. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting URLs:", error)
+      toast({
+        title: "Deletion failed",
+        description: "An error occurred while deleting URLs. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeletingUrls(false)
+    }
+  }
+
+  async function deleteSelectedApps() {
+    if (selectedApps.length === 0) {
+      toast({
+        title: "No applications selected",
+        description: "Please select at least one application to delete.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const confirmDelete = confirm(
+      `Are you sure you want to delete ${selectedApps.length} application record(s)? This action cannot be undone.`
+    )
+
+    if (!confirmDelete) return
+
+    setIsDeletingApps(true)
+
+    try {
+      const res = await fetch("/api/admin/applications/bulk-delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicationsToDelete: selectedApps,
+          staffUserId: staffUserId,
+        }),
+      })
+
+      const result = await res.json()
+
+      if (res.ok && result.success) {
+        toast({
+          title: "Applications deleted",
+          description: `Successfully deleted ${result.deleted} application record(s).`,
+        })
+        setSelectedApps([])
+        setAppSearchQuery("")
+        // Refresh data
+        fetchStaffDetail()
+      } else {
+        toast({
+          title: "Deletion failed",
+          description: result.error || "Failed to delete applications. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting applications:", error)
+      toast({
+        title: "Deletion failed",
+        description: "An error occurred while deleting applications. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeletingApps(false)
     }
   }
 
@@ -477,13 +668,57 @@ export default function StaffAnalyticsDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>All Visited Pages ({visitedUrls.length})</CardTitle>
-              <CardDescription>Complete browsing history during work hours</CardDescription>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>All Visited Pages ({visitedUrls.length})</CardTitle>
+                    <CardDescription>Complete browsing history during work hours</CardDescription>
+                  </div>
+                  {visitedUrls.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mr-4">
+                        <Checkbox
+                          id="select-all-urls"
+                          checked={selectedUrls.length === getFilteredUrls().length && getFilteredUrls().length > 0}
+                          onCheckedChange={toggleSelectAllUrls}
+                        />
+                        <label
+                          htmlFor="select-all-urls"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          Select All ({selectedUrls.length}/{getFilteredUrls().length})
+                        </label>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={deleteSelectedUrls}
+                        disabled={selectedUrls.length === 0 || isDeletingUrls}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {isDeletingUrls ? "Deleting..." : `Delete Selected (${selectedUrls.length})`}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {visitedUrls.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search URLs..."
+                      value={urlSearchQuery}
+                      onChange={(e) => setUrlSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {visitedUrls.length > 0 ? (
+                getFilteredUrls().length > 0 ? (
                 <div className="space-y-2">
-                  {visitedUrls.map((urlData: any, index: number) => {
+                  {getFilteredUrls().map((urlData: any, index: number) => {
                     // Handle different URL formats from database
                     let displayUrl = ''
                     if (typeof urlData === 'string') {
@@ -497,10 +732,21 @@ export default function StaffAnalyticsDetailPage() {
                     }
                     
                     const cleanUrl = typeof displayUrl === 'string' ? displayUrl.replace('page:', '') : displayUrl
+                    const urlString = typeof urlData === 'string' ? urlData : urlData?.url || ''
+                    const isSelected = selectedUrls.includes(urlString)
                     
                     return (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                        <div className="flex-1">
+                      <div 
+                        key={index} 
+                        className={`flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors ${
+                          isSelected ? "ring-2 ring-blue-500" : ""
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleUrl(urlData)}
+                        />
+                        <div className="flex-1 cursor-pointer" onClick={() => toggleUrl(urlData)}>
                           <p className="font-medium">{cleanUrl}</p>
                           <p className="text-xs text-muted-foreground">
                             {urlData.date ? formatAdminDateTime(urlData.date) : 'N/A'}
@@ -511,6 +757,15 @@ export default function StaffAnalyticsDetailPage() {
                     )
                   })}
                 </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground">No URLs match your search</p>
+                    <Button variant="link" onClick={() => setUrlSearchQuery("")} className="mt-2">
+                      Clear search
+                    </Button>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-12">
                   <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
@@ -525,32 +780,101 @@ export default function StaffAnalyticsDetailPage() {
         <TabsContent value="apps" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Applications Used ({applications.length})</CardTitle>
-              <CardDescription>All applications accessed during work hours</CardDescription>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Applications Used ({applications.length})</CardTitle>
+                    <CardDescription>All applications accessed during work hours</CardDescription>
+                  </div>
+                  {applications.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mr-4">
+                        <Checkbox
+                          id="select-all-apps"
+                          checked={selectedApps.length === getFilteredApps().length && getFilteredApps().length > 0}
+                          onCheckedChange={toggleSelectAllApps}
+                        />
+                        <label
+                          htmlFor="select-all-apps"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          Select All ({selectedApps.length}/{getFilteredApps().length})
+                        </label>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={deleteSelectedApps}
+                        disabled={selectedApps.length === 0 || isDeletingApps}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {isDeletingApps ? "Deleting..." : `Delete Selected (${selectedApps.length})`}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {applications.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search applications..."
+                      value={appSearchQuery}
+                      onChange={(e) => setAppSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {applications.length > 0 ? (
+                getFilteredApps().length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {applications.map((app: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <AppWindow className="h-5 w-5 text-primary" />
+                  {getFilteredApps().map((app: any, index: number) => {
+                    const appName = typeof app === 'string' ? app : app?.name || ''
+                    const isSelected = selectedApps.includes(appName)
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                          isSelected ? "ring-2 ring-blue-500" : ""
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleApp(app)}
+                        />
+                        <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleApp(app)}>
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <AppWindow className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">{app.name || 'Unknown Application'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Detected {app.count} time{app.count !== 1 ? 's' : ''} during work hours
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold">{app.name}</p>
-                          <p className="text-xs text-muted-foreground">Used {app.count} time{app.count !== 1 ? 's' : ''}</p>
-                        </div>
+                        {app.totalTime > 0 && (
+                          <div className="text-right">
+                            <p className="font-medium">{formatTime(app.totalTime)}</p>
+                            <p className="text-xs text-muted-foreground">Active time</p>
+                          </div>
+                        )}
                       </div>
-                      {app.totalTime > 0 && (
-                        <div className="text-right">
-                          <p className="font-medium">{formatTime(app.totalTime)}</p>
-                          <p className="text-xs text-muted-foreground">Total time</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground">No applications match your search</p>
+                    <Button variant="link" onClick={() => setAppSearchQuery("")} className="mt-2">
+                      Clear search
+                    </Button>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-12">
                   <AppWindow className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
