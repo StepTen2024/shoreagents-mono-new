@@ -25,13 +25,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Client user not found" }, { status: 404 })
     }
 
-    // Build where clause
+    // Build where clause - Get ALL tasks for the client's company staff
+    // Clients should see ALL tasks their staff are working on, not just ones they created!
     const where: any = {
-      clientUserId: clientUser.id,
+      companyId: clientUser.companyId, // All tasks for this company
       ...(status && { status }),
     }
 
-    // Get tasks created by this client
+    // Get all tasks for staff in this client's company
     const tasks = await prisma.tasks.findMany({
       where,
       include: {
