@@ -31,20 +31,20 @@ interface Review {
 export default function ViewReviewPage({ 
   params 
 }: { 
-  params: Promise<{ reviewId: string }> 
+  params: { reviewId: string } 
 }) {
   const router = useRouter()
-  const [reviewId, setReviewId] = useState<string>("")
+  const [reviewId, setReviewId] = useState<string>(params.reviewId)
   const [review, setReview] = useState<Review | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    params.then(p => {
-      setReviewId(p.reviewId)
-      fetchReview(p.reviewId)
-    })
-  }, [params])
+    if (params.reviewId) {
+      setReviewId(params.reviewId)
+      fetchReview(params.reviewId)
+    }
+  }, [params.reviewId])
 
   const fetchReview = async (id: string) => {
     try {

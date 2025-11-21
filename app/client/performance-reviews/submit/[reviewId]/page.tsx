@@ -30,10 +30,10 @@ interface Review {
 export default function SubmitReviewPage({ 
   params 
 }: { 
-  params: Promise<{ reviewId: string }> 
+  params: { reviewId: string } 
 }) {
   const router = useRouter()
-  const [reviewId, setReviewId] = useState<string>("")
+  const [reviewId, setReviewId] = useState<string>(params.reviewId)
   const [review, setReview] = useState<Review | null>(null)
   const [ratings, setRatings] = useState<{ [key: string]: number }>({})
   const [strengths, setStrengths] = useState("")
@@ -46,11 +46,11 @@ export default function SubmitReviewPage({
   const [showSuccessModal, setShowSuccessModal] = useState(false)
 
   useEffect(() => {
-    params.then(p => {
-      setReviewId(p.reviewId)
-      fetchReview(p.reviewId)
-    })
-  }, [params])
+    if (params.reviewId) {
+      setReviewId(params.reviewId)
+      fetchReview(params.reviewId)
+    }
+  }, [params.reviewId])
 
   const fetchReview = async (id: string) => {
     try {
