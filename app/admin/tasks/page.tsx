@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -762,9 +762,11 @@ export default function AdminTasksPage() {
                   </div>
                   <div>
                     <div className="text-white font-bold">Task Details (View Only)</div>
-                    <div className="text-sm text-slate-400 font-normal mt-1">Read-only monitoring view</div>
                   </div>
                 </DialogTitle>
+                <DialogDescription className="text-slate-400 text-sm mt-2">
+                  Read-only monitoring view for administrative oversight
+                </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
