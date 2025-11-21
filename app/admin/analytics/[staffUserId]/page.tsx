@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
 import { formatAdminDate, formatAdminDateTime } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import {
   ArrowLeft,
   Activity,
@@ -22,16 +24,20 @@ import {
   TrendingUp,
   TrendingDown,
   Coffee,
+  Trash2,
 } from "lucide-react"
 
 export default function StaffAnalyticsDetailPage() {
   const params = useParams()
   const router = useRouter()
   const staffUserId = params.staffUserId as string
+  const { toast } = useToast()
 
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState(1)  // ✅ Default to "Today"
+  const [selectedScreenshots, setSelectedScreenshots] = useState<string[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (staffUserId) {
@@ -67,6 +73,82 @@ export default function StaffAnalyticsDetailPage() {
     if (percentage >= 60) return "text-blue-600"
     if (percentage >= 40) return "text-yellow-600"
     return "text-red-600"
+  }
+
+  // Screenshot selection handlers
+  function toggleScreenshot(screenshotUrl: string) {
+    setSelectedScreenshots(prev => 
+      prev.includes(screenshotUrl) 
+        ? prev.filter(url => url !== screenshotUrl)
+        : [...prev, screenshotUrl]
+    )
+  }
+
+  function toggleSelectAll() {
+    if (selectedScreenshots.length === screenshots.length) {
+      setSelectedScreenshots([])
+    } else {
+      setSelectedScreenshots(screenshots.map((s: any) => s.url))
+    }
+  }
+
+  async function deleteSelectedScreenshots() {
+    if (selectedScreenshots.length === 0) {
+      toast({
+        title: "No screenshots selected",
+        description: "Please select at least one screenshot to delete.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const confirmDelete = confirm(
+      `Are you sure you want to delete ${selectedScreenshots.length} screenshot(s)? This action cannot be undone.`
+    )
+
+    if (!confirmDelete) return
+
+    setIsDeleting(true)
+
+    try {
+      const res = await fetch("/api/admin/screenshots/bulk-delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          screenshotUrls: selectedScreenshots,
+          staffUserId: staffUserId,
+        }),
+      })
+
+      const result = await res.json()
+
+      if (res.ok && result.success) {
+        toast({
+          title: "Screenshots deleted",
+          description: `Successfully deleted ${result.deleted} screenshot(s).`,
+        })
+        setSelectedScreenshots([])
+        // Refresh data
+        fetchStaffDetail()
+      } else {
+        toast({
+          title: "Deletion failed",
+          description: result.error || "Failed to delete screenshots. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error deleting screenshots:", error)
+      toast({
+        title: "Deletion failed",
+        description: "An error occurred while deleting screenshots. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   // ✅ Admin displays dates in Philippines timezone using utility functions
@@ -469,8 +551,38 @@ export default function StaffAnalyticsDetailPage() {
         <TabsContent value="screenshots" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Screenshots</CardTitle>
-              <CardDescription>Captured screenshots during work hours (for future analysis)</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Screenshots</CardTitle>
+                  <CardDescription>Captured screenshots during work hours (for future analysis)</CardDescription>
+                </div>
+                {screenshots.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mr-4">
+                      <Checkbox
+                        id="select-all"
+                        checked={selectedScreenshots.length === screenshots.length && screenshots.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                      <label
+                        htmlFor="select-all"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Select All ({selectedScreenshots.length}/{screenshots.length})
+                      </label>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={deleteSelectedScreenshots}
+                      disabled={selectedScreenshots.length === 0 || isDeleting}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {isDeleting ? "Deleting..." : `Delete Selected (${selectedScreenshots.length})`}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {screenshots.length > 0 ? (
@@ -478,9 +590,23 @@ export default function StaffAnalyticsDetailPage() {
                   {screenshots.map((screenshot: any, index: number) => (
                     <div 
                       key={index} 
-                      className="border rounded-lg p-2"
+                      className={`border rounded-lg p-2 relative ${
+                        selectedScreenshots.includes(screenshot.url) ? "ring-2 ring-blue-500" : ""
+                      }`}
                     >
-                      <img src={screenshot.url} alt={`Screenshot ${index + 1}`} className="w-full h-auto rounded" />
+                      <div className="absolute top-4 left-4 z-10">
+                        <Checkbox
+                          checked={selectedScreenshots.includes(screenshot.url)}
+                          onCheckedChange={() => toggleScreenshot(screenshot.url)}
+                          className="bg-white"
+                        />
+                      </div>
+                      <img 
+                        src={screenshot.url} 
+                        alt={`Screenshot ${index + 1}`} 
+                        className="w-full h-auto rounded cursor-pointer"
+                        onClick={() => toggleScreenshot(screenshot.url)}
+                      />
                       <p className="text-xs text-muted-foreground mt-1">{formatAdminDateTime(screenshot.date)}</p>
                     </div>
                   ))}
