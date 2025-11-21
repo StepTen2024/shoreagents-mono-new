@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
+import { randomUUID } from "crypto"
 
 // GET /api/tasks/[id]/subtasks - Get all subtasks for a task
 export async function GET(
@@ -94,6 +95,7 @@ export async function POST(
     // Create subtask
     const subtask = await prisma.subtasks.create({
       data: {
+        id: randomUUID(),
         taskId: id,
         title,
         order: nextOrder,
