@@ -268,6 +268,7 @@ TASK DETAILS:\n` + tasks.map(task => {
     let staffFullContext = ''
     let ragContext = ''
     let conversationHistoryContext = ''
+    let memoriesContext = '' // Declare at top level for use in system prompt
     
     if (userType === 'STAFF' && user.id) {
       console.log(`🧠 [RAG] Building enhanced context for staff ${user.name}`)
@@ -288,7 +289,6 @@ TASK DETAILS:\n` + tasks.map(task => {
       console.log(`📝 [FULL-CONTEXT] Staff context preview:`, staffFullContext.substring(0, 500))
       
       // Fetch staff memories
-      let memoriesContext = ''
       try {
         const memories = await prisma.staff_memories.findMany({
           where: { staffUserId: user.id },
