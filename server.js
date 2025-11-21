@@ -44,6 +44,8 @@ app.prepare().then(() => {
   const httpServer = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true)
+      
+      // Let Next.js handle ALL requests (including static assets)
       await handle(req, res, parsedUrl)
     } catch (err) {
       // Silently skip ENOENT errors for temporary build manifest files
