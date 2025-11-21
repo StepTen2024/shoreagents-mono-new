@@ -751,7 +751,7 @@ export default function AdminTasksPage() {
 
       {/* Task Detail Modal - Enhanced Design */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="!max-w-none max-w-6xl w-[85vw] max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border-slate-700">
+        <DialogContent className="!max-w-none max-w-6xl w-[85vw] max-h-[85vh] overflow-y-auto !bg-gradient-to-br !from-slate-900 !via-slate-850 !to-slate-900 !border-slate-700">
           {selectedTask && (
             <div className="space-y-6">
               {/* Header - Enhanced with gradient */}
