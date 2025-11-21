@@ -107,6 +107,11 @@ export async function GET(
     const totalIdleTime = metrics.reduce((sum, m) => sum + m.idleTime, 0)
     const totalScreenTime = metrics.reduce((sum, m) => sum + m.screenTime, 0)
     const totalUrlsVisited = metrics.reduce((sum, m) => sum + m.urlsVisited, 0)
+    const totalTabsSwitched = metrics.reduce((sum, m) => sum + m.tabsSwitched, 0)
+    const totalClipboardActions = metrics.reduce((sum, m) => sum + m.clipboardActions, 0)
+    const totalDownloads = metrics.reduce((sum, m) => sum + m.downloads, 0)
+    const totalUploads = metrics.reduce((sum, m) => sum + m.uploads, 0)
+    const totalBandwidth = metrics.reduce((sum, m) => sum + m.bandwidth, 0)
 
     // Calculate productivity
     const totalTime = totalActiveTime + totalIdleTime
@@ -120,12 +125,22 @@ export async function GET(
     const allVisitedUrls: any[] = []
     metrics.forEach((metric) => {
       if (metric.visitedurls && Array.isArray(metric.visitedurls)) {
-        allVisitedUrls.push(
-          ...metric.visitedurls.map((urlData: any) => ({
-            ...urlData,
+        metric.visitedurls.forEach((urlData: any) => {
+          // Handle different formats: string or object
+          if (typeof urlData === 'string') {
+            allVisitedUrls.push({
+              url: urlData,
+              date: metric.date,
+            })
+          } else if (urlData && typeof urlData === 'object') {
+            allVisitedUrls.push({
+              url: urlData.url || urlData.title || 'Unknown',
+              title: urlData.title || urlData.url,
             date: metric.date,
-          }))
-        )
+              ...urlData
+            })
+          }
+        })
       }
     })
 
@@ -147,13 +162,17 @@ export async function GET(
     ]
     const suspiciousUrls = allVisitedUrls
       .filter((urlData: any) => {
-        const url = urlData.url?.toLowerCase() || ""
+        const url = (typeof urlData.url === 'string' ? urlData.url : String(urlData.url || '')).toLowerCase()
         return suspiciousKeywords.some((keyword) => url.includes(keyword))
       })
       .map((urlData: any) => ({
         ...urlData,
+        url: typeof urlData.url === 'string' ? urlData.url : String(urlData.url || 'Unknown'),
         isSuspicious: true,
-        reason: suspiciousKeywords.find((k) => urlData.url?.toLowerCase().includes(k)),
+        reason: suspiciousKeywords.find((k) => {
+          const url = (typeof urlData.url === 'string' ? urlData.url : String(urlData.url || '')).toLowerCase()
+          return url.includes(k)
+        }),
       }))
 
     // Collect all applications used
@@ -236,6 +255,17 @@ export async function GET(
         )
       }
     })
+    
+    // 🔍 DEBUG: Log sample screenshot URLs
+    console.log(`📸 [Staff Analytics] Total screenshots: ${allScreenshots.length}`)
+    if (allScreenshots.length > 0) {
+      console.log(`📸 Sample screenshot URLs (first 3):`)
+      allScreenshots.slice(0, 3).forEach((s, i) => {
+        console.log(`   ${i+1}. ${s.url}`)
+      })
+    } else {
+      console.log(`⚠️  No screenshots found in database`)
+    }
 
     return NextResponse.json({
       success: true,
@@ -257,7 +287,13 @@ export async function GET(
         totalIdleTime,
         totalScreenTime,
         totalUrlsVisited,
+        totalTabsSwitched,
+        totalClipboardActions,
+        totalDownloads,
+        totalUploads,
+        totalBandwidth,
         productivityPercentage,
+        productivityScore: metrics[0]?.productivityScore || 0,
         totalBreakTime,
         lateBreakCount: lateBreaks.length,
         dateRange: {

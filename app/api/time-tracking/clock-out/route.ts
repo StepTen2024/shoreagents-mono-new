@@ -62,20 +62,24 @@ export async function POST(request: NextRequest) {
     const totalBreakTime = breaks.reduce((sum, b) => sum + (b.duration || 0), 0) / 60
     const netWorkHours = totalHours - totalBreakTime
 
-    // ✅ Check if user is clocking out EARLY (using shift date and staff timezone)
+    // ✅ Check if user is clocking out EARLY or OVERTIME (using shift date and staff timezone)
     let wasEarlyClockOut = false
     let earlyClockOutBy = 0
-    let expectedClockOut: Date | null = null
+    let overtimeMinutes = 0
+    let expectedClockOutCalculated: Date | null = null
     
-    if (activeEntry.work_schedules && activeEntry.work_schedules.endTime && activeEntry.work_schedules.endTime.trim() !== '') {
+    // Use expectedClockOut from time_entries if it exists (from clock-in), otherwise calculate it
+    if (activeEntry.expectedClockOut) {
+      expectedClockOutCalculated = new Date(activeEntry.expectedClockOut)
+    } else if (activeEntry.work_schedules && activeEntry.work_schedules.endTime && activeEntry.work_schedules.endTime.trim() !== '') {
       try {
         // Parse shift end time using helper function
         const { hour, minute } = parseTimeString(activeEntry.work_schedules.endTime)
         
         // ✅ Use shift date for expected clock-out (handles night shifts crossing midnight)
         const shiftDate = activeEntry.shiftDate || activeEntry.clockIn
-        expectedClockOut = new Date(shiftDate)
-        expectedClockOut.setHours(hour, minute, 0, 0)
+        expectedClockOutCalculated = new Date(shiftDate)
+        expectedClockOutCalculated.setHours(hour, minute, 0, 0)
         
         // For night shifts, if end time is earlier than start time (e.g., 8 AM < 11 PM),
         // the shift ends the next day
@@ -83,33 +87,37 @@ export async function POST(request: NextRequest) {
           const startTime = parseTimeString(activeEntry.work_schedules.startTime)
           if (hour < startTime.hour) {
             // End time is next day (e.g., shift ends at 8 AM but started at 11 PM)
-            expectedClockOut.setDate(expectedClockOut.getDate() + 1)
+            expectedClockOutCalculated.setDate(expectedClockOutCalculated.getDate() + 1)
           }
         }
-        
+      } catch (error) {
+        console.error('[Clock-Out] Error calculating expected clock-out:', error)
+        expectedClockOutCalculated = null
+      }
+    }
+    
+    // Now calculate early/overtime based on expected clock-out
+    if (expectedClockOutCalculated) {
         console.log(`⏰ Clock-out check:`, {
-          expectedClockOut: expectedClockOut.toISOString(),
+        expectedClockOut: expectedClockOutCalculated.toISOString(),
           actualClockOut: clockOut.toISOString()
         })
         
-        // Check if user is clocking out EARLY
-        const diffMs = expectedClockOut.getTime() - clockOut.getTime()
+      // Calculate time difference
+      const diffMs = clockOut.getTime() - expectedClockOutCalculated.getTime()
         const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
         
-        if (diffMs > 0) {
+      if (diffMs < 0) {
           // Clocking out BEFORE shift end = EARLY
           wasEarlyClockOut = true
           earlyClockOutBy = diffMinutes
           console.log(`⏰ EARLY CLOCK-OUT by ${diffMinutes} minutes`)
+      } else if (diffMs > 0) {
+        // Clocking out AFTER shift end = OVERTIME
+        overtimeMinutes = diffMinutes
+        console.log(`🌟 OVERTIME: ${diffMinutes} minutes (${(diffMinutes / 60).toFixed(2)} hours)`)
         } else {
-          console.log(`⏰ ON TIME or STAYED LATE (worked full shift)`)
-        }
-        
-      } catch (error) {
-        console.error('[Clock-Out] Error calculating early clock-out:', error)
-        wasEarlyClockOut = false
-        earlyClockOutBy = 0
-        expectedClockOut = null
+        console.log(`⏰ ON TIME (perfect clock-out)`)
       }
     }
     
@@ -128,6 +136,7 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         wasEarlyClockOut,
         earlyClockOutBy: wasEarlyClockOut ? earlyClockOutBy : null,
+        overtimeMinutes: overtimeMinutes > 0 ? overtimeMinutes : null,  // ✅ NEW! Track overtime
         workedFullShift  // ← ACCOUNTABILITY METRIC!
       },
     })
@@ -142,9 +151,12 @@ export async function POST(request: NextRequest) {
       breakTime: totalBreakTime.toFixed(2),
       wasEarlyClockOut,
       earlyClockOutBy,
+      overtimeMinutes,  // ✅ NEW! Return overtime info
       workedFullShift,
       message: wasEarlyClockOut
         ? `Clocked out ${earlyClockOutBy} minutes early. Net work hours: ${netWorkHours.toFixed(2)}`
+        : overtimeMinutes > 0
+        ? `Clocked out with ${overtimeMinutes} minutes overtime (${(overtimeMinutes / 60).toFixed(2)} hours)! Net work hours: ${netWorkHours.toFixed(2)}`
         : `Clocked out successfully. Net work hours: ${netWorkHours.toFixed(2)}`,
     })
   } catch (error) {

@@ -54,6 +54,7 @@ interface StaffMember {
   location: string | null
   metrics: StaffMetrics | null
   productivityScore: number
+  enhancedScore: any // Enhanced productivity score with breakdown
   isActive: boolean
   lastActivity: string | null
 }

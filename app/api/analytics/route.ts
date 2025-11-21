@@ -190,16 +190,57 @@ export async function POST(request: NextRequest) {
     } = body
 
     // ✅ Get active time entry to find shift date
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('🔍 [Performance API] CHECKING CLOCK-IN STATUS')
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log(`   Staff User ID: ${staffUser.id}`)
+    console.log(`   Staff Name: ${staffUser.name}`)
+    console.log(`   Auth User ID: ${session.user.id}`)
+    
     const activeTimeEntry = await prisma.time_entries.findFirst({
       where: {
         staffUserId: staffUser.id,
         clockOut: null
       },
       select: {
+        id: true,
+        clockIn: true,
         shiftDate: true,
         shiftDayOfWeek: true
       }
     })
+    
+    console.log(`   Active Time Entry: ${activeTimeEntry ? 'FOUND ✅' : 'NOT FOUND ❌'}`)
+    if (activeTimeEntry) {
+      console.log(`      ID: ${activeTimeEntry.id}`)
+      console.log(`      Clock-In: ${activeTimeEntry.clockIn.toISOString()}`)
+      console.log(`      Shift Date: ${activeTimeEntry.shiftDate?.toISOString() || 'null'}`)
+      console.log(`      Shift Day: ${activeTimeEntry.shiftDayOfWeek || 'null'}`)
+    } else {
+      // 🔍 DEBUG: Check if there are ANY time entries for this user
+      const allTimeEntries = await prisma.time_entries.findMany({
+        where: { staffUserId: staffUser.id },
+        select: {
+          id: true,
+          clockIn: true,
+          clockOut: true,
+          shiftDate: true
+        },
+        orderBy: { clockIn: 'desc' },
+        take: 5
+      })
+      console.log(`   📊 DEBUGGING: Found ${allTimeEntries.length} total time entries for this user`)
+      if (allTimeEntries.length > 0) {
+        console.log(`   📋 Last 5 time entries:`)
+        allTimeEntries.forEach((entry, i) => {
+          console.log(`      ${i+1}. ID: ${entry.id}`)
+          console.log(`         Clock-In: ${entry.clockIn.toISOString()}`)
+          console.log(`         Clock-Out: ${entry.clockOut ? entry.clockOut.toISOString() : 'NULL (still active!)'}`)
+          console.log(`         Shift Date: ${entry.shiftDate?.toISOString() || 'null'}`)
+        })
+      }
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 
     // If no active time entry, staff is not clocked in - don't track performance
     if (!activeTimeEntry) {
