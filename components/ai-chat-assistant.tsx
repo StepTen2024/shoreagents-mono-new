@@ -5,7 +5,8 @@ import type React from "react"
 import { 
   Send, Bot, User, Sparkles, BookOpen, FileText, Users, HelpCircle,
   FolderOpen, Search, Upload, Clock, Database, Building2, GraduationCap,
-  Settings, Briefcase, TrendingUp, FileCheck, ChevronRight, X, Trash2, Download, Loader2, RefreshCw, Pin, PinOff
+  Settings, Briefcase, TrendingUp, FileCheck, ChevronRight, X, Trash2, Download, Loader2, RefreshCw, Pin, PinOff,
+  Brain, History, Star, Lightbulb, Target, Workflow, UserCircle
 } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import ReactMarkdown from 'react-markdown'
@@ -54,6 +55,24 @@ type Task = {
   }
 }
 
+type Memory = {
+  id: string
+  memory: string
+  category: "PREFERENCE" | "FACT" | "GOAL" | "WORKFLOW" | "CLIENT_INFO"
+  importance: number
+  createdAt: string
+  updatedAt: string
+}
+
+type SearchResult = {
+  id: string
+  message: string
+  role: "user" | "assistant"
+  isPinned: boolean | null
+  createdAt: string | null
+  similarity: number
+}
+
 const categoryConfig: Record<string, { label: string; color: string; icon: any }> = {
   CLIENT: { label: "Client Docs", color: "bg-blue-500/20 text-blue-400 ring-blue-500/30", icon: Building2 },
   TRAINING: { label: "Training", color: "bg-purple-500/20 text-purple-400 ring-purple-500/30", icon: GraduationCap },
@@ -78,6 +97,15 @@ export default function AIChatAssistant() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingDocs, setLoadingDocs] = useState(true)
+  
+  // Memory & Search States
+  const [memories, setMemories] = useState<Memory[]>([])
+  const [showMemories, setShowMemories] = useState(false)
+  const [loadingMemories, setLoadingMemories] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [loadingTasks, setLoadingTasks] = useState(true)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -172,11 +200,12 @@ export default function AIChatAssistant() {
     scrollToBottom()
   }, [messages])
 
-  // Fetch documents, tasks, and conversation history on mount
+  // Fetch documents, tasks, conversation history, and memories on mount
   useEffect(() => {
     fetchDocuments()
     fetchTasks()
     fetchConversationHistory()
+    fetchMemories()
   }, [])
 
   const fetchDocuments = async () => {
@@ -269,6 +298,129 @@ export default function AIChatAssistant() {
     }
   }
 
+  // Fetch memories
+  const fetchMemories = async () => {
+    setLoadingMemories(true)
+    try {
+      const response = await fetch('/api/memories')
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`🧠 Loaded ${data.memories.length} memories`)
+        setMemories(data.memories || [])
+      } else {
+        console.error('Failed to fetch memories:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching memories:', error)
+    } finally {
+      setLoadingMemories(false)
+    }
+  }
+
+  // Search conversations
+  const searchConversations = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      setShowSearchResults(false)
+      return
+    }
+
+    setSearching(true)
+    try {
+      const response = await fetch('/api/conversations/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, limit: 10 }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`🔍 Found ${data.results.length} matching conversations`)
+        setSearchResults(data.results || [])
+        setShowSearchResults(true)
+      } else {
+        console.error('Failed to search conversations:', response.status)
+      }
+    } catch (error) {
+      console.error('Error searching conversations:', error)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  // Save memory
+  const saveMemory = async (memory: string, category: string = 'FACT', importance: number = 5) => {
+    try {
+      const response = await fetch('/api/memories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memory, category, importance }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`🧠 Memory saved: ${data.memory.id}`)
+        setMemories(prev => [data.memory, ...prev])
+        toast({
+          title: "🧠 Memory Saved!",
+          description: `I'll remember: "${memory.substring(0, 50)}${memory.length > 50 ? '...' : ''}"`,
+          variant: "default",
+        })
+        return true
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save memory. Please try again.",
+          variant: "destructive",
+        })
+        return false
+      }
+    } catch (error) {
+      console.error('Error saving memory:', error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      })
+      return false
+    }
+  }
+
+  // Delete memory
+  const deleteMemory = async (memoryId: string) => {
+    try {
+      const response = await fetch(`/api/memories/${memoryId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        console.log(`🗑️ Memory deleted: ${memoryId}`)
+        setMemories(prev => prev.filter(m => m.id !== memoryId))
+        toast({
+          title: "Memory Forgotten",
+          description: "I've removed this from my memory.",
+          variant: "default",
+        })
+        return true
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete memory. Please try again.",
+          variant: "destructive",
+        })
+        return false
+      }
+    } catch (error) {
+      console.error('Error deleting memory:', error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+        })
+      return false
+    }
+  }
+
   const handleDeleteDocument = async (id: string) => {
     if (!confirm('Are you sure you want to delete this document?')) return
 
@@ -349,6 +501,115 @@ export default function AIChatAssistant() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return
+
+    // Check for special commands FIRST
+    const trimmedText = text.trim()
+    
+    // @remember command
+    if (trimmedText.toLowerCase().startsWith('@remember ')) {
+      const memoryText = trimmedText.substring(10).trim()
+      if (memoryText) {
+        const success = await saveMemory(memoryText, 'PREFERENCE', 7)
+        if (success) {
+          // Add a user message showing what they asked
+          const userMsg: Message = {
+            id: Date.now().toString(),
+            role: "user",
+            content: text,
+          }
+          // Add AI confirmation
+          const aiMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `✅ Got it! I'll remember that: **"${memoryText}"**\n\nYou can see all my memories by typing \`@memories\`, or forget this later with \`@forget\`.`,
+            isPinned: false,
+            createdAt: new Date().toISOString(),
+          }
+          setMessages((prev) => [...prev, userMsg, aiMsg])
+        }
+        setInput("")
+        return
+      }
+    }
+    
+    // @memories command (show all memories)
+    if (trimmedText.toLowerCase() === '@memories' || trimmedText.toLowerCase() === '@memory') {
+      setShowMemories(true)
+      const userMsg: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: text,
+      }
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `🧠 **My Memories About You (${memories.length} total):**\n\n${
+          memories.length === 0
+            ? "I don't have any memories saved yet. Use `@remember [something]` to teach me about your preferences!"
+            : memories
+                .sort((a, b) => b.importance - a.importance)
+                .map((mem, i) => {
+                  const stars = '⭐'.repeat(Math.min(mem.importance, 5))
+                  const categoryEmoji = {
+                    PREFERENCE: '⚙️',
+                    FACT: '📝',
+                    GOAL: '🎯',
+                    WORKFLOW: '🔄',
+                    CLIENT_INFO: '👔',
+                  }[mem.category] || '📌'
+                  return `${i + 1}. ${stars} ${categoryEmoji} ${mem.memory}\n   *${mem.category} • ID: \`${mem.id.substring(0, 8)}\`*`
+                })
+                .join('\n\n')
+        }\n\n💡 Use \`@forget [memory-id]\` to remove a memory.`,
+        isPinned: false,
+        createdAt: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, userMsg, aiMsg])
+      setInput("")
+      return
+    }
+    
+    // @forget command (delete memory)
+    if (trimmedText.toLowerCase().startsWith('@forget ')) {
+      const memoryId = trimmedText.substring(8).trim()
+      if (memoryId) {
+        const memoryToDelete = memories.find(m => m.id.startsWith(memoryId))
+        if (memoryToDelete) {
+          const success = await deleteMemory(memoryToDelete.id)
+          if (success) {
+            const userMsg: Message = {
+              id: Date.now().toString(),
+              role: "user",
+              content: text,
+            }
+            const aiMsg: Message = {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: `🗑️ **Memory Forgotten!**\n\nI've removed: *"${memoryToDelete.memory}"*\n\nI now have ${memories.length - 1} memories about you.`,
+              isPinned: false,
+              createdAt: new Date().toISOString(),
+            }
+            setMessages((prev) => [...prev, userMsg, aiMsg])
+          }
+        } else {
+          const userMsg: Message = {
+            id: Date.now().toString(),
+            role: "user",
+            content: text,
+          }
+          const aiMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `❌ I couldn't find a memory with ID \`${memoryId}\`. Use \`@memories\` to see all available memory IDs.`,
+            isPinned: false,
+            createdAt: new Date().toISOString(),
+          }
+          setMessages((prev) => [...prev, userMsg, aiMsg])
+        }
+        setInput("")
+        return
+      }
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -539,8 +800,107 @@ export default function AIChatAssistant() {
               </div>
             </div>
             
+            {/* Conversation Search Bar */}
+            <div className="mt-4 space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="🔍 Search past conversations... (e.g., 'SEO titles', 'VAULTRE')"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    if (e.target.value.trim()) {
+                      searchConversations(e.target.value)
+                    } else {
+                      setSearchResults([])
+                      setShowSearchResults(false)
+                    }
+                  }}
+                  className="w-full rounded-lg bg-slate-800/50 py-3 pl-11 pr-4 text-white placeholder-slate-500 ring-1 ring-white/10 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-indigo-400" />
+                )}
+              </div>
+              
+              {/* Search Results Dropdown */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="max-h-96 space-y-2 overflow-y-auto rounded-lg bg-slate-800/90 p-4 ring-1 ring-white/10 backdrop-blur-sm">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-indigo-300">
+                      🔍 Found {searchResults.length} conversations
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setShowSearchResults(false)
+                        setSearchQuery("")
+                        setSearchResults([])
+                      }}
+                      className="text-slate-400 transition-colors hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {searchResults.map((result, idx) => (
+                    <div
+                      key={result.id}
+                      className="cursor-pointer rounded-lg bg-slate-900/50 p-3 ring-1 ring-white/5 transition-all hover:bg-slate-900 hover:ring-indigo-500/30"
+                      onClick={() => {
+                        // Scroll to message in chat if it exists
+                        const messageElement = document.getElementById(`message-${result.id}`)
+                        if (messageElement) {
+                          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                          messageElement.classList.add('ring-2', 'ring-indigo-500', 'animate-pulse')
+                          setTimeout(() => {
+                            messageElement.classList.remove('ring-2', 'ring-indigo-500', 'animate-pulse')
+                          }, 2000)
+                        }
+                        setShowSearchResults(false)
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                          {result.role === 'user' ? (
+                            <User className="h-5 w-5 text-blue-400" />
+                          ) : (
+                            <Bot className="h-5 w-5 text-indigo-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-medium text-slate-400">
+                              {result.role === 'user' ? 'You' : 'AI'}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {result.createdAt ? new Date(result.createdAt).toLocaleDateString() : ''}
+                            </span>
+                            <span className="ml-auto rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-300">
+                              {(result.similarity * 100).toFixed(0)}% match
+                            </span>
+                          </div>
+                          <p className="line-clamp-2 text-sm text-white">
+                            {result.message.substring(0, 200)}
+                            {result.message.length > 200 ? '...' : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {showSearchResults && searchResults.length === 0 && !searching && searchQuery.trim() && (
+                <div className="rounded-lg bg-slate-800/50 p-4 text-center ring-1 ring-white/10">
+                  <p className="text-sm text-slate-400">
+                    No conversations found for "{searchQuery}"
+                  </p>
+                </div>
+              )}
+            </div>
+            
             {/* Knowledge Base Stats */}
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-4 gap-3">
               <div className="rounded-xl bg-white/5 p-3 text-center">
                 <div className="text-xl font-bold text-white">{loadingDocs ? '...' : documents.length}</div>
                 <div className="text-xs text-slate-400">Documents</div>
@@ -557,7 +917,108 @@ export default function AIChatAssistant() {
                 </div>
                 <div className="text-xs text-purple-300">Training</div>
               </div>
+              <button
+                onClick={() => setShowMemories(!showMemories)}
+                className="rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 p-3 text-center ring-1 ring-amber-500/30 transition-all hover:ring-2 hover:ring-amber-500/50"
+              >
+                <div className="text-xl font-bold text-amber-400">
+                  {loadingMemories ? '...' : memories.length}
+                </div>
+                <div className="flex items-center justify-center gap-1 text-xs text-amber-300">
+                  <Brain className="h-3 w-3" />
+                  Memories
+                </div>
+              </button>
           </div>
+          
+          {/* Memory Panel */}
+          {showMemories && (
+            <div className="mt-4 rounded-xl bg-gradient-to-br from-amber-900/30 to-orange-900/30 p-6 ring-1 ring-amber-500/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/20 ring-1 ring-amber-500/50">
+                    <Brain className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-amber-300">My Memories ({memories.length})</h3>
+                    <p className="text-xs text-amber-400/70">Things I remember about you</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowMemories(false)}
+                  className="text-amber-400 transition-colors hover:text-amber-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {memories.length === 0 ? (
+                <div className="text-center py-8 space-y-3">
+                  <p className="text-amber-300">No memories yet!</p>
+                  <p className="text-sm text-amber-400/70">
+                    Use <code className="px-2 py-1 bg-slate-800/50 rounded">@remember [something]</code> to teach me about your preferences!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {memories
+                    .sort((a, b) => b.importance - a.importance)
+                    .map((mem) => {
+                      const stars = '⭐'.repeat(Math.min(mem.importance, 5))
+                      const categoryConfig = {
+                        PREFERENCE: { icon: Settings, color: 'text-blue-400', bg: 'bg-blue-500/20' },
+                        FACT: { icon: FileText, color: 'text-purple-400', bg: 'bg-purple-500/20' },
+                        GOAL: { icon: Target, color: 'text-emerald-400', bg: 'bg-emerald-500/20' },
+                        WORKFLOW: { icon: Workflow, color: 'text-indigo-400', bg: 'bg-indigo-500/20' },
+                        CLIENT_INFO: { icon: UserCircle, color: 'text-amber-400', bg: 'bg-amber-500/20' },
+                      }
+                      const config = categoryConfig[mem.category] || categoryConfig.FACT
+                      const Icon = config.icon
+                      
+                      return (
+                        <div
+                          key={mem.id}
+                          className="rounded-lg bg-slate-900/50 p-4 ring-1 ring-amber-500/20 transition-all hover:ring-amber-500/40"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg ${config.bg}`}>
+                              <Icon className={`h-4 w-4 ${config.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white mb-2">{mem.memory}</p>
+                              <div className="flex items-center gap-3 text-xs">
+                                <span className="text-amber-400">{stars}</span>
+                                <span className={`px-2 py-0.5 rounded-full ${config.bg} ${config.color} font-medium`}>
+                                  {mem.category.replace('_', ' ')}
+                                </span>
+                                <span className="text-slate-500">
+                                  {new Date(mem.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => deleteMemory(mem.id)}
+                              className="flex-shrink-0 rounded p-1.5 text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
+                              title="Forget this memory"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              )}
+
+              {/* Memory Commands Help */}
+              <div className="mt-4 rounded-lg bg-slate-900/50 p-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-300 mb-2">📝 Memory Commands:</p>
+                <code className="block text-xs text-amber-400/80">@remember [text] - Save a new memory</code>
+                <code className="block text-xs text-amber-400/80">@memories - Show all memories</code>
+                <code className="block text-xs text-amber-400/80">@forget [id] - Delete a memory</code>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Messages */}
@@ -632,7 +1093,7 @@ export default function AIChatAssistant() {
               
               {/* Regular Messages */}
               {messages.map((message) => (
-                  <div key={message.id}>
+                  <div key={message.id} id={`message-${message.id}`}>
                     <div className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}>
                   {message.role === "assistant" && (
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/30 to-purple-500/30 ring-1 ring-indigo-400/50">
