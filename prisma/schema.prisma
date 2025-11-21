@@ -1117,6 +1117,7 @@ enum TaskSource {
   SELF
   CLIENT
   MANAGEMENT
+  AI_AGENT
 }
 
 enum TaskStatus {

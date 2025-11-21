@@ -90,7 +90,11 @@ async function createTask(input: any, userId: string, userType: string): Promise
       status: 'TODO',
       deadline: deadline,
       tags: input.tags || [],
-      createdByStaffId: userType === 'STAFF' ? userId : null,
+      staffUserId: userType === 'STAFF' ? userId : null,
+      clientUserId: userType === 'CLIENT' ? userId : null,
+      createdById: userId,
+      createdByType: userType as any,
+      source: 'AI_AGENT' as any,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
