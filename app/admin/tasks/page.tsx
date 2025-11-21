@@ -749,148 +749,172 @@ export default function AdminTasksPage() {
         )}
       </Card>
 
-      {/* Task Detail Modal */}
+      {/* Task Detail Modal - Enhanced Design */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="!max-w-none max-w-6xl w-[85vw] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="!max-w-none max-w-6xl w-[85vw] max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border-slate-700">
           {selectedTask && (
             <div className="space-y-6">
-              <DialogHeader className="pb-4 border-b">
-                <DialogTitle className="flex items-center gap-3 text-xl">
-                  <Eye className="h-6 w-6 text-muted-foreground" />
-                  Task Details (View Only)
+              {/* Header - Enhanced with gradient */}
+              <DialogHeader className="pb-6 border-b border-slate-700/50">
+                <DialogTitle className="flex items-center gap-4 text-2xl">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Eye className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-white font-bold">Task Details (View Only)</div>
+                    <div className="text-sm text-slate-400 font-normal mt-1">Read-only monitoring view</div>
+                  </div>
                 </DialogTitle>
               </DialogHeader>
 
               <div className="space-y-6">
-                {/* Title & Badges */}
-                <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-foreground">{selectedTask.title}</h2>
+                {/* Title & Badges - Enhanced */}
+                <div className="space-y-5">
+                  <h2 className="text-3xl font-bold text-white">{selectedTask.title}</h2>
                   <div className="flex flex-wrap gap-3">
-                    <Badge className={`${statusConfig[selectedTask.status as keyof typeof statusConfig].color} px-3 py-1`}>
-                      {statusConfig[selectedTask.status as keyof typeof statusConfig].label}
+                    <Badge className={`${statusConfig[selectedTask.status as keyof typeof statusConfig].color} px-4 py-1.5 text-sm font-semibold`}>
+                      {getStatusIcon(selectedTask.status)}
+                      <span className="ml-2">{statusConfig[selectedTask.status as keyof typeof statusConfig].label}</span>
                     </Badge>
-                    <Badge className={`${priorityConfig[selectedTask.priority as keyof typeof priorityConfig].color} px-3 py-1`}>
-                      {priorityConfig[selectedTask.priority as keyof typeof priorityConfig].label}
+                    <Badge className={`${priorityConfig[selectedTask.priority as keyof typeof priorityConfig].color} px-4 py-1.5 text-sm font-semibold`}>
+                      {getPriorityIcon(selectedTask.priority)}
+                      <span className="ml-2">{priorityConfig[selectedTask.priority as keyof typeof priorityConfig].label}</span>
                     </Badge>
-                    <Badge className={`${sourceConfig[selectedTask.source as keyof typeof sourceConfig].color} px-3 py-1`}>
+                    <Badge className={`${sourceConfig[selectedTask.source as keyof typeof sourceConfig].color} px-4 py-1.5 text-sm font-semibold`}>
                       {sourceConfig[selectedTask.source as keyof typeof sourceConfig].icon}{" "}
                       {sourceConfig[selectedTask.source as keyof typeof sourceConfig].label}
                     </Badge>
                   </div>
                 </div>
 
-                {/* Description */}
+                {/* Description - Enhanced */}
                 {selectedTask.description && (
-                  <Card className="p-6">
-                    <h4 className="text-lg font-semibold text-foreground mb-3">Description</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{selectedTask.description}</p>
+                  <Card className="p-6 border-slate-700 bg-slate-800/50">
+                    <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      📝 Description
+                    </h4>
+                    <p className="text-base text-slate-300 whitespace-pre-wrap leading-relaxed">{selectedTask.description}</p>
                   </Card>
                 )}
 
-                {/* Metadata */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Metadata - Enhanced with gradients */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {selectedTask.company && (
-                    <Card className="p-6">
-                      <div className="text-sm text-muted-foreground mb-2">Company</div>
-                      <div className="text-lg font-semibold text-foreground flex items-center gap-2">
-                        🏢 {selectedTask.company.companyName}
+                    <Card className="p-6 border-slate-700 bg-gradient-to-br from-slate-800/80 to-slate-850/80 hover:shadow-xl transition-all">
+                      <div className="text-sm font-medium text-slate-400 mb-3">Company</div>
+                      <div className="text-xl font-bold text-white flex items-center gap-3">
+                        <span className="text-2xl">🏢</span>
+                        {selectedTask.company.companyName}
                       </div>
                     </Card>
                   )}
 
                   {selectedTask.deadline && (
-                    <Card className="p-6">
-                      <div className="text-sm text-muted-foreground mb-2">Deadline</div>
-                      <div className="text-lg font-semibold text-foreground flex items-center gap-2">
-                        <Calendar className="h-5 w-5" />
+                    <Card className="p-6 border-blue-500/30 bg-gradient-to-br from-blue-900/30 to-slate-850/80 hover:shadow-xl hover:shadow-blue-500/10 transition-all">
+                      <div className="text-sm font-medium text-blue-300 mb-3">Deadline</div>
+                      <div className="text-xl font-bold text-white flex items-center gap-3">
+                        <Calendar className="h-6 w-6 text-blue-400" />
                         {format(new Date(selectedTask.deadline), 'MMM dd, yyyy')}
                       </div>
                     </Card>
                   )}
 
-                  <Card className="p-6">
-                    <div className="text-sm text-muted-foreground mb-2">Created</div>
-                    <div className="text-lg font-semibold text-foreground">
+                  <Card className="p-6 border-slate-700 bg-gradient-to-br from-slate-800/80 to-slate-850/80 hover:shadow-xl transition-all">
+                    <div className="text-sm font-medium text-slate-400 mb-3">Created</div>
+                    <div className="text-xl font-bold text-white">
                       {format(new Date(selectedTask.createdAt), 'MMM dd, yyyy')}
                     </div>
                   </Card>
 
                   {selectedTask.completedAt && (
-                    <Card className="p-6 bg-green-50 dark:bg-green-900/20">
-                      <div className="text-sm text-green-700 dark:text-green-400 mb-2">Completed</div>
-                      <div className="text-lg font-semibold text-green-700 dark:text-green-400">
+                    <Card className="p-6 border-green-500/30 bg-gradient-to-br from-green-900/30 to-slate-850/80 hover:shadow-xl hover:shadow-green-500/10 transition-all">
+                      <div className="text-sm font-medium text-green-300 mb-3 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Completed
+                      </div>
+                      <div className="text-xl font-bold text-green-400">
                         {format(new Date(selectedTask.completedAt), 'MMM dd, yyyy')}
                       </div>
                     </Card>
                   )}
                 </div>
 
-                {/* Client Creator */}
+                {/* Client Creator - Enhanced */}
                 {selectedTask.client_users && (
-                  <Card className="p-6 bg-blue-50 dark:bg-blue-900/20">
-                    <div className="text-sm text-blue-700 dark:text-blue-400 mb-3 font-medium">Created by Client</div>
+                  <Card className="p-6 border-blue-500/30 bg-gradient-to-r from-blue-900/40 to-cyan-900/30 hover:shadow-xl hover:shadow-blue-500/20 transition-all">
+                    <div className="text-sm font-bold text-blue-300 mb-4 flex items-center gap-2">
+                      <span className="text-lg">👔</span>
+                      Created by Client
+                    </div>
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-14 w-14 ring-2 ring-blue-400/50">
                         <AvatarImage src={selectedTask.client_users.avatar || undefined} />
-                        <AvatarFallback className="bg-blue-500 text-white text-lg">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white text-lg font-bold">
                           {selectedTask.client_users.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="text-lg font-semibold text-blue-900 dark:text-blue-100">{selectedTask.client_users.name}</div>
-                        <div className="text-sm text-blue-700 dark:text-blue-400">{selectedTask.client_users.email}</div>
+                        <div className="text-lg font-bold text-white">{selectedTask.client_users.name}</div>
+                        <div className="text-sm text-blue-300">{selectedTask.client_users.email}</div>
                       </div>
                     </div>
                   </Card>
                 )}
 
-                {/* Assigned Staff */}
+                {/* Assigned Staff - Enhanced */}
                 {(selectedTask.assignedStaff?.length || selectedTask.staff_users) && (
-                  <Card className="p-6">
-                    <h4 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Assigned Staff ({selectedTask.assignedStaff?.length || 1})
+                  <Card className="p-6 border-purple-500/30 bg-gradient-to-br from-purple-900/30 to-slate-850/80">
+                    <h4 className="text-lg font-bold text-white mb-5 flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <div>Assigned Staff</div>
+                        <div className="text-sm font-normal text-purple-300">
+                          {selectedTask.assignedStaff?.length || 1} team member{(selectedTask.assignedStaff?.length || 1) !== 1 ? 's' : ''}
+                        </div>
+                      </div>
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {selectedTask.assignedStaff?.map((assignment) => (
-                        <div key={assignment.staff_users.id} className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
-                          <Avatar className="h-10 w-10">
+                        <div key={assignment.staff_users.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
+                          <Avatar className="h-12 w-12 ring-2 ring-purple-400/50">
                             <AvatarImage src={assignment.staff_users.avatar || undefined} />
-                            <AvatarFallback className="bg-purple-500 text-white">
+                            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white font-bold">
                               {assignment.staff_users.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-foreground truncate">
+                            <div className="text-sm font-bold text-white truncate">
                               {assignment.staff_users.name}
                             </div>
-                            <div className="text-xs text-muted-foreground truncate">
+                            <div className="text-xs text-slate-400 truncate">
                               {assignment.staff_users.email}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <Badge className="mt-1 bg-purple-500/20 text-purple-300 border-purple-400/30 text-xs">
                               {assignment.staff_users.role}
-                            </div>
+                            </Badge>
                           </div>
                         </div>
                       ))}
                       {selectedTask.staff_users && !selectedTask.assignedStaff?.length && (
-                        <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50">
-                          <Avatar className="h-10 w-10">
+                        <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
+                          <Avatar className="h-12 w-12 ring-2 ring-purple-400/50">
                             <AvatarImage src={selectedTask.staff_users.avatar || undefined} />
-                            <AvatarFallback className="bg-purple-500 text-white">
+                            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-600 text-white font-bold">
                               {selectedTask.staff_users.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-foreground truncate">
+                            <div className="text-sm font-bold text-white truncate">
                               {selectedTask.staff_users.name}
                             </div>
-                            <div className="text-xs text-muted-foreground truncate">
+                            <div className="text-xs text-slate-400 truncate">
                               {selectedTask.staff_users.email}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <Badge className="mt-1 bg-purple-500/20 text-purple-300 border-purple-400/30 text-xs">
                               {selectedTask.staff_users.role}
-                            </div>
+                            </Badge>
                           </div>
                         </div>
                       )}
@@ -898,22 +922,31 @@ export default function AdminTasksPage() {
                   </Card>
                 )}
 
-                {/* Attachments */}
+                {/* Attachments - Enhanced */}
                 {selectedTask.attachments && selectedTask.attachments.length > 0 && (
-                  <Card className="p-6">
-                    <h4 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                      <Paperclip className="h-5 w-5" />
-                      Attachments ({selectedTask.attachments.length})
+                  <Card className="p-6 border-slate-700 bg-slate-800/50">
+                    <h4 className="text-lg font-bold text-white mb-5 flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-slate-700/50 flex items-center justify-center">
+                        <Paperclip className="h-5 w-5 text-slate-300" />
+                      </div>
+                      <div>
+                        <div>📎 Attachments</div>
+                        <div className="text-sm font-normal text-slate-400">
+                          {selectedTask.attachments.length} file{selectedTask.attachments.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
                     </h4>
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                       {selectedTask.attachments.map((attachment, index) => (
-                        <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
-                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div key={index} className="flex items-center gap-4 p-4 rounded-xl bg-slate-900/50 border border-slate-700/50 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all group">
+                          <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                            <Paperclip className="h-5 w-5 text-blue-400" />
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-foreground truncate">
+                            <div className="text-sm font-bold text-white truncate group-hover:text-blue-300 transition-colors">
                               {attachment.split('/').pop() || attachment}
                             </div>
-                            <div className="text-xs text-muted-foreground truncate">
+                            <div className="text-xs text-slate-500 truncate mt-1">
                               {attachment}
                             </div>
                           </div>
@@ -921,7 +954,7 @@ export default function AdminTasksPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(attachment, '_blank')}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 border border-blue-500/30"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
