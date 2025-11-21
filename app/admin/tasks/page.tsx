@@ -269,189 +269,286 @@ export default function AdminTasksPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Task Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            View-only monitoring of all tasks across the organization
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchTasks} variant="outline" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={clearFilters} variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Clear Filters
-          </Button>
+    <div className="space-y-6 p-6">
+      {/* Header - Enhanced with gradient and better spacing */}
+      <div className="bg-gradient-to-r from-slate-800 via-slate-850 to-slate-900 rounded-2xl p-8 border border-slate-700/50 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+              <Users className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                Task Overview
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/30 text-xs px-3 py-1">
+                  View Only
+                </Badge>
+              </h1>
+              <p className="text-slate-300 mt-1.5 text-base">
+                Real-time monitoring of all tasks across the organization
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              onClick={fetchTasks} 
+              variant="outline" 
+              className="gap-2 bg-slate-700/50 hover:bg-slate-700 border-slate-600 text-slate-200 hover:text-white"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+            <Button 
+              onClick={clearFilters} 
+              variant="outline" 
+              className="gap-2 bg-slate-700/50 hover:bg-slate-700 border-slate-600 text-slate-200 hover:text-white"
+            >
+              <Filter className="h-4 w-4" />
+              Clear Filters
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Enhanced with gradients and icons */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Total Tasks</div>
-            <div className="text-2xl font-semibold text-foreground mt-1">{stats.total}</div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+          <Card className="relative overflow-hidden border-slate-700 bg-gradient-to-br from-slate-800 to-slate-850 hover:shadow-xl transition-all group">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-slate-400 mb-2">Total Tasks</div>
+                  <div className="text-3xl font-bold text-white">{stats.total}</div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-slate-700/50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users className="h-6 w-6 text-slate-300" />
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-600/10 rounded-full -mr-12 -mt-12"></div>
           </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Completed</div>
-            <div className="text-2xl font-semibold text-green-600 mt-1">{stats.byStatus.COMPLETED}</div>
+
+          <Card className="relative overflow-hidden border-green-500/30 bg-gradient-to-br from-green-900/30 to-slate-850 hover:shadow-xl hover:shadow-green-500/10 transition-all group">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-green-300/80 mb-2">Completed</div>
+                  <div className="text-3xl font-bold text-green-400">{stats.byStatus.COMPLETED}</div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <CheckCircle2 className="h-6 w-6 text-green-400" />
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full -mr-12 -mt-12"></div>
           </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground">In Progress</div>
-            <div className="text-2xl font-semibold text-blue-600 mt-1">{stats.byStatus.IN_PROGRESS}</div>
+
+          <Card className="relative overflow-hidden border-blue-500/30 bg-gradient-to-br from-blue-900/30 to-slate-850 hover:shadow-xl hover:shadow-blue-500/10 transition-all group">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-blue-300/80 mb-2">In Progress</div>
+                  <div className="text-3xl font-bold text-blue-400">{stats.byStatus.IN_PROGRESS}</div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Clock className="h-6 w-6 text-blue-400" />
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full -mr-12 -mt-12"></div>
           </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground">Stuck</div>
-            <div className="text-2xl font-semibold text-red-600 mt-1">{stats.byStatus.STUCK}</div>
+
+          <Card className="relative overflow-hidden border-red-500/30 bg-gradient-to-br from-red-900/30 to-slate-850 hover:shadow-xl hover:shadow-red-500/10 transition-all group">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-red-300/80 mb-2">Stuck</div>
+                  <div className="text-3xl font-bold text-red-400">{stats.byStatus.STUCK}</div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-red-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <XCircle className="h-6 w-6 text-red-400" />
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/10 rounded-full -mr-12 -mt-12"></div>
           </Card>
-          <Card className="p-4">
-            <div className="text-sm text-muted-foreground">For Review</div>
-            <div className="text-2xl font-semibold text-purple-600 mt-1">{stats.byStatus.FOR_REVIEW}</div>
+
+          <Card className="relative overflow-hidden border-purple-500/30 bg-gradient-to-br from-purple-900/30 to-slate-850 hover:shadow-xl hover:shadow-purple-500/10 transition-all group">
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-purple-300/80 mb-2">For Review</div>
+                  <div className="text-3xl font-bold text-purple-400">{stats.byStatus.FOR_REVIEW}</div>
+                </div>
+                <div className="h-12 w-12 rounded-lg bg-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Eye className="h-6 w-6 text-purple-400" />
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full -mr-12 -mt-12"></div>
           </Card>
         </div>
       )}
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tasks, companies, or clients..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+      {/* Filters - Enhanced with better styling */}
+      <Card className="border-slate-700 bg-gradient-to-r from-slate-800/50 to-slate-850/50 backdrop-blur-sm">
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Search */}
+            <div className="md:col-span-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Input
+                  placeholder="Search tasks, companies, or clients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-11 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 h-11"
+                />
+              </div>
             </div>
+
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-700">
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="TODO">📋 To Do</SelectItem>
+                <SelectItem value="IN_PROGRESS">⏳ In Progress</SelectItem>
+                <SelectItem value="STUCK">🚫 Stuck</SelectItem>
+                <SelectItem value="FOR_REVIEW">👀 For Review</SelectItem>
+                <SelectItem value="COMPLETED">✅ Completed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Priority Filter */}
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
+                <SelectValue placeholder="All Priorities" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-700">
+                <SelectItem value="all">All Priorities</SelectItem>
+                <SelectItem value="LOW">🟢 Low</SelectItem>
+                <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
+                <SelectItem value="HIGH">🟠 High</SelectItem>
+                <SelectItem value="URGENT">🔴 Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Source Filter */}
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
+                <SelectValue placeholder="All Sources" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-700">
+                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="SELF">👤 Staff</SelectItem>
+                <SelectItem value="CLIENT">👔 Client</SelectItem>
+                <SelectItem value="MANAGEMENT">📋 Management</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="TODO">To Do</SelectItem>
-              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-              <SelectItem value="STUCK">Stuck</SelectItem>
-              <SelectItem value="FOR_REVIEW">For Review</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Priority Filter */}
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Priorities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="URGENT">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Source Filter */}
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Sources" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="SELF">Staff (Self)</SelectItem>
-              <SelectItem value="CLIENT">Client</SelectItem>
-              <SelectItem value="MANAGEMENT">Management</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Results Count */}
-        <div className="mt-4 text-sm text-muted-foreground">
-          Showing <span className="font-semibold text-foreground">{filteredTasks.length}</span> of{" "}
-          <span className="font-semibold text-foreground">{tasks.length}</span> tasks
+          {/* Results Count - Enhanced */}
+          <div className="mt-5 pt-5 border-t border-slate-700/50">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-400">
+                Showing <span className="font-bold text-white text-lg mx-1">{filteredTasks.length}</span> of{" "}
+                <span className="font-bold text-slate-300 text-lg mx-1">{tasks.length}</span> tasks
+              </div>
+              {filteredTasks.length !== tasks.length && (
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/30">
+                  Filtered
+                </Badge>
+              )}
+            </div>
+          </div>
         </div>
       </Card>
 
-      {/* Task Table */}
-      <Card className="overflow-hidden">
+      {/* Task Table - Enhanced with modern styling */}
+      <Card className="overflow-hidden border-slate-700 bg-gradient-to-br from-slate-800/30 to-slate-850/30">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
+            <TableRow className="bg-slate-900/80 border-b border-slate-700 hover:bg-slate-900/80">
               <TableHead className="w-12"></TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-foreground"
+                className="cursor-pointer hover:text-blue-400 transition-colors text-slate-300 font-semibold"
                 onClick={() => handleSort('title')}
               >
-                <div className="flex items-center gap-1">
-                  Title
+                <div className="flex items-center gap-2">
+                  <span>Title</span>
                   {sortField === 'title' && (
-                    sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    sortDirection === 'asc' ? 
+                    <ChevronUp className="w-4 h-4 text-blue-400" /> : 
+                    <ChevronDown className="w-4 h-4 text-blue-400" />
                   )}
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-foreground"
+                className="cursor-pointer hover:text-blue-400 transition-colors text-slate-300 font-semibold"
                 onClick={() => handleSort('status')}
               >
-                <div className="flex items-center gap-1">
-                  Status
+                <div className="flex items-center gap-2">
+                  <span>Status</span>
                   {sortField === 'status' && (
-                    sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    sortDirection === 'asc' ? 
+                    <ChevronUp className="w-4 h-4 text-blue-400" /> : 
+                    <ChevronDown className="w-4 h-4 text-blue-400" />
                   )}
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-foreground"
+                className="cursor-pointer hover:text-blue-400 transition-colors text-slate-300 font-semibold"
                 onClick={() => handleSort('priority')}
               >
-                <div className="flex items-center gap-1">
-                  Priority
+                <div className="flex items-center gap-2">
+                  <span>Priority</span>
                   {sortField === 'priority' && (
-                    sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    sortDirection === 'asc' ? 
+                    <ChevronUp className="w-4 h-4 text-blue-400" /> : 
+                    <ChevronDown className="w-4 h-4 text-blue-400" />
                   )}
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-foreground"
+                className="cursor-pointer hover:text-blue-400 transition-colors text-slate-300 font-semibold"
                 onClick={() => handleSort('source')}
               >
-                <div className="flex items-center gap-1">
-                  Source
+                <div className="flex items-center gap-2">
+                  <span>Source</span>
                   {sortField === 'source' && (
-                    sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    sortDirection === 'asc' ? 
+                    <ChevronUp className="w-4 h-4 text-blue-400" /> : 
+                    <ChevronDown className="w-4 h-4 text-blue-400" />
                   )}
                 </div>
               </TableHead>
-              <TableHead>Company</TableHead>
+              <TableHead className="text-slate-300 font-semibold">Company</TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-foreground"
+                className="cursor-pointer hover:text-blue-400 transition-colors text-slate-300 font-semibold"
                 onClick={() => handleSort('deadline')}
               >
-                <div className="flex items-center gap-1">
-                  Deadline
+                <div className="flex items-center gap-2">
+                  <span>Deadline</span>
                   {sortField === 'deadline' && (
-                    sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    sortDirection === 'asc' ? 
+                    <ChevronUp className="w-4 h-4 text-blue-400" /> : 
+                    <ChevronDown className="w-4 h-4 text-blue-400" />
                   )}
                 </div>
               </TableHead>
               <TableHead 
-                className="cursor-pointer hover:text-foreground"
+                className="cursor-pointer hover:text-blue-400 transition-colors text-slate-300 font-semibold"
                 onClick={() => handleSort('createdAt')}
               >
-                <div className="flex items-center gap-1">
-                  Created
+                <div className="flex items-center gap-2">
+                  <span>Created</span>
                   {sortField === 'createdAt' && (
-                    sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    sortDirection === 'asc' ? 
+                    <ChevronUp className="w-4 h-4 text-blue-400" /> : 
+                    <ChevronDown className="w-4 h-4 text-blue-400" />
                   )}
                 </div>
               </TableHead>
@@ -467,7 +564,7 @@ export default function AdminTasksPage() {
               return (
                 <React.Fragment key={task.id}>
                   <TableRow 
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-slate-800/50 border-b border-slate-700/50 transition-all duration-200 group"
                     onClick={() => handleTaskClick(task)}
                   >
                     {/* Expand Button */}
@@ -491,7 +588,7 @@ export default function AdminTasksPage() {
 
                     {/* Title */}
                     <TableCell>
-                      <div className="font-medium text-foreground truncate max-w-[200px]">
+                      <div className="font-semibold text-white truncate max-w-[200px] group-hover:text-blue-300 transition-colors">
                         {task.title}
                       </div>
                     </TableCell>
@@ -527,42 +624,42 @@ export default function AdminTasksPage() {
                     {/* Company */}
                     <TableCell>
                       {task.company ? (
-                        <div className="text-sm text-muted-foreground truncate max-w-[150px]">
+                        <div className="text-sm text-slate-300 truncate max-w-[150px] group-hover:text-white transition-colors">
                           🏢 {task.company.companyName}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-slate-500">-</span>
                       )}
                     </TableCell>
 
                     {/* Deadline */}
                     <TableCell>
                       {task.deadline ? (
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(task.deadline), 'MMM dd, yyyy')}
+                        <div className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                          📅 {format(new Date(task.deadline), 'MMM dd, yyyy')}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-slate-500">-</span>
                       )}
                     </TableCell>
 
                     {/* Created */}
                     <TableCell>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
                         {format(new Date(task.createdAt), 'MMM dd, yyyy')}
                       </div>
                     </TableCell>
 
                     {/* View Icon */}
                     <TableCell>
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Eye className="h-5 w-5 text-slate-500 group-hover:text-blue-400 transition-all group-hover:scale-110" />
                     </TableCell>
                   </TableRow>
 
                   {/* Expanded Details */}
                   {isExpanded && (
                     <TableRow>
-                      <TableCell colSpan={9} className="bg-muted/20">
+                      <TableCell colSpan={9} className="bg-slate-900/50 border-b border-slate-700/50">
                         <div className="p-4 space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Description */}
