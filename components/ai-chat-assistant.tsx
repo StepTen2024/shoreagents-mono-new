@@ -5,7 +5,7 @@ import type React from "react"
 import { 
   Send, Bot, User, Sparkles, BookOpen, FileText, Users, HelpCircle,
   FolderOpen, Search, Upload, Clock, Database, Building2, GraduationCap,
-  Settings, Briefcase, TrendingUp, FileCheck, ChevronRight, X, Trash2, Download, Loader2, RefreshCw
+  Settings, Briefcase, TrendingUp, FileCheck, ChevronRight, X, Trash2, Download, Loader2, RefreshCw, Pin, PinOff
 } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import ReactMarkdown from 'react-markdown'
@@ -14,10 +14,12 @@ import { DocumentSourceBadge } from "@/components/ui/document-source-badge"
 import { useSession } from "next-auth/react"
 
 type Message = {
-  id: string
+  id: string // Database ID from ai_conversations table
   role: "user" | "assistant"
   content: string
   sources?: string[] // Referenced documents
+  isPinned?: boolean // Whether message is pinned
+  createdAt?: string // When message was created
 }
 
 type Document = {
@@ -66,6 +68,7 @@ const categoryConfig: Record<string, { label: string; color: string; icon: any }
 export default function AIChatAssistant() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(true)
   const [input, setInput] = useState("")
   const [showDocs, setShowDocs] = useState(true)
   const [searchDocs, setSearchDocs] = useState("")
@@ -79,6 +82,7 @@ export default function AIChatAssistant() {
   const [showMentions, setShowMentions] = useState(false)
   const [mentionQuery, setMentionQuery] = useState("")
   const [mentionStartPos, setMentionStartPos] = useState(0)
+  const [pinningId, setPinningId] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -166,10 +170,11 @@ export default function AIChatAssistant() {
     scrollToBottom()
   }, [messages])
 
-  // Fetch documents and tasks on mount
+  // Fetch documents, tasks, and conversation history on mount
   useEffect(() => {
     fetchDocuments()
     fetchTasks()
+    fetchConversationHistory()
   }, [])
 
   const fetchDocuments = async () => {
@@ -236,6 +241,32 @@ export default function AIChatAssistant() {
     }
   }
 
+  const fetchConversationHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const response = await fetch('/api/conversations')
+      if (response.ok) {
+        const data = await response.json()
+        const history: Message[] = (data.conversations || []).map((conv: any) => ({
+          id: conv.id,
+          role: conv.role,
+          content: conv.message,
+          sources: conv.contextUsed?.sources || [],
+          isPinned: conv.isPinned || false,
+          createdAt: conv.createdAt
+        }))
+        console.log(`💬 Loaded ${history.length} messages from conversation history`)
+        setMessages(history)
+      } else {
+        console.error('Failed to fetch conversation history:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching conversation history:', error)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
   const handleDeleteDocument = async (id: string) => {
     if (!confirm('Are you sure you want to delete this document?')) return
 
@@ -255,6 +286,35 @@ export default function AIChatAssistant() {
       alert('Failed to delete document')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handlePinMessage = async (messageId: string) => {
+    const message = messages.find(m => m.id === messageId)
+    if (!message) return
+
+    setPinningId(messageId)
+    try {
+      const method = message.isPinned ? 'DELETE' : 'POST'
+      const response = await fetch(`/api/conversations/${messageId}/pin`, {
+        method,
+      })
+
+      if (response.ok) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId ? { ...msg, isPinned: !msg.isPinned } : msg
+          )
+        )
+        console.log(`📌 ${message.isPinned ? 'Unpinned' : 'Pinned'} message: ${messageId}`)
+      } else {
+        alert('Failed to pin/unpin message')
+      }
+    } catch (error) {
+      console.error('Error pinning message:', error)
+      alert('Failed to pin/unpin message')
+    } finally {
+      setPinningId(null)
     }
   }
 
@@ -352,11 +412,24 @@ export default function AIChatAssistant() {
 
       const data = await response.json()
       
+      // Update user message with database ID if returned
+      if (data.conversationIds?.userId) {
+        setMessages((prev) => 
+          prev.map((msg) => 
+            msg.id === userMessage.id 
+              ? { ...msg, id: data.conversationIds.userId }
+              : msg
+          )
+        )
+      }
+      
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: data.conversationIds?.assistantId || (Date.now() + 1).toString(),
         role: "assistant",
         content: data.message,
         sources: data.sources,
+        isPinned: false,
+        createdAt: new Date().toISOString(),
       }
       
       setMessages((prev) => [...prev, assistantMessage])
@@ -460,7 +533,12 @@ export default function AIChatAssistant() {
 
         {/* Messages */}
         <div className="flex-1 space-y-4 overflow-y-auto rounded-2xl bg-slate-900/50 p-6 ring-1 ring-white/10 backdrop-blur-sm">
-          {messages.length === 0 ? (
+          {loadingHistory ? (
+            <div className="flex h-full flex-col items-center justify-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+              <p className="text-sm text-slate-400">Loading conversation history...</p>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center space-y-4 text-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/30 to-purple-500/30 ring-1 ring-indigo-400/50">
                   <Bot className="h-10 w-10 text-indigo-300" />
@@ -484,6 +562,46 @@ export default function AIChatAssistant() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Pinned Messages Section */}
+              {messages.some(m => m.isPinned) && (
+                <div className="rounded-xl bg-indigo-900/20 p-4 ring-1 ring-indigo-500/30">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-indigo-300">
+                    <Pin className="h-4 w-4" />
+                    <span>PINNED MESSAGES</span>
+                  </div>
+                  <div className="space-y-3">
+                    {messages.filter(m => m.isPinned && m.role === 'assistant').map((message) => (
+                      <div key={`pinned-${message.id}`} className="rounded-lg bg-slate-800/50 p-3 ring-1 ring-white/10">
+                        <div className="prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown
+                            components={{
+                              p: ({ children }) => <p className="mb-2 text-xs leading-relaxed text-slate-200">{children}</p>,
+                              strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                              ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1 text-xs text-slate-200">{children}</ul>,
+                              li: ({ children }) => <li className="text-xs leading-relaxed">{children}</li>,
+                            }}
+                          >
+                            {message.content.length > 200 ? `${message.content.substring(0, 200)}...` : message.content}
+                          </ReactMarkdown>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-slate-500">
+                            {message.createdAt ? new Date(message.createdAt).toLocaleDateString() : ''}
+                          </span>
+                          <button
+                            onClick={() => handlePinMessage(message.id)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300"
+                          >
+                            Unpin
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Regular Messages */}
               {messages.map((message) => (
                   <div key={message.id}>
                     <div className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}>
@@ -521,6 +639,33 @@ export default function AIChatAssistant() {
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                    )}
+                    
+                    {/* Pin button for assistant messages */}
+                    {message.role === "assistant" && (
+                      <div className="mt-2 flex items-center justify-end">
+                        <button
+                          onClick={() => handlePinMessage(message.id)}
+                          disabled={pinningId === message.id}
+                          className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors ${
+                            message.isPinned
+                              ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
+                              : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                          } ${pinningId === message.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {message.isPinned ? (
+                            <>
+                              <PinOff className="h-3 w-3" />
+                              <span>Unpin</span>
+                            </>
+                          ) : (
+                            <>
+                              <Pin className="h-3 w-3" />
+                              <span>Pin</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )}
                   </div>
                   {message.role === "user" && (

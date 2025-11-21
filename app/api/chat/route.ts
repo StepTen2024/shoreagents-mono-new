@@ -429,37 +429,42 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
       : ''
 
     // 💾 Save conversation for STAFF users (with 30-day cleanup)
+    let userConv: any = null
+    let assistantConv: any = null
+    
     if (userType === 'STAFF' && user.id) {
       try {
         const lastUserMessage = messages[messages.length - 1]?.content || ''
         const ragChunkCount = ragContext ? ragContext.split('[').length - 1 : 0
         
-        // Save both user message and AI response
-        await prisma.ai_conversations.createMany({
-          data: [
-            {
-              staffUserId: user.id,
-              message: lastUserMessage,
-              role: 'user',
-              isPinned: false,
-              contextUsed: {
-                documentIds: documentIds || [],
-                taskIds: taskIds || [],
-                ragChunksUsed: ragChunkCount,
-                timestamp: new Date().toISOString(),
-              },
+        // Save user message
+        userConv = await prisma.ai_conversations.create({
+          data: {
+            staffUserId: user.id,
+            message: lastUserMessage,
+            role: 'user',
+            isPinned: false,
+            contextUsed: {
+              documentIds: documentIds || [],
+              taskIds: taskIds || [],
+              ragChunksUsed: ragChunkCount,
+              timestamp: new Date().toISOString(),
             },
-            {
-              staffUserId: user.id,
-              message: assistantMessage,
-              role: 'assistant',
-              isPinned: false,
-              contextUsed: null,
-            },
-          ],
+          },
+        })
+
+        // Save assistant message
+        assistantConv = await prisma.ai_conversations.create({
+          data: {
+            staffUserId: user.id,
+            message: assistantMessage,
+            role: 'assistant',
+            isPinned: false,
+            contextUsed: { sources: documentIds || [] },
+          },
         })
         
-        console.log(`💾 [CONVERSATION] Saved conversation for ${user.name}`)
+        console.log(`💾 [CONVERSATION] Saved conversation for ${user.name} (user: ${userConv.id}, assistant: ${assistantConv.id})`)
         
         // Clean up old conversations (older than 30 days, unpinned only)
         const thirtyDaysAgo = new Date()
@@ -485,6 +490,10 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
     return NextResponse.json({ 
       message: assistantMessage,
       sources: documentIds || [],
+      conversationIds: userType === 'STAFF' ? {
+        userId: (userConv as any)?.id,
+        assistantId: (assistantConv as any)?.id,
+      } : undefined,
     })
   } catch (error) {
     console.error('❌ [CHAT API] Error:', error)
