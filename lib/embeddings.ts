@@ -1,8 +1,17 @@
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+/**
+ * Get OpenAI client (lazy initialization to avoid build-time errors)
+ */
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY
+  
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not set in environment variables')
+  }
+  
+  return new OpenAI({ apiKey })
+}
 
 /**
  * Generate an embedding vector for the given text using OpenAI
@@ -11,6 +20,7 @@ const openai = new OpenAI({
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
+    const openai = getOpenAIClient()
     const response = await openai.embeddings.create({
       model: 'text-embedding-3-small', // Cheaper, 1536 dimensions
       input: text.substring(0, 8000), // Limit to ~8K chars to avoid token limits

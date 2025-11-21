@@ -8,9 +8,10 @@ import { prisma } from '@/lib/prisma'
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await auth()
     
     if (!session?.user?.id) {
@@ -27,12 +28,12 @@ export async function POST(
       return NextResponse.json({ error: 'Staff user not found' }, { status: 404 })
     }
 
-    console.log(`📌 [PIN] ${staff.name} pinning conversation ${params.id}`)
+    console.log(`📌 [PIN] ${staff.name} pinning conversation ${id}`)
 
     // Update conversation to pinned (ensure ownership)
     const updated = await prisma.ai_conversations.updateMany({
       where: {
-        id: params.id,
+        id,
         staffUserId: staff.id, // Ensure they own this conversation
       },
       data: {
@@ -47,7 +48,7 @@ export async function POST(
       )
     }
 
-    console.log(`✅ [PIN] Conversation ${params.id} pinned successfully`)
+    console.log(`✅ [PIN] Conversation ${id} pinned successfully`)
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -65,9 +66,10 @@ export async function POST(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await auth()
     
     if (!session?.user?.id) {
@@ -84,12 +86,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Staff user not found' }, { status: 404 })
     }
 
-    console.log(`📍 [UNPIN] ${staff.name} unpinning conversation ${params.id}`)
+    console.log(`📍 [UNPIN] ${staff.name} unpinning conversation ${id}`)
 
     // Update conversation to unpinned (ensure ownership)
     const updated = await prisma.ai_conversations.updateMany({
       where: {
-        id: params.id,
+        id,
         staffUserId: staff.id, // Ensure they own this conversation
       },
       data: {
@@ -104,7 +106,7 @@ export async function DELETE(
       )
     }
 
-    console.log(`✅ [UNPIN] Conversation ${params.id} unpinned successfully`)
+    console.log(`✅ [UNPIN] Conversation ${id} unpinned successfully`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

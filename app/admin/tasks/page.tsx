@@ -273,12 +273,12 @@ export default function AdminTasksPage() {
     <div className="space-y-6 p-6">
       {/* Header - Enhanced with gradient and better spacing */}
       <div className="bg-gradient-to-r from-slate-800 via-slate-850 to-slate-900 rounded-2xl p-8 border border-slate-700/50 shadow-xl">
-        <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
               <Users className="h-7 w-7 text-white" />
             </div>
-            <div>
+        <div>
               <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                 Task Overview
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/30 text-xs px-3 py-1">
@@ -287,8 +287,8 @@ export default function AdminTasksPage() {
               </h1>
               <p className="text-slate-300 mt-1.5 text-base">
                 Real-time monitoring of all tasks across the organization
-              </p>
-            </div>
+          </p>
+        </div>
           </div>
           <div className="flex gap-3">
             <Button 
@@ -296,17 +296,17 @@ export default function AdminTasksPage() {
               variant="outline" 
               className="gap-2 bg-slate-700/50 hover:bg-slate-700 border-slate-600 text-slate-200 hover:text-white"
             >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
             <Button 
               onClick={clearFilters} 
               variant="outline" 
               className="gap-2 bg-slate-700/50 hover:bg-slate-700 border-slate-600 text-slate-200 hover:text-white"
             >
-              <Filter className="h-4 w-4" />
-              Clear Filters
-            </Button>
+            <Filter className="h-4 w-4" />
+            Clear Filters
+          </Button>
           </div>
         </div>
       </div>
@@ -394,62 +394,62 @@ export default function AdminTasksPage() {
       {/* Filters - Enhanced with better styling */}
       <Card className="border-slate-700 bg-gradient-to-r from-slate-800/50 to-slate-850/50 backdrop-blur-sm">
         <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Search */}
-            <div className="md:col-span-2">
-              <div className="relative">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="md:col-span-2">
+            <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input
-                  placeholder="Search tasks, companies, or clients..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+              <Input
+                placeholder="Search tasks, companies, or clients..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-11 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 h-11"
-                />
-              </div>
+              />
             </div>
+          </div>
 
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
               <SelectContent className="bg-slate-900 border-slate-700">
-                <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="TODO">📋 To Do</SelectItem>
                 <SelectItem value="IN_PROGRESS">⏳ In Progress</SelectItem>
                 <SelectItem value="STUCK">🚫 Stuck</SelectItem>
                 <SelectItem value="FOR_REVIEW">👀 For Review</SelectItem>
                 <SelectItem value="COMPLETED">✅ Completed</SelectItem>
-              </SelectContent>
-            </Select>
+            </SelectContent>
+          </Select>
 
-            {/* Priority Filter */}
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          {/* Priority Filter */}
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
-                <SelectValue placeholder="All Priorities" />
-              </SelectTrigger>
+              <SelectValue placeholder="All Priorities" />
+            </SelectTrigger>
               <SelectContent className="bg-slate-900 border-slate-700">
-                <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="all">All Priorities</SelectItem>
                 <SelectItem value="LOW">🟢 Low</SelectItem>
                 <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
                 <SelectItem value="HIGH">🟠 High</SelectItem>
                 <SelectItem value="URGENT">🔴 Urgent</SelectItem>
-              </SelectContent>
-            </Select>
+            </SelectContent>
+          </Select>
 
-            {/* Source Filter */}
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          {/* Source Filter */}
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
               <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20 h-11">
-                <SelectValue placeholder="All Sources" />
-              </SelectTrigger>
+              <SelectValue placeholder="All Sources" />
+            </SelectTrigger>
               <SelectContent className="bg-slate-900 border-slate-700">
-                <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="all">All Sources</SelectItem>
                 <SelectItem value="SELF">👤 Staff</SelectItem>
                 <SelectItem value="CLIENT">👔 Client</SelectItem>
                 <SelectItem value="MANAGEMENT">📋 Management</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            </SelectContent>
+          </Select>
+        </div>
 
           {/* Results Count - Enhanced */}
           <div className="mt-5 pt-5 border-t border-slate-700/50">
