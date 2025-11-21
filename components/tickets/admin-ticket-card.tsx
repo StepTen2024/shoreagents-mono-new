@@ -14,6 +14,8 @@ import {
   Bus,
   Paperclip,
   Clock,
+  AlertTriangle,
+  Ban,
 } from "lucide-react"
 import { Ticket } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -38,10 +40,10 @@ const categoryConfig: Record<string, { icon: any; color: string }> = {
 }
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
-  LOW: { label: "Low", color: "bg-slate-500/20 text-slate-400" },
-  MEDIUM: { label: "Medium", color: "bg-blue-500/20 text-blue-400" },
-  HIGH: { label: "High", color: "bg-orange-500/20 text-orange-400" },
-  URGENT: { label: "Urgent", color: "bg-red-500/20 text-red-400 animate-pulse" },
+  LOW: { label: "Low", color: "bg-slate-500/20 text-slate-400 border-slate-500/20" },
+  MEDIUM: { label: "Medium", color: "bg-blue-500/20 text-blue-400 border-blue-500/20" },
+  HIGH: { label: "High", color: "bg-orange-500/20 text-orange-400 border-orange-500/20" },
+  URGENT: { label: "Urgent", color: "bg-red-500/20 text-red-400 border-red-500/20 animate-pulse" },
 }
 
 // Status colors - ADMIN PORTAL
@@ -50,6 +52,7 @@ const statusColors = {
   IN_PROGRESS: "bg-amber-500", 
   RESOLVED: "bg-emerald-500",
   CLOSED: "bg-slate-500",
+  CANCELLED: "bg-red-500",
 }
 
 export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTicketCardProps) {
@@ -89,14 +92,27 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
     return date.toLocaleDateString()
   }
 
+  // Overdue Logic
+  const isOverdue = ticket.dueDate && 
+    new Date(ticket.dueDate) < new Date() && 
+    ticket.status !== "RESOLVED" && 
+    ticket.status !== "CLOSED" && 
+    ticket.status !== "CANCELLED"
+
+  const getOverdueTime = () => {
+    if (!ticket.dueDate) return ""
+    const diff = new Date().getTime() - new Date(ticket.dueDate).getTime()
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    return `${hours}h late`
+  }
+
   const CategoryIcon = categoryConfig[ticket.category]?.icon || HelpCircle
   const categoryColor = categoryConfig[ticket.category]?.color || categoryConfig.OTHER.color
   const priorityColor = priorityConfig[ticket.priority]?.color || priorityConfig.MEDIUM.color
 
   // Determine which user to show
-  // Priority: Show CLIENT if exists (ticket FOR them), otherwise creator
   const displayUser = ticket.client_users || ticket.staff_users || ticket.management_users
-  const assignedTo = ticket.management_users // Who manages this ticket
+  const assignedTo = ticket.management_users 
   
   const initials = displayUser?.name
     ?.split(" ")
@@ -128,145 +144,121 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`group cursor-grab active:cursor-grabbing rounded-lg bg-gradient-to-br from-slate-800/80 via-blue-900/20 to-emerald-900/20 ring-2 ring-blue-500/40 transition-all duration-200 hover:from-slate-800 hover:via-blue-900/30 hover:to-emerald-900/30 hover:ring-emerald-400/60 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/30 w-full max-w-full min-w-0 overflow-visible ${
+      className={`group cursor-grab active:cursor-grabbing rounded-xl bg-[#1e293b] border border-slate-700/50 transition-all duration-200 hover:bg-[#1e293b] hover:border-indigo-500/50 hover:shadow-xl hover:shadow-indigo-500/10 w-full max-w-full min-w-0 overflow-hidden relative ${
         isDragging || isSortableDragging ? "opacity-0 cursor-grabbing" : ""
-      }`}
-      style={{ overflow: 'visible' }}
+      } ${ticket.status === "CANCELLED" ? "opacity-75 grayscale-[0.5]" : ""}`}
     >
-      {/* Status indicator bar - ADMIN GRADIENT TOP BORDER! */}
-      <div className={`h-4 w-full ${statusColors[ticket.status]} shadow-lg shadow-blue-500/50 rounded-t-lg relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
-      </div>
-      
-      <div className="p-4">
-      {/* Ticket ID & Creator Type Badge */}
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-500">{ticket.ticketId}</span>
-          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${creatorBadge.color}`}>
-            {creatorBadge.label}
+      {/* Overdue / Cancelled Overlays */}
+      {ticket.status === "CANCELLED" && (
+        <div className="absolute top-0 right-0 p-2 z-10">
+          <span className="flex items-center gap-1 bg-red-500/10 text-red-500 px-2 py-1 rounded-full text-[10px] font-bold border border-red-500/20">
+            <Ban className="w-3 h-3" /> CANCELLED
           </span>
-        </div>
-        <span className={`rounded px-2 py-0.5 text-xs font-medium ring-1 ${priorityColor}`}>
-          {priorityConfig[ticket.priority]?.label}
-        </span>
-      </div>
-
-      {/* Title */}
-      <h4 className="mb-2 line-clamp-2 text-sm font-semibold text-white group-hover:text-blue-300 break-words">
-        {ticket.title}
-      </h4>
-
-      {/* Category Badge & Department Assignment */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ring-1 ${categoryColor}`}>
-          <CategoryIcon className="h-3 w-3" />
-          <span>{ticket.category}</span>
-        </div>
-        
-        {/* Department Badge - Shows which department will handle */}
-        {assignedTo?.department && (
-          <div className="inline-flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 ring-1 ring-emerald-500/30">
-            <span>→</span>
-            <span className="font-bold">{assignedTo.department.replace('_', ' ')}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Image Thumbnail Preview */}
-      {ticket.attachments && ticket.attachments.length > 0 && (
-        <div className="mb-3 w-full">
-          <div className="relative h-28 w-full rounded-lg overflow-hidden bg-slate-700/50 ring-1 ring-white/10">
-            <img
-              src={ticket.attachments[0]}
-              alt="Attachment preview"
-              className="w-full h-full object-cover object-center"
-            />
-            {ticket.attachments.length > 1 && (
-              <div className="absolute top-2 right-2 bg-black/80 text-white text-xs font-bold px-2 py-1 rounded-full">
-                +{ticket.attachments.length - 1}
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </div>
         </div>
       )}
 
-      {/* Footer - ENHANCED WITH REACTIONS! */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs">
-          {/* Comment Count - PROMINENT */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30">
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span className="font-bold">{ticket.responses?.length || 0}</span>
-          </div>
-          
-          {/* Attachments */}
-          {ticket.attachments && ticket.attachments.length > 0 && (
-            <span className="flex items-center gap-1 text-slate-400">
-              <Paperclip className="h-3 w-3" />
-              {ticket.attachments.length}
-            </span>
-          )}
-          
-          {/* Reactions Preview - Show top 3 */}
-          {ticket.reactions && ticket.reactions.length > 0 && (
-            <div className="flex items-center gap-0.5">
-              {ticket.reactions.slice(0, 3).map((reaction: any, i: number) => (
-                <span key={i} className="text-sm">
-                  {reaction.emoji}
-                </span>
-              ))}
-              {ticket.reactions.length > 3 && (
-                <span className="text-xs text-slate-400 ml-1">
-                  +{ticket.reactions.length - 3}
-                </span>
-              )}
-            </div>
-          )}
-          
-          {/* Timestamp */}
-          <span className="flex items-center gap-1 text-slate-400 ml-auto">
-            <Clock className="h-3 w-3" />
-            {formatDate(ticket.createdAt)}
+      {isOverdue && (
+        <div className="absolute top-0 right-0 p-2 z-10">
+          <span className="flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-red-500/20 animate-pulse">
+            <AlertTriangle className="w-3 h-3" /> {getOverdueTime()}
           </span>
         </div>
+      )}
 
-        {/* User Avatars */}
-        <div className="flex items-center gap-1">
-          {/* Client Avatar (For) */}
-          {displayUser && (
-            <div className="relative group/avatar">
-              <Avatar className="h-6 w-6 ring-2 ring-white/20">
-                <AvatarImage src={displayUser.avatar} alt={displayUser.name} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-emerald-600 text-xs text-white font-semibold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -top-12 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
-                Created by: {displayUser.name}
-              </div>
-            </div>
+      {/* Priority Stripe (Left Border) */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+        ticket.priority === 'URGENT' ? 'bg-red-500' :
+        ticket.priority === 'HIGH' ? 'bg-orange-500' :
+        ticket.priority === 'MEDIUM' ? 'bg-blue-500' :
+        'bg-slate-500'
+      }`} />
+      
+      <div className="p-4 pl-5">
+        {/* Header: ID & Badges */}
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-slate-500 font-medium">#{ticket.ticketId}</span>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${creatorBadge.color} border border-current/10`}>
+              {creatorBadge.label}
+            </span>
+          </div>
+          {!isOverdue && !ticket.status.includes("CANCELLED") && (
+             <span className={`rounded px-2 py-0.5 text-[10px] font-bold border ${priorityColor}`}>
+               {priorityConfig[ticket.priority]?.label}
+             </span>
           )}
+        </div>
+
+        {/* Title */}
+        <h4 className="mb-3 text-sm font-semibold text-slate-200 leading-relaxed group-hover:text-white transition-colors line-clamp-2">
+          {ticket.title}
+        </h4>
+
+        {/* Tags Row */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold border ${categoryColor}`}>
+            <CategoryIcon className="h-3 w-3" />
+            <span>{ticket.category}</span>
+          </div>
           
-          {/* Management Avatar (Assigned To) */}
-          {assignedTo && (
-            <div className="relative group/assigned">
-              <Avatar className="h-6 w-6 ring-2 ring-purple-500/50">
-                <AvatarImage src={assignedTo.avatar} alt={assignedTo.name} />
-                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-xs text-white font-semibold">
-                  {assignedInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -top-16 -right-2 px-3 py-1.5 bg-black/95 text-white text-xs rounded shadow-lg opacity-0 group-hover/assigned:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[9999] min-w-max">
-                <div className="font-bold text-emerald-400">Assigned to:</div>
-                <div>{assignedTo.name}</div>
-                <div className="text-[10px] text-slate-400">Dept: {assignedTo.department?.replace('_', ' ')}</div>
-              </div>
+          {assignedTo?.department && (
+            <div className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+              <span>To:</span>
+              <span className="text-slate-300">{assignedTo.department.replace('_', ' ')}</span>
             </div>
           )}
         </div>
-      </div>
+
+        {/* Footer: Users & Meta */}
+        <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-auto">
+          {/* Users */}
+          <div className="flex -space-x-2">
+            {/* Creator */}
+            {displayUser && (
+              <div className="relative group/avatar z-10">
+                <Avatar className="h-7 w-7 ring-2 ring-[#1e293b]">
+                  <AvatarImage src={displayUser.avatar} />
+                  <AvatarFallback className="bg-slate-700 text-[10px] text-white">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+            {/* Assignee */}
+            {assignedTo && (
+              <div className="relative group/avatar z-20">
+                <Avatar className="h-7 w-7 ring-2 ring-[#1e293b]">
+                  <AvatarImage src={assignedTo.avatar} />
+                  <AvatarFallback className="bg-indigo-600 text-[10px] text-white">
+                    {assignedInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+            {ticket.responses?.length > 0 && (
+              <div className="flex items-center gap-1 text-blue-400">
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span>{ticket.responses.length}</span>
+              </div>
+            )}
+            
+            {ticket.attachments?.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Paperclip className="h-3.5 w-3.5" />
+                <span>{ticket.attachments.length}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{formatDate(ticket.createdAt).replace(' ago', '')}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -8,17 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
-import { Pool } from 'pg'
-import { getApplicationCounts } from '@/lib/bpoc-db'
-
-// Initialize Prisma Client directly
-const prisma = new PrismaClient()
-
-// BPOC Database connection
-const bpocPool = new Pool({
-  connectionString: process.env.BPOC_DATABASE_URL
-})
+import { prisma } from '@/lib/prisma'
+import { bpocPool, getApplicationCounts } from '@/lib/bpoc-db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -110,4 +101,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

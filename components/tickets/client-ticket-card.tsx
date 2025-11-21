@@ -2,7 +2,7 @@
 
 import { Ticket } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MessageSquare, Paperclip, Clock, User } from "lucide-react"
+import { MessageSquare, Paperclip, Clock, User, AlertTriangle, XCircle } from "lucide-react"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { getCategoryIcon } from "@/lib/ticket-categories"
 
@@ -28,13 +28,33 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
     LOW: "💤",
   }
 
+  // Priority stripe colors (left edge)
+  const priorityStripeColors = {
+    URGENT: "bg-red-500",
+    HIGH: "bg-orange-500",
+    MEDIUM: "bg-blue-500",
+    LOW: "bg-gray-400",
+  }
+
   // Status colors - PROMINENT TOP BORDER!
   const statusColors = {
     OPEN: "bg-blue-500",
     IN_PROGRESS: "bg-orange-500", 
     RESOLVED: "bg-green-500",
     CLOSED: "bg-gray-500",
+    CANCELLED: "bg-red-500",
   }
+
+  // Overdue Logic
+  const isOverdue = ticket.dueDate && 
+    new Date(ticket.dueDate) < new Date() && 
+    ticket.status !== "RESOLVED" && 
+    ticket.status !== "CLOSED" && 
+    ticket.status !== "CANCELLED"
+
+  const overdueBy = ticket.dueDate 
+    ? Math.floor((new Date().getTime() - new Date(ticket.dueDate).getTime()) / (1000 * 60))
+    : 0
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -54,12 +74,42 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
   return (
     <div
       onClick={onClick}
-      className="group relative rounded-xl bg-white border border-gray-200 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer overflow-hidden"
+      className={`group relative rounded-xl bg-white border border-gray-200 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer overflow-hidden ${
+        ticket.status === "CANCELLED" ? "opacity-75 grayscale" : ""
+      }`}
     >
+      {/* Overdue Badge (Top Right) */}
+      {isOverdue && (
+        <span className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white shadow-lg animate-pulse z-10">
+          <AlertTriangle className="h-3 w-3" />
+          OVERDUE {overdueBy > 60 ? `${Math.floor(overdueBy / 60)}h` : `${overdueBy}m`}
+        </span>
+      )}
+
+      {/* Cancelled Overlay */}
+      {ticket.status === "CANCELLED" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/60 backdrop-blur-sm z-10">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 text-2xl font-bold text-red-400 mb-2">
+              <XCircle className="h-6 w-6" />
+              CANCELLED
+            </div>
+            {ticket.cancelledReason && (
+              <div className="text-sm text-white px-4 max-w-xs">
+                Reason: {ticket.cancelledReason}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Priority stripe on the left */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${priorityStripeColors[ticket.priority]}`} />
+
       {/* Status indicator bar - PROMINENT TOP BORDER! */}
       <div className={`h-1 w-full ${statusColors[ticket.status]}`} />
 
-      <div className="p-5">
+      <div className="p-5 pl-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
@@ -67,13 +117,16 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
               <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
                 {ticket.ticketId}
               </span>
-              <span
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                  priorityColors[ticket.priority]
-                }`}
-              >
-                {priorityEmojis[ticket.priority]} {ticket.priority}
-              </span>
+              {/* Only show priority pill if NOT overdue/cancelled (stripe shows priority) */}
+              {!isOverdue && ticket.status !== "CANCELLED" && (
+                <span
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                    priorityColors[ticket.priority]
+                  }`}
+                >
+                  {priorityEmojis[ticket.priority]} {ticket.priority}
+                </span>
+              )}
             </div>
             <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-all">
               {ticket.title}

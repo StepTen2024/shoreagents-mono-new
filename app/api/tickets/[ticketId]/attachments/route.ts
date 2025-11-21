@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 // PATCH /api/tickets/[ticketId]/attachments - Add attachments to a ticket
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { ticketId: string } }
+  { params }: { params: Promise<{ ticketId: string }> }
 ) {
   try {
     const session = await auth()
@@ -14,7 +14,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { ticketId } = params
+    const resolvedParams = await params
+    const { ticketId } = resolvedParams
     const { attachments } = await request.json()
 
     if (!attachments || !Array.isArray(attachments)) {
@@ -93,6 +94,7 @@ export async function PATCH(
             name: true,
             email: true,
             avatar: true,
+            role: true,
           },
         },
       },
@@ -109,4 +111,3 @@ export async function PATCH(
     )
   }
 }
-

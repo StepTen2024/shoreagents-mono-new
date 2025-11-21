@@ -58,17 +58,15 @@ export default function ClientTicketsPage() {
     }
   }
 
-  useEffect(() => {
-    fetchTickets()
-  }, [])
-
-  // Handle hydration and localStorage reading
+  // Handle hydration FIRST, then fetch tickets
   useEffect(() => {
     setIsHydrated(true)
     const savedViewMode = localStorage.getItem('client-tickets-view-mode') as 'board' | 'list'
     if (savedViewMode) {
       setViewMode(savedViewMode)
     }
+    // Fetch tickets after hydration
+    fetchTickets()
   }, [])
 
   const fetchTickets = async () => {
@@ -212,6 +210,11 @@ export default function ClientTicketsPage() {
     }
   }
 
+  // Show nothing until hydrated (prevents flash)
+  if (!isHydrated) {
+    return null
+  }
+
   if (loading) {
     return (
       <div className="p-8 bg-gray-50 min-h-screen">
@@ -219,28 +222,24 @@ export default function ClientTicketsPage() {
           {/* Header skeleton */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <div className="h-8 w-48 bg-gray-200 rounded mb-2"></div>
-              <div className="h-4 w-64 bg-gray-200 rounded"></div>
+              <div className="h-8 w-48 bg-gray-200 rounded mb-2 animate-pulse"></div>
+              <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <div className={`h-8 w-16 rounded-md ${viewMode === 'board' ? 'bg-gray-300' : 'bg-gray-200'}`}></div>
-                <div className={`h-8 w-16 rounded-md ${viewMode === 'list' ? 'bg-gray-300' : 'bg-gray-200'}`}></div>
+                <div className="h-8 w-16 rounded-md bg-gray-300 animate-pulse"></div>
+                <div className="h-8 w-16 rounded-md bg-gray-200 animate-pulse"></div>
               </div>
-              <div className="h-10 w-24 bg-gray-200 rounded"></div>
+              <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
             </div>
           </div>
 
           {/* Stats skeleton */}
           <TicketStatsSkeleton />
 
-          {/* Dynamic skeleton based on current view mode */}
+          {/* Board skeleton (always show board during load since it's default) */}
           <div className="mt-8">
-            {viewMode === 'board' ? (
-              <TicketKanbanSkeleton count={3} />
-            ) : (
-              <TicketListSkeleton count={5} />
-            )}
+            <TicketKanbanSkeleton count={3} />
           </div>
         </div>
       </div>
@@ -252,6 +251,7 @@ export default function ClientTicketsPage() {
     open: tickets?.filter((t) => t.status === "OPEN").length || 0,
     inProgress: tickets?.filter((t) => t.status === "IN_PROGRESS").length || 0,
     resolved: tickets?.filter((t) => t.status === "RESOLVED").length || 0,
+    cancelled: tickets?.filter((t) => t.status === "CANCELLED").length || 0,
   }
 
   return (
@@ -299,25 +299,31 @@ export default function ClientTicketsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="text-sm text-gray-500">Total Tickets</div>
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="text-sm text-gray-500">Open</div>
             <div className="text-2xl font-bold text-blue-600">{stats.open}</div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="text-sm text-gray-500">In Progress</div>
             <div className="text-2xl font-bold text-yellow-600">
               {stats.inProgress}
             </div>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="text-sm text-gray-500">Resolved</div>
             <div className="text-2xl font-bold text-green-600">
               {stats.resolved}
+            </div>
+          </div>
+          <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="text-sm text-gray-500">Cancelled</div>
+            <div className="text-2xl font-bold text-red-600">
+              {stats.cancelled}
             </div>
           </div>
         </div>

@@ -14,10 +14,11 @@ import {
   Gift,
   Bus,
   Video,
-  Calendar,
+  Calendar as CalendarIcon,
   Edit3,
   XCircle,
   AlertTriangle,
+  Check,
 } from "lucide-react"
 import { Ticket, TicketResponse } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -27,6 +28,21 @@ import ImageLightbox from "@/components/ui/image-lightbox"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import CommentThread from "@/components/universal/comment-thread"
 import StaffUploadPreloader from "@/components/uploads/staff-upload-preloader"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 interface TicketDetailModalProps {
   ticket: Ticket
@@ -116,10 +132,10 @@ export default function TicketDetailModal({
   const [reassigning, setReassigning] = useState(false)
 
   // ✨ NEW FEATURES STATE
-  const [editingPriority, setEditingPriority] = useState(false)
   const [selectedPriority, setSelectedPriority] = useState(ticket.priority)
-  const [showDueDateModal, setShowDueDateModal] = useState(false)
-  const [dueDate, setDueDate] = useState(ticket.dueDate || "")
+  const [dueDate, setDueDate] = useState<Date | undefined>(ticket.dueDate ? new Date(ticket.dueDate) : undefined)
+  const [dueTime, setDueTime] = useState(ticket.dueDate ? format(new Date(ticket.dueDate), "HH:mm") : "17:00")
+  
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
   const [cancelling, setCancelling] = useState(false)
@@ -193,14 +209,15 @@ export default function TicketDetailModal({
   }
 
   // Handle status change (admin only)
-  const handleStatusChange = async () => {
-    if (selectedStatus === ticket.status) return
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === ticket.status) return
+    setSelectedStatus(newStatus as any) // Optimistic update
 
     try {
       const response = await fetch(`/api/tickets/${ticket.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: selectedStatus }),
+        body: JSON.stringify({ status: newStatus }),
       })
 
       if (!response.ok) throw new Error("Failed to update status")
@@ -212,6 +229,7 @@ export default function TicketDetailModal({
 
       onUpdate()
     } catch (error) {
+      setSelectedStatus(ticket.status) // Revert
       toast({
         title: "Error",
         description: "Failed to update status. Please try again.",
@@ -307,7 +325,6 @@ export default function TicketDetailModal({
       })
 
       setSelectedPriority(newPriority)
-      setEditingPriority(false)
       onUpdate()
     } catch (error) {
       toast({
@@ -319,21 +336,20 @@ export default function TicketDetailModal({
   }
 
   // ✨ NEW: SET DUE DATE
-  const handleSetDueDate = async () => {
-    if (!dueDate) {
-      toast({
-        title: "Error",
-        description: "Please select a due date",
-        variant: "destructive"
-      })
-      return
-    }
-
+  const handleSetDueDate = async (newDate: Date | undefined) => {
+    setDueDate(newDate)
+    
+    if (!newDate) return // Just local update if cleared
+    
+    // Combine date + time
+    const [hours, minutes] = dueTime.split(':').map(Number)
+    newDate.setHours(hours, minutes)
+    
     try {
       const response = await fetch(`/api/tickets/${ticket.id}/due-date`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dueDate: new Date(dueDate).toISOString() })
+        body: JSON.stringify({ dueDate: newDate.toISOString() })
       })
 
       if (!response.ok) throw new Error("Failed to set due date")
@@ -343,7 +359,6 @@ export default function TicketDetailModal({
         description: "Due date set successfully"
       })
 
-      setShowDueDateModal(false)
       onUpdate()
     } catch (error) {
       toast({
@@ -351,6 +366,17 @@ export default function TicketDetailModal({
         description: "Failed to set due date",
         variant: "destructive"
       })
+    }
+  }
+  
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDueTime(e.target.value)
+    if (dueDate) {
+      // Trigger update with new time if date exists
+      const newDate = new Date(dueDate)
+      const [hours, minutes] = e.target.value.split(':').map(Number)
+      newDate.setHours(hours, minutes)
+      handleSetDueDate(newDate)
     }
   }
 
@@ -446,176 +472,246 @@ export default function TicketDetailModal({
           ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-indigo-500/30 backdrop-blur-2xl"
           : "bg-white border-2 border-gray-200"
       }`}>
-        {/* Header - STICKY */}
-        <div className={`sticky top-0 z-10 p-8 pb-6 rounded-t-3xl ${
+        {/* HEADER: ORGANIZED LAYOUT */}
+        <div className={`sticky top-0 z-10 px-8 pt-6 pb-0 rounded-t-3xl ${
           isDark
-            ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 backdrop-blur-xl"
-            : "bg-white border-b-2 border-gray-200"
+            ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 backdrop-blur-xl border-b border-white/5"
+            : "bg-white border-b border-gray-200"
         }`}>
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <span className={`font-mono text-sm font-bold px-3 py-1.5 rounded-lg shadow ${
-                  isDark 
-                    ? "text-indigo-300 bg-indigo-500/20 backdrop-blur-sm border border-indigo-500/30 shadow-indigo-500/20"
-                    : "text-blue-700 bg-blue-50 border border-blue-200"
-                }`}>
-                  {ticket.ticketId}
-                </span>
-                <span
-                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold backdrop-blur-sm ring-1 shadow-lg ${
-                    categoryConfig[ticket.category]?.color
-                  }`}
-                >
-                  <CategoryIcon className="h-3 w-3" />
-                  {categoryConfig[ticket.category]?.label}
-                </span>
-                <span
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-lg ${
-                    statusConfig[ticket.status]?.color
-                  }`}
-                >
-                  {statusConfig[ticket.status]?.label}
-                </span>
-
-                {/* ✨ PRIORITY - Management can edit, others can view */}
-                {isManagement ? (
-                  <select
-                    value={selectedPriority}
-                    onChange={(e) => handleChangePriority(e.target.value)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${
-                      selectedPriority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
-                      selectedPriority === "HIGH" ? "bg-orange-500 text-white" :
-                      selectedPriority === "MEDIUM" ? "bg-blue-500 text-white" :
-                      "bg-slate-500 text-white"
-                    }`}
-                  >
-                    <option value="LOW">🔵 Low</option>
-                    <option value="MEDIUM">⚪ Medium</option>
-                    <option value="HIGH">🟠 High</option>
-                    <option value="URGENT">🔴 Urgent</option>
-                  </select>
-                ) : (
-                  <span className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
-                    ticket.priority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
-                    ticket.priority === "HIGH" ? "bg-orange-500 text-white" :
-                    ticket.priority === "MEDIUM" ? "bg-blue-500 text-white" :
-                    "bg-slate-500 text-white"
-                  }`}>
-                    {ticket.priority === "URGENT" ? "🔴 Urgent" :
-                     ticket.priority === "HIGH" ? "🟠 High" :
-                     ticket.priority === "MEDIUM" ? "⚪ Medium" :
-                     "🔵 Low"}
-                  </span>
-                )}
-
-                {/* ✨ DUE DATE - Management can set, others can view */}
-                {isManagement && !ticket.dueDate && (
-                  <Button
-                    onClick={() => setShowDueDateModal(true)}
-                    className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all"
-                  >
-                    <Calendar className="h-3 w-3" />
-                    Set Due Date
-                  </Button>
-                )}
-                {ticket.dueDate && (
-                  <span className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-purple-500 text-white">
-                    <Calendar className="h-3 w-3" />
-                    Due: {new Date(ticket.dueDate).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-              <h2 className={`text-3xl font-bold ${
+          {/* ROW 1: Metadata & Close */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className={`font-mono text-sm font-bold px-3 py-1.5 rounded-lg shadow ${
                 isDark 
-                  ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"
-                  : "text-gray-900"
+                  ? "text-indigo-300 bg-indigo-500/20 backdrop-blur-sm border border-indigo-500/30 shadow-indigo-500/20"
+                  : "text-blue-700 bg-blue-50 border border-blue-200"
               }`}>
-                {ticket.title}
-              </h2>
+                {ticket.ticketId}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold backdrop-blur-sm ring-1 shadow-lg ${
+                  categoryConfig[ticket.category]?.color
+                }`}
+              >
+                <CategoryIcon className="h-3.5 w-3.5" />
+                {categoryConfig[ticket.category]?.label}
+              </span>
             </div>
-            
-            {/* Close Button - Top Right */}
+
             <button
               onClick={onClose}
-              className={`absolute top-6 right-6 rounded-xl p-2.5 transition-all hover:scale-110 ring-1 backdrop-blur-sm ${
+              className={`rounded-xl p-2 transition-all hover:scale-110 ring-1 backdrop-blur-sm ${
                 isDark
                   ? "text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-slate-700 hover:ring-red-500"
                   : "text-gray-600 hover:bg-red-500/10 hover:text-red-600 ring-gray-300 hover:ring-red-400"
               }`}
               title="Close"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Action Buttons - Cleaner Row Below Header */}
-          <div className="mt-4 flex items-center gap-3 flex-wrap">
-              {/* ✨ EDIT BUTTON - Staff (own) / Management (any) */}
-              {(isManagement || (!isManagement && !isClient && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && ticket.status !== "CANCELLED")) && (
-                <Button
-                  onClick={() => setShowEditModal(true)}
-                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
-                    isDark
-                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/50"
-                      : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
-                  }`}
-                >
-                  <Edit3 className="h-4 w-4" />
-                  Edit
-                </Button>
-              )}
+          {/* ROW 2: Title */}
+          <h2 className={`text-2xl font-bold mb-6 leading-tight ${
+            isDark 
+              ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"
+              : "text-gray-900"
+          }`}>
+            {ticket.title}
+          </h2>
 
-            {/* 🔄 REASSIGN BUTTON - Management Only */}
+          {/* ROW 3: Control Bar (Status / Priority / Due Date) */}
+          <div className={`flex flex-wrap items-center gap-6 mb-6 p-4 rounded-xl border ${
+            isDark 
+              ? "bg-slate-800/30 border-white/5" 
+              : "bg-gray-50 border-gray-200"
+          }`}>
+            {/* Status Control */}
+            <div className="flex flex-col gap-1.5">
+              <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? "text-slate-500" : "text-gray-500"}`}>Status</label>
+              {isManagement ? (
+                <Select value={selectedStatus} onValueChange={handleStatusChange}>
+                  <SelectTrigger className={`h-9 min-w-[140px] text-xs font-bold border-0 ring-1 shadow-sm ${
+                    selectedStatus === 'OPEN' ? 'bg-blue-500/20 text-blue-400 ring-blue-500/40' :
+                    selectedStatus === 'IN_PROGRESS' ? 'bg-amber-500/20 text-amber-400 ring-amber-500/40' :
+                    selectedStatus === 'RESOLVED' ? 'bg-emerald-500/20 text-emerald-400 ring-emerald-500/40' :
+                    selectedStatus === 'CLOSED' ? 'bg-slate-500/20 text-slate-400 ring-slate-500/40' :
+                    'bg-red-500/20 text-red-400 ring-red-500/40'
+                  }`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">🆕 Open</SelectItem>
+                    <SelectItem value="IN_PROGRESS">⚡ In Progress</SelectItem>
+                    <SelectItem value="RESOLVED">✅ Resolved</SelectItem>
+                    <SelectItem value="CLOSED">📦 Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className={`inline-flex items-center h-9 px-3 rounded-md text-xs font-bold ring-1 ${statusConfig[ticket.status]?.color.replace('bg-gradient-to-r', 'bg-opacity-20 bg') + ' ring-opacity-40'}`}>
+                  {statusConfig[ticket.status]?.label}
+                </span>
+              )}
+            </div>
+
+            {/* Priority Control */}
+            <div className="flex flex-col gap-1.5">
+              <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? "text-slate-500" : "text-gray-500"}`}>Priority</label>
+              {isManagement ? (
+                <Select value={selectedPriority} onValueChange={handleChangePriority}>
+                  <SelectTrigger className={`h-9 min-w-[120px] text-xs font-bold border-0 ring-1 shadow-sm ${
+                    selectedPriority === "URGENT" ? "bg-red-500/20 text-red-400 ring-red-500/40 animate-pulse" :
+                    selectedPriority === "HIGH" ? "bg-orange-500/20 text-orange-400 ring-orange-500/40" :
+                    selectedPriority === "MEDIUM" ? "bg-blue-500/20 text-blue-400 ring-blue-500/40" :
+                    "bg-slate-500/20 text-slate-400 ring-slate-500/40"
+                  }`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">🔵 Low</SelectItem>
+                    <SelectItem value="MEDIUM">⚪ Medium</SelectItem>
+                    <SelectItem value="HIGH">🟠 High</SelectItem>
+                    <SelectItem value="URGENT">🔴 Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className={`inline-flex items-center h-9 px-3 rounded-md text-xs font-bold ${
+                  ticket.priority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
+                  ticket.priority === "HIGH" ? "bg-orange-500 text-white" :
+                  ticket.priority === "MEDIUM" ? "bg-blue-500 text-white" :
+                  "bg-slate-500 text-white"
+                }`}>
+                  {ticket.priority === "URGENT" ? "🔴 Urgent" :
+                   ticket.priority === "HIGH" ? "🟠 High" :
+                   ticket.priority === "MEDIUM" ? "⚪ Medium" :
+                   "🔵 Low"}
+                </span>
+              )}
+            </div>
+
+            {/* Due Date Control */}
+            <div className="flex flex-col gap-1.5">
+              <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? "text-slate-500" : "text-gray-500"}`}>Due Date</label>
+              {isManagement ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "h-9 text-xs font-bold border-0 ring-1 shadow-sm px-3 gap-2 min-w-[140px] justify-start",
+                        dueDate 
+                          ? "bg-purple-500/20 text-purple-400 ring-purple-500/40 hover:bg-purple-500/30 hover:text-purple-300" 
+                          : "bg-slate-800/50 text-slate-400 ring-slate-700 hover:text-white hover:bg-slate-800"
+                      )}
+                    >
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {dueDate ? format(dueDate, "MMM d, HH:mm") : "Set Due Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-800" align="start">
+                    <div className="p-3 border-b border-slate-800">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-xs font-bold text-slate-400">Time:</label>
+                          <input 
+                            type="time" 
+                            value={dueTime}
+                            onChange={handleTimeChange}
+                            className="bg-slate-800 text-white text-sm rounded px-2 py-1 border border-slate-700 focus:outline-none focus:border-purple-500"
+                          />
+                        </div>
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={handleSetDueDate}
+                      initialFocus
+                      className="bg-slate-900 text-white"
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                ticket.dueDate ? (
+                  <span className="inline-flex items-center h-9 px-3 rounded-md text-xs font-bold bg-purple-500/20 text-purple-400 ring-1 ring-purple-500/40">
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {format(new Date(ticket.dueDate), "MMM d, HH:mm")}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center h-9 px-3 rounded-md text-xs font-bold text-slate-500 border border-dashed border-slate-700">
+                    No due date
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* ROW 4: Action Buttons */}
+          <div className="flex items-center gap-3 pb-6 border-b border-white/5">
+            {/* Video Call Button (Primary) */}
+            <Button
+              onClick={handleStartVideoCall}
+              className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-5 h-10 ${
+                isDark
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
+                  : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
+              }`}
+            >
+              <Video className="h-4 w-4" />
+              Video Call
+            </Button>
+
+            {/* Edit Button - CLIENTS CAN EDIT TOO (if not resolved/closed/cancelled)! */}
+            {(isManagement || isClient || (!isManagement && !isClient)) && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && ticket.status !== "CANCELLED" && (
+              <Button
+                onClick={() => setShowEditModal(true)}
+                variant="secondary"
+                className={`flex items-center gap-2 rounded-xl px-5 h-10 ${
+                  isDark
+                    ? "bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700"
+                    : "bg-gray-100 text-gray-700 hover:text-gray-900 hover:bg-gray-200 border border-gray-300"
+                }`}
+              >
+                <Edit3 className="h-4 w-4" />
+                Edit
+              </Button>
+            )}
+
+            {/* Reassign Button (Management) */}
             {isManagement && (
-                  <Button
-                    onClick={() => {
-                      setShowReassignModal(true)
-                      fetchAvailableManagers()
-                    }}
-                    className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
-                      isDark
-                        ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-amber-500/50"
-                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30"
-                    }`}
-                  >
-                    <Users className="h-4 w-4" />
-                    Reassign
-                  </Button>
-              )}
+              <Button
+                onClick={() => {
+                  setShowReassignModal(true)
+                  fetchAvailableManagers()
+                }}
+                variant="secondary"
+                className="flex items-center gap-2 rounded-xl px-5 h-10 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700"
+              >
+                <Users className="h-4 w-4" />
+                Reassign
+              </Button>
+            )}
 
-              {/* ✨ CANCEL BUTTON - Staff (own, if open) / Management (any) */}
-              {(isManagement || (!isManagement && !isClient && (ticket.status === "OPEN" || ticket.status === "IN_PROGRESS"))) && ticket.status !== "CANCELLED" && (
+            <div className="ml-auto">
+              {/* Cancel Button (Destructive) - CLIENTS CAN CANCEL TOO! */}
+              {(isManagement || isClient || (!isManagement && !isClient && (ticket.status === "OPEN" || ticket.status === "IN_PROGRESS"))) && ticket.status !== "CANCELLED" && (
                 <Button
                   onClick={() => setShowCancelModal(true)}
-                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                  variant="ghost"
+                  className={`flex items-center gap-2 rounded-xl px-5 h-10 ${
                     isDark
-                      ? "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-red-500/50"
-                      : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-red-500/30"
+                      ? "text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                      : "text-gray-600 hover:text-red-600 hover:bg-red-500/10"
                   }`}
                 >
                   <XCircle className="h-4 w-4" />
-                  Cancel
+                  Cancel Ticket
                 </Button>
               )}
-              
-            {/* Video Call Button */}
-              <Button
-                onClick={handleStartVideoCall}
-                className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
-                  isDark
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/50"
-                    : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
-                }`}
-              >
-                <Video className="h-4 w-4" />
-                Video Call 📹
-              </Button>
+            </div>
           </div>
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto px-8 pb-8">
+        <div className="flex-1 overflow-y-auto px-8 py-8">
 
         {/* Assigned To - Account Manager */}
         {/* Relationship Display - FULL CHAIN */}
@@ -780,34 +876,6 @@ export default function TicketDetailModal({
                   </Avatar>
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Status Change (Management Only) */}
-        {isManagement && (
-          <div className="mb-6 rounded-xl bg-slate-800/50 p-4 ring-1 ring-white/10">
-            <label className="mb-2 block text-sm font-medium text-slate-300">
-              Update Status
-            </label>
-            <div className="flex items-center gap-3">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as any)}
-                className="flex-1 rounded-lg bg-slate-800 px-4 py-2 text-white outline-none ring-1 ring-white/10 transition-all focus:ring-indigo-400/50"
-              >
-                <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="CLOSED">Closed</option>
-              </select>
-              <Button
-                onClick={handleStatusChange}
-                disabled={selectedStatus === ticket.status}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                Update
-              </Button>
             </div>
           </div>
         )}
@@ -1077,37 +1145,53 @@ export default function TicketDetailModal({
       {/* ✨ NEW: EDIT TICKET MODAL */}
       {showEditModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="w-full max-w-2xl rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-blue-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+          <div className={`w-full max-w-2xl rounded-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500 ${
+            isDark
+              ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-blue-500/30 backdrop-blur-2xl"
+              : "bg-white border-2 border-blue-300"
+          }`}>
             <div className="mb-6">
-              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+              <h3 className={`text-2xl font-bold ${
+                isDark 
+                  ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400"
+                  : "text-blue-600"
+              }`}>
                 Edit Ticket
               </h3>
-              <p className="text-sm text-slate-400 mt-2">
+              <p className={`text-sm mt-2 ${isDark ? "text-slate-400" : "text-gray-600"}`}>
                 Update the ticket title and description
               </p>
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-bold text-slate-300 mb-2">
-                Title <span className="text-red-400">*</span>
+              <label className={`block text-sm font-bold mb-2 ${isDark ? "text-slate-300" : "text-gray-700"}`}>
+                Title <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isDark
+                    ? "bg-slate-800/50 text-white ring-1 ring-white/10"
+                    : "bg-white text-gray-900 border-2 border-gray-300"
+                }`}
               />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-bold text-slate-300 mb-2">
-                Description <span className="text-red-400">*</span>
+              <label className={`block text-sm font-bold mb-2 ${isDark ? "text-slate-300" : "text-gray-700"}`}>
+                Description <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 rows={6}
-                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+                  isDark
+                    ? "bg-slate-800/50 text-white ring-1 ring-white/10"
+                    : "bg-white text-gray-900 border-2 border-gray-300"
+                }`}
               />
             </div>
 
@@ -1115,7 +1199,11 @@ export default function TicketDetailModal({
               <Button
                 onClick={() => setShowEditModal(false)}
                 disabled={editing}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3"
+                className={`flex-1 rounded-xl py-3 ${
+                  isDark
+                    ? "bg-slate-700 hover:bg-slate-600 text-white"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-900 border border-gray-400"
+                }`}
               >
                 Cancel
               </Button>
@@ -1134,31 +1222,43 @@ export default function TicketDetailModal({
       {/* ✨ NEW: CANCEL TICKET MODAL */}
       {showCancelModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="w-full max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-red-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+          <div className={`w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500 ${
+            isDark
+              ? "bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-red-500/30 backdrop-blur-2xl"
+              : "bg-white border-2 border-red-300"
+          }`}>
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 rounded-full bg-red-500/20">
-                  <AlertTriangle className="h-6 w-6 text-red-400" />
+                <div className={`p-3 rounded-full ${isDark ? "bg-red-500/20" : "bg-red-100"}`}>
+                  <AlertTriangle className={`h-6 w-6 ${isDark ? "text-red-400" : "text-red-600"}`} />
                 </div>
-                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-400">
+                <h3 className={`text-2xl font-bold ${
+                  isDark 
+                    ? "text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-400"
+                    : "text-red-600"
+                }`}>
                   Cancel Ticket
                 </h3>
               </div>
-              <p className="text-sm text-slate-400 mt-2">
+              <p className={`text-sm mt-2 ${isDark ? "text-slate-400" : "text-gray-600"}`}>
                 This ticket will be marked as cancelled. Please provide a reason.
               </p>
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-bold text-slate-300 mb-2">
-                Cancellation Reason <span className="text-red-400">*</span>
+              <label className={`block text-sm font-bold mb-2 ${isDark ? "text-slate-300" : "text-gray-700"}`}>
+                Cancellation Reason <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="e.g., Issue resolved itself, Duplicate ticket, etc."
                 rows={4}
-                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-slate-500 resize-none"
+                className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none ${
+                  isDark
+                    ? "bg-slate-800/50 text-white ring-1 ring-white/10 placeholder:text-slate-500"
+                    : "bg-white text-gray-900 border-2 border-gray-300 placeholder:text-gray-400"
+                }`}
               />
             </div>
 
@@ -1166,7 +1266,11 @@ export default function TicketDetailModal({
               <Button
                 onClick={() => setShowCancelModal(false)}
                 disabled={cancelling}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3"
+                className={`flex-1 rounded-xl py-3 ${
+                  isDark
+                    ? "bg-slate-700 hover:bg-slate-600 text-white"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-900 border border-gray-400"
+                }`}
               >
                 Go Back
               </Button>
@@ -1176,50 +1280,6 @@ export default function TicketDetailModal({
                 className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl py-3 shadow-lg shadow-red-500/30 disabled:opacity-50"
               >
                 {cancelling ? "Cancelling..." : "Cancel Ticket"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✨ NEW: SET DUE DATE MODAL (Management only) */}
-      {showDueDateModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="w-full max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-purple-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                Set Due Date
-              </h3>
-              <p className="text-sm text-slate-400 mt-2">
-                Set a deadline for when this ticket should be resolved
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-slate-300 mb-2">
-                Due Date & Time <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setShowDueDateModal(false)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSetDueDate}
-                disabled={!dueDate}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl py-3 shadow-lg shadow-purple-500/30 disabled:opacity-50"
-              >
-                Set Due Date
               </Button>
             </div>
           </div>

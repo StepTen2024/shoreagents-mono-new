@@ -37,6 +37,9 @@ export async function PATCH(
       include: {
         staff_users: {
           select: { id: true, name: true, authUserId: true }
+        },
+        client_users: {
+          select: { id: true, name: true, authUserId: true }
         }
       }
     })
@@ -51,16 +54,17 @@ export async function PATCH(
     })
 
     const isStaffOwner = ticket.staff_users?.authUserId === session.user.id
+    const isClientOwner = ticket.client_users?.authUserId === session.user.id
 
-    if (!isManagement && !isStaffOwner) {
+    if (!isManagement && !isStaffOwner && !isClientOwner) {
       return NextResponse.json(
         { error: "You can only edit your own tickets" },
         { status: 403 }
       )
     }
 
-    // Staff can't edit RESOLVED or CLOSED tickets
-    if (isStaffOwner && !isManagement) {
+    // Staff and Clients can't edit RESOLVED, CLOSED, or CANCELLED tickets
+    if ((isStaffOwner || isClientOwner) && !isManagement) {
       if (ticket.status === "RESOLVED" || ticket.status === "CLOSED" || ticket.status === "CANCELLED") {
         return NextResponse.json(
           { error: "Cannot edit tickets that are RESOLVED, CLOSED, or CANCELLED" },
@@ -70,10 +74,16 @@ export async function PATCH(
     }
 
     // Prepare update data
+    const lastEditedById = isManagement 
+      ? isManagement.id 
+      : isClientOwner 
+        ? ticket.clientUserId! 
+        : ticket.staffUserId!
+    
     const updateData: any = {
       updatedAt: new Date(),
       lastEditedAt: new Date(),
-      lastEditedBy: isManagement ? isManagement.id : ticket.staffUserId!
+      lastEditedBy: lastEditedById
     }
 
     if (title) {
@@ -115,8 +125,13 @@ export async function PATCH(
     })
 
     // Log for audit trail
-    const editedByName = isManagement ? isManagement.name : ticket.staff_users?.name
+    const editedByName = isManagement 
+      ? isManagement.name 
+      : isClientOwner 
+        ? ticket.client_users?.name 
+        : ticket.staff_users?.name
     console.log(`✏️ [TICKET EDITED] ${editedByName} edited ticket ${ticket.ticketId}`)
+    console.log(`   User Type: ${isManagement ? 'MANAGEMENT' : isClientOwner ? 'CLIENT' : 'STAFF'}`)
     if (title) console.log(`   Title: "${ticket.title}" → "${title}"`)
     if (description) console.log(`   Description updated`)
 

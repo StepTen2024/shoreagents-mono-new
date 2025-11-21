@@ -37,8 +37,11 @@ export async function PATCH(
         staff_users: {
           select: { id: true, name: true, authUserId: true }
         },
+        client_users: {
+          select: { id: true, name: true, authUserId: true }
+        },
         management_users: {
-          select: { name: true }
+          select: { id: true, name: true }
         }
       }
     })
@@ -53,16 +56,17 @@ export async function PATCH(
     })
 
     const isStaffOwner = ticket.staff_users?.authUserId === session.user.id
+    const isClientOwner = ticket.client_users?.authUserId === session.user.id
 
-    if (!isManagement && !isStaffOwner) {
+    if (!isManagement && !isStaffOwner && !isClientOwner) {
       return NextResponse.json(
         { error: "You can only cancel your own tickets" },
         { status: 403 }
       )
     }
 
-    // Staff can only cancel OPEN or IN_PROGRESS tickets
-    if (isStaffOwner && !isManagement) {
+    // Staff and Clients can only cancel OPEN or IN_PROGRESS tickets
+    if ((isStaffOwner || isClientOwner) && !isManagement) {
       if (ticket.status !== "OPEN" && ticket.status !== "IN_PROGRESS") {
         return NextResponse.json(
           { error: "You can only cancel tickets that are OPEN or IN_PROGRESS" },
@@ -80,12 +84,18 @@ export async function PATCH(
     }
 
     // Cancel the ticket
+    const cancelledById = isManagement 
+      ? isManagement.id 
+      : isClientOwner 
+        ? ticket.clientUserId! 
+        : ticket.staffUserId!
+    
     const updatedTicket = await prisma.tickets.update({
       where: { id: ticketId },
       data: {
         status: "CANCELLED",
         cancelledReason: reason,
-        cancelledBy: isManagement ? isManagement.id : ticket.staffUserId!,
+        cancelledBy: cancelledById,
         cancelledAt: new Date(),
         updatedAt: new Date()
       },
@@ -110,8 +120,13 @@ export async function PATCH(
     })
 
     // Log for audit trail
-    const cancelledByName = isManagement ? isManagement.name : ticket.staff_users?.name
+    const cancelledByName = isManagement 
+      ? isManagement.name 
+      : isClientOwner 
+        ? ticket.client_users?.name 
+        : ticket.staff_users?.name
     console.log(`❌ [TICKET CANCELLED] ${cancelledByName} cancelled ticket ${ticket.ticketId}`)
+    console.log(`   User Type: ${isManagement ? 'MANAGEMENT' : isClientOwner ? 'CLIENT' : 'STAFF'}`)
     console.log(`   Reason: ${reason}`)
     console.log(`   Status: ${ticket.status} → CANCELLED`)
 

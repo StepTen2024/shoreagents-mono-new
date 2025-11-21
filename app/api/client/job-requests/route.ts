@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Pool } from "pg"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { getApplicationCounts } from "@/lib/bpoc-db"
-
-// BPOC Database connection
-const bpocPool = new Pool({
-  connectionString: process.env.BPOC_DATABASE_URL
-})
-
-// Check if BPOC database URL is configured
-if (!process.env.BPOC_DATABASE_URL) {
-  console.error("❌ BPOC_DATABASE_URL environment variable is not set")
-}
+import { bpocPool, getApplicationCounts } from "@/lib/bpoc-db"
 
 export async function POST(request: NextRequest) {
   try {

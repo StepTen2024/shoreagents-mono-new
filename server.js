@@ -18,6 +18,23 @@ require('events').EventEmitter.defaultMaxListeners = 15;
 // Initialize Prisma Client
 const prisma = new PrismaClient()
 
+// Graceful shutdown handler
+const shutdown = async () => {
+  console.log('🛑 Shutting down server...')
+  try {
+    await prisma.$disconnect()
+    console.log('✅ Prisma disconnected')
+    process.exit(0)
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error)
+    process.exit(1)
+  }
+}
+
+// Register shutdown handlers
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
+
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = 'localhost'
 const port = parseInt(process.env.PORT || '3000', 10)

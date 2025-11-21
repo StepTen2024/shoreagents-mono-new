@@ -14,9 +14,9 @@ const nextConfig = {
   },
   // output: 'standalone', // ⚠️ DISABLED: Breaks dev mode static asset generation
   // Disable static generation for error pages to prevent Html import issues
-  generateBuildId: async () => {
-    return 'build-' + Date.now()
-  },
+  // generateBuildId: async () => {
+  //   return 'build-' + Date.now()
+  // },
   // Skip static optimization for error pages
   skipTrailingSlashRedirect: true,
 }

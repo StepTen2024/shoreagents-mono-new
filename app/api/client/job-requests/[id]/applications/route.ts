@@ -9,7 +9,7 @@ import { getApplicationsForJobRequest } from "@/lib/bpoc-db"
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -33,7 +33,8 @@ export async function GET(
       return NextResponse.json({ error: "Client user or company not found" }, { status: 404 })
     }
 
-    const jobRequestId = params.id
+    const resolvedParams = await params
+    const jobRequestId = resolvedParams.id
 
     console.log(`📋 [CLIENT] Fetching applications for job request ${jobRequestId}`)
 
@@ -54,4 +55,3 @@ export async function GET(
     )
   }
 }
-
