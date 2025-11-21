@@ -342,6 +342,12 @@ class PerformanceTracker {
    * Track active applications
    */
   startApplicationTracking() {
+    // Don't start if already running
+    if (this.applicationTrackingInterval) {
+      this.log('Application tracking already running')
+      return
+    }
+    
     this.applicationTrackingInterval = setInterval(async () => {
       if (this.isPaused) return
       
@@ -394,6 +400,19 @@ class PerformanceTracker {
         console.error('[PerformanceTracker] Error in application tracking:', error)
       }
     }, 2000) // Check every 2 seconds
+    
+    this.log('✅ Application tracking (URL tracking) started')
+  }
+
+  /**
+   * Stop application tracking (including URL tracking)
+   */
+  stopApplicationTracking() {
+    if (this.applicationTrackingInterval) {
+      clearInterval(this.applicationTrackingInterval)
+      this.applicationTrackingInterval = null
+      this.log('🛑 Application tracking (URL tracking) stopped')
+    }
   }
 
   /**
