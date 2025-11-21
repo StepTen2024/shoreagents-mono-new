@@ -737,7 +737,8 @@ model staff_users {
   staff_profiles                  staff_profiles?
   company                         company?                @relation(fields: [companyId], references: [id])
   task_assignments                task_assignments[]
-  tasks                           tasks[]
+  tasks_assigned                  tasks[]                 @relation("TaskAssignee")
+  tasks_created                   tasks[]                 @relation("TaskCreator")
   tickets                         tickets[]
   time_entries                    time_entries[]
 }
@@ -788,7 +789,8 @@ model tasks {
   task_assignments task_assignments[]
   client_users     client_users?      @relation(fields: [clientUserId], references: [id])
   company          company?           @relation(fields: [companyId], references: [id])
-  staff_users      staff_users?       @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  staff_users      staff_users?       @relation("TaskAssignee", fields: [staffUserId], references: [id], onDelete: Cascade)
+  creator_staff    staff_users?       @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
 }
 
 model tickets {

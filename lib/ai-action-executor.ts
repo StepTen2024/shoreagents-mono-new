@@ -73,11 +73,37 @@ async function createTask(input: any, userId: string, userType: string): Promise
     if (deadlineStr.includes('tomorrow')) {
       deadline = new Date()
       deadline.setDate(deadline.getDate() + 1)
+      deadline.setHours(23, 59, 59, 999) // End of day
     } else if (deadlineStr.includes('next week')) {
       deadline = new Date()
       deadline.setDate(deadline.getDate() + 7)
+      deadline.setHours(23, 59, 59, 999)
+    } else if (deadlineStr.match(/in (\d+) day/)) {
+      // "in 3 days", "in 1 day"
+      const match = deadlineStr.match(/in (\d+) day/)
+      if (match) {
+        const days = parseInt(match[1])
+        deadline = new Date()
+        deadline.setDate(deadline.getDate() + days)
+        deadline.setHours(23, 59, 59, 999)
+      }
+    } else if (deadlineStr.match(/in (\d+) week/)) {
+      // "in 2 weeks"
+      const match = deadlineStr.match(/in (\d+) week/)
+      if (match) {
+        const weeks = parseInt(match[1])
+        deadline = new Date()
+        deadline.setDate(deadline.getDate() + (weeks * 7))
+        deadline.setHours(23, 59, 59, 999)
+      }
     } else {
-      deadline = new Date(input.deadline)
+      // Try parsing as ISO or standard date
+      try {
+        deadline = new Date(input.deadline)
+      } catch (e) {
+        console.warn(`⚠️ Could not parse deadline: ${input.deadline}`)
+        deadline = null
+      }
     }
   }
 
@@ -112,10 +138,29 @@ async function createTask(input: any, userId: string, userType: string): Promise
     })
   }
 
+  // Create subtasks if provided
+  let subtasksCreated = 0
+  if (input.subtasks && Array.isArray(input.subtasks) && input.subtasks.length > 0) {
+    for (let i = 0; i < input.subtasks.length; i++) {
+      await prisma.subtasks.create({
+        data: {
+          id: randomUUID(),
+          taskId: task.id,
+          title: input.subtasks[i],
+          order: i,
+          completed: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      })
+      subtasksCreated++
+    }
+  }
+
   return {
     success: true,
-    message: `✅ Created task "${input.title}" with ${input.priority} priority${deadline ? ` (due ${deadline.toLocaleDateString()})` : ''}`,
-    data: { taskId: task.id, title: task.title }
+    message: `✅ Created task "${input.title}" with ${input.priority} priority${deadline ? ` (due ${deadline.toLocaleDateString()})` : ''}${subtasksCreated > 0 ? ` and ${subtasksCreated} subtask(s)` : ''}`,
+    data: { taskId: task.id, title: task.title, subtasksCreated }
   }
 }
 

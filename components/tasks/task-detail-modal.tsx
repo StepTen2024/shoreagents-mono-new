@@ -601,6 +601,54 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Created By - Staff (Self or AI) */}
+            {(task as any).creator_staff && (
+              <>
+                <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
+                  task.source === 'AI_AGENT'
+                    ? isDarkTheme 
+                      ? "bg-indigo-500/20 ring-1 ring-indigo-500/30 border border-indigo-500/30" 
+                      : "bg-indigo-50 border-2 border-indigo-300"
+                    : isDarkTheme 
+                      ? "bg-emerald-500/20 ring-1 ring-emerald-500/30 border border-emerald-500/30" 
+                      : "bg-emerald-50 border-2 border-emerald-300"
+                }`}>
+                  <Avatar className={`h-10 w-10 ${
+                    task.source === 'AI_AGENT'
+                      ? isDarkTheme ? "ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-500/50" : "border-2 border-indigo-400"
+                      : isDarkTheme ? "ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/50" : "border-2 border-emerald-400"
+                  }`}>
+                    <AvatarImage src={(task as any).creator_staff.avatar || undefined} alt={(task as any).creator_staff.name} />
+                    <AvatarFallback className={
+                      task.source === 'AI_AGENT'
+                        ? isDarkTheme ? "bg-indigo-600 text-white" : "bg-indigo-200 text-indigo-700"
+                        : isDarkTheme ? "bg-emerald-600 text-white" : "bg-emerald-200 text-emerald-700"
+                    }>
+                      {(task as any).creator_staff.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className={`text-xs font-semibold ${
+                      task.source === 'AI_AGENT'
+                        ? isDarkTheme ? "text-indigo-300" : "text-indigo-700"
+                        : isDarkTheme ? "text-emerald-300" : "text-emerald-700"
+                    }`}>
+                      {task.source === 'AI_AGENT' ? '🤖 Created by AI' : '✋ Self Created'}
+                    </p>
+                    <p className={`text-sm font-bold ${
+                      task.source === 'AI_AGENT'
+                        ? isDarkTheme ? "text-indigo-200" : "text-indigo-900"
+                        : isDarkTheme ? "text-emerald-200" : "text-emerald-900"
+                    }`}>
+                      {(task as any).creator_staff.name}
+                    </p>
+                  </div>
+                </div>
+
+                <span className={`text-2xl ${isDarkTheme ? "text-slate-600" : "text-slate-400"}`}>→</span>
+              </>
+            )}
+
             {/* Created By - Client */}
             {task.client_users && (
               <>

@@ -45,6 +45,15 @@ export async function GET(request: NextRequest) {
             avatar: true,
           }
         },
+        creator_staff: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+            role: true,
+          }
+        },
       },
       orderBy: { createdAt: "desc" },
     })
@@ -69,6 +78,15 @@ export async function GET(request: NextRequest) {
                 name: true,
                 email: true,
                 avatar: true,
+              }
+            },
+            creator_staff: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                role: true,
               }
             },
             task_assignments: {

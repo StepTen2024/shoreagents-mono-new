@@ -9,7 +9,7 @@ export const AI_TOOLS = [
   // ========================================
   {
     name: "create_task",
-    description: "Create a new task for the staff member. Use this when the user asks to create a task, add a todo, or wants to track work.",
+    description: "Create a new task for the staff member. Use this when the user asks to create a task, add a todo, or wants to track work. You can also create subtasks in the same call!",
     input_schema: {
       type: "object",
       properties: {
@@ -28,12 +28,17 @@ export const AI_TOOLS = [
         },
         deadline: {
           type: "string",
-          description: "Deadline in ISO format (YYYY-MM-DD) or relative (e.g., 'tomorrow', 'next week'). Can be null if no deadline."
+          description: "Deadline in ISO format (YYYY-MM-DD) or relative (e.g., 'tomorrow', 'next week', 'in 3 days'). Parse relative dates to absolute dates. Can be null if no deadline mentioned."
         },
         tags: {
           type: "array",
           items: { type: "string" },
           description: "Relevant tags for categorization (e.g., ['SEO', 'Client'], ['Marketing', 'Urgent'])"
+        },
+        subtasks: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional array of subtask titles to create immediately. Each subtask should be a short, actionable step (e.g., ['Buy fish food', 'Clean fish tank', 'Check water quality'])"
         }
       },
       required: ["title", "description", "priority"]
