@@ -175,6 +175,7 @@ export default function AdminTasksPage() {
   }
 
   const handleTaskClick = (task: Task) => {
+    console.log('🎨 NEW MODAL CODE - v2.0 - GRADIENT EDITION!')
     setSelectedTask(task)
     setIsModalOpen(true)
   }
