@@ -5,6 +5,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { buildStaffContext, formatStaffContextForAI } from '@/lib/staff-context'
 import { searchRelevantChunks, searchConversationHistory } from '@/lib/vector-search'
 import { generateEmbedding } from '@/lib/embeddings'
+import { AI_TOOLS } from '@/lib/ai-tools'
+import { executeAIAction } from '@/lib/ai-action-executor'
 
 // ⚡ Get API key fresh every time to avoid caching issues
 function getApiKey() {
@@ -469,13 +471,47 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
         role: msg.role,
         content: msg.content,
       })),
+      tools: AI_TOOLS as any, // Enable Claude function calling!
     })
     
     console.log('✅ [CHAT API] Claude response received')
 
-    const assistantMessage = response.content[0].type === 'text' 
-      ? response.content[0].text 
-      : ''
+    // Handle tool use (function calling)
+    const toolUses = response.content.filter((block: any) => block.type === 'tool_use')
+    const actionsExecuted: any[] = []
+    
+    if (toolUses.length > 0) {
+      console.log(`🤖 [TOOL-USE] Claude wants to execute ${toolUses.length} action(s)`)
+      
+      for (const toolUse of toolUses) {
+        console.log(`🔧 [TOOL-USE] Executing: ${toolUse.name}`, toolUse.input)
+        
+        const result = await executeAIAction(
+          toolUse.name,
+          toolUse.input,
+          user.id,
+          userType as 'STAFF' | 'CLIENT' | 'MANAGEMENT'
+        )
+        
+        actionsExecuted.push({
+          tool: toolUse.name,
+          input: toolUse.input,
+          result: result
+        })
+        
+        console.log(`${result.success ? '✅' : '❌'} [TOOL-USE] ${result.message}`)
+      }
+    }
+
+    // Extract text response
+    const textBlocks = response.content.filter((block: any) => block.type === 'text')
+    let assistantMessage = textBlocks.map((block: any) => block.text).join('\n')
+    
+    // If actions were executed, append their results to the response
+    if (actionsExecuted.length > 0) {
+      const actionSummary = actionsExecuted.map(action => action.result.message).join('\n')
+      assistantMessage = `${assistantMessage}\n\n${actionSummary}`
+    }
 
     // 💾 Save conversation for STAFF users (with 30-day cleanup)
     let userConv: any = null
@@ -565,6 +601,7 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
         userId: (userConv as any)?.id,
         assistantId: (assistantConv as any)?.id,
       } : undefined,
+      actionsExecuted: actionsExecuted.length > 0 ? actionsExecuted : undefined,
     })
   } catch (error) {
     console.error('❌ [CHAT API] Error:', error)
