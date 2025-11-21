@@ -12,7 +12,9 @@
   "scripts": {
     "build": "next build",
     "postinstall": "prisma generate",
-    "dev": "cross-env NODE_ENV=development node server.js",
+    "dev": "npm run dev:prepare && npm run build && npm run dev:start",
+    "dev:prepare": "rm -rf .next && npx prisma generate",
+    "dev:start": "cross-env NODE_ENV=production node server.js",
     "dev:clean": "rm -rf .next node_modules/.cache",
     "dev:turbo": "cross-env NODE_ENV=development node server.js --turbo",
     "dev:next": "next dev",
