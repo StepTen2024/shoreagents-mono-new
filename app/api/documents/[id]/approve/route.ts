@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { processDocumentForRAG } from "@/lib/document-processor"
 
 export async function POST(
   request: NextRequest,
@@ -77,6 +78,15 @@ export async function POST(
     console.log(`✅ [DOCUMENT APPROVAL] ${action} by ${approverEmail}`)
     console.log(`   Document: ${document.title}`)
     console.log(`   Staff: ${document.staff_users.name}`)
+
+    // 🚀 Auto-process newly approved document for RAG
+    if (action === 'APPROVED' && updatedDocument.content && updatedDocument.content.trim().length > 0) {
+      console.log(`🤖 [RAG] Queueing approved document "${document.title}" for embedding generation`)
+      // Process asynchronously (don't block the response)
+      processDocumentForRAG(updatedDocument.id).catch((ragError) => {
+        console.error(`❌ [RAG] Failed to process document for RAG:`, ragError)
+      })
+    }
 
     // TODO: Send notification to staff user about approval/rejection
     // Can be implemented with the notifications system

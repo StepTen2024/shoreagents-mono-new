@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
+import { buildStaffContext, formatStaffContextForAI } from '@/lib/staff-context'
+import { searchRelevantChunks, searchConversationHistory } from '@/lib/vector-search'
 
 // ⚡ Get API key fresh every time to avoid caching issues
 function getApiKey() {
@@ -261,6 +263,59 @@ TASK DETAILS:\n` + tasks.map(task => {
     // Get user's first name
     const firstName = user.name.split(' ')[0]
 
+    // 🚀 NEW: Enhanced RAG context for STAFF users
+    let staffFullContext = ''
+    let ragContext = ''
+    let conversationHistoryContext = ''
+    
+    if (userType === 'STAFF' && user.id) {
+      console.log(`🧠 [RAG] Building enhanced context for staff ${user.name}`)
+      
+      // Build comprehensive staff context (tasks, reviews, time entries)
+      const staffContext = await buildStaffContext(user.id)
+      staffFullContext = formatStaffContextForAI(staffContext)
+      console.log(`✅ [RAG] Staff context built (${staffFullContext.length} chars)`)
+      
+      // Use RAG to search for relevant document chunks
+      const lastUserMessage = messages[messages.length - 1]?.content || ''
+      if (lastUserMessage && lastUserMessage.length > 10) {
+        try {
+          const relevantChunks = await searchRelevantChunks(lastUserMessage, user.id, 5)
+          
+          if (relevantChunks.length > 0) {
+            ragContext = '\n\n📚 RELEVANT DOCUMENT EXCERPTS (from vector search):\n'
+            relevantChunks.forEach((chunk, i) => {
+              ragContext += `\n[${i + 1}] From "${chunk.metadata.title}" (${chunk.metadata.category}) [Similarity: ${(chunk.similarity * 100).toFixed(1)}%]\n`
+              ragContext += `${chunk.chunkText}\n`
+            })
+            console.log(`✅ [RAG] Found ${relevantChunks.length} relevant document chunks`)
+          } else {
+            console.log(`ℹ️ [RAG] No relevant document chunks found`)
+          }
+        } catch (ragError) {
+          console.error(`❌ [RAG] Vector search failed:`, ragError)
+          // Continue without RAG if it fails
+        }
+      }
+      
+      // Load recent conversation history
+      try {
+        const recentConversations = await searchConversationHistory(lastUserMessage, user.id, 10)
+        
+        if (recentConversations.length > 0) {
+          conversationHistoryContext = '\n\n💬 RECENT CONVERSATION HISTORY:\n'
+          recentConversations.forEach((conv) => {
+            const label = conv.role === 'user' ? `${firstName}` : 'AI'
+            const pinnedBadge = conv.isPinned ? ' 📌 [PINNED]' : ''
+            conversationHistoryContext += `${label}${pinnedBadge}: ${conv.message.substring(0, 200)}${conv.message.length > 200 ? '...' : ''}\n`
+          })
+          console.log(`✅ [RAG] Loaded ${recentConversations.length} conversation messages`)
+        }
+      } catch (convError) {
+        console.error(`❌ [RAG] Conversation history load failed:`, convError)
+      }
+    }
+
     // Build personalization context for STAFF users
     let personalizationContext = ''
     if (userType === 'STAFF' && (user as any).staff_interests) {
@@ -299,16 +354,26 @@ TASK DETAILS:\n` + tasks.map(task => {
     }
 
     // System prompt for BPO training assistant
-    const systemPrompt = `You are a friendly AI assistant helping ${firstName} with their BPO work. You're here to help them understand training materials, manage tasks, and bring more value to their clients.
+    const systemPrompt = `You are a friendly AI companion and work assistant helping ${firstName} with their BPO work. You're here to help them understand training materials, manage tasks, and bring more value to their clients.
 
 IMPORTANT: Always greet ${firstName} by their first name when starting your responses (e.g., "Hi ${firstName}," or "Hey ${firstName},").${personalizationContext}
 
+${staffFullContext ? `\n${staffFullContext}\n` : ''}
+
+${ragContext}
+
+${conversationHistoryContext}
+
 RESPONSE STYLE:
-- Write naturally and conversationally, like a helpful colleague
+- Write naturally and conversationally, like a helpful colleague and friend
 - Keep responses concise and easy to scan
 - Use simple paragraphs and occasional bullet points when listing things
 - Avoid heavy marketing language or excessive enthusiasm
-- Be warm but professional
+- Be warm, encouraging, and supportive
+- Reference their interests, tasks, and work context to make conversations personal and relatable
+- If you see they're working hard (from time entries), acknowledge it
+- If they have upcoming deadlines, gently remind them
+- Make work feel less overwhelming by relating it to their hobbies/interests
 
 DOCUMENT TYPES:
 - 📋 COMPANY POLICY: HR policies, leave policies, SOPs uploaded by Admin (accessible to all staff)
@@ -320,6 +385,7 @@ WHEN DOCUMENTS OR TASKS ARE REFERENCED:
 - For tasks: Help with task planning, prioritization, breaking down work, suggesting next steps
 - If the answer isn't in the referenced material, say so
 - When a task is referenced, you can see its status, description, subtasks, and recent comments
+- Use the RAG context (relevant document excerpts) to provide accurate, citation-backed answers
 
 WHEN ALL TASKS ARE REFERENCED (Reports):
 - Provide clear, actionable daily/weekly reports
@@ -333,7 +399,9 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
 - Provide helpful BPO guidance and best practices
 - Help with general work processes and logic
 - Give practical, actionable advice
-- Assist with task management and time management strategies${fullContext}`
+- Assist with task management and time management strategies
+- Use the conversation history to remember what you've discussed before
+- Use the relevant document excerpts (RAG) to answer questions accurately${fullContext}`
 
     // Call Claude API
     console.log('🤖 [CHAT API] Calling Claude...')
@@ -359,6 +427,60 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
     const assistantMessage = response.content[0].type === 'text' 
       ? response.content[0].text 
       : ''
+
+    // 💾 Save conversation for STAFF users (with 30-day cleanup)
+    if (userType === 'STAFF' && user.id) {
+      try {
+        const lastUserMessage = messages[messages.length - 1]?.content || ''
+        const ragChunkCount = ragContext ? ragContext.split('[').length - 1 : 0
+        
+        // Save both user message and AI response
+        await prisma.ai_conversations.createMany({
+          data: [
+            {
+              staffUserId: user.id,
+              message: lastUserMessage,
+              role: 'user',
+              isPinned: false,
+              contextUsed: {
+                documentIds: documentIds || [],
+                taskIds: taskIds || [],
+                ragChunksUsed: ragChunkCount,
+                timestamp: new Date().toISOString(),
+              },
+            },
+            {
+              staffUserId: user.id,
+              message: assistantMessage,
+              role: 'assistant',
+              isPinned: false,
+              contextUsed: null,
+            },
+          ],
+        })
+        
+        console.log(`💾 [CONVERSATION] Saved conversation for ${user.name}`)
+        
+        // Clean up old conversations (older than 30 days, unpinned only)
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        
+        const deleted = await prisma.ai_conversations.deleteMany({
+          where: {
+            staffUserId: user.id,
+            isPinned: false, // Don't delete pinned messages
+            createdAt: { lt: thirtyDaysAgo },
+          },
+        })
+        
+        if (deleted.count > 0) {
+          console.log(`🗑️ [CONVERSATION] Cleaned up ${deleted.count} old messages`)
+        }
+      } catch (convError) {
+        console.error(`❌ [CONVERSATION] Failed to save conversation:`, convError)
+        // Don't fail the request if conversation storage fails
+      }
+    }
 
     return NextResponse.json({ 
       message: assistantMessage,

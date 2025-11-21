@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { supabaseAdmin } from "@/lib/supabase"
 import CloudConvert from 'cloudconvert'
 import { randomUUID } from "crypto"
+import { processDocumentForRAG } from "@/lib/document-processor"
 
 // GET /api/documents - Fetch all documents for current staff user (own + client uploads)
 export async function GET(req: NextRequest) {
@@ -317,8 +318,17 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // TODO: Check if this staff member is assigned to any clients
-    // Documents can be shared with clients later via sharedWith field
+    // 🚀 Auto-process document for RAG if it has content
+    if (document.content && document.content.trim().length > 0) {
+      console.log(`🤖 [RAG] Queueing document "${title}" for embedding generation`)
+      // Process asynchronously (don't block the response)
+      processDocumentForRAG(document.id).catch((ragError) => {
+        console.error(`❌ [RAG] Failed to process document for RAG:`, ragError)
+        // Don't fail the request if RAG processing fails
+      })
+    } else {
+      console.log(`ℹ️ [RAG] Document "${title}" has no content, skipping RAG processing`)
+    }
     
     return NextResponse.json({
       document,

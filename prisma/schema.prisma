@@ -154,25 +154,54 @@ model company {
 }
 
 model documents {
-  id             String           @id
-  title          String
-  category       DocumentCategory
-  uploadedBy     String
-  size           String
-  fileUrl        String?
-  content        String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime
-  staffUserId    String
-  source         DocumentSource   @default(STAFF)
-  sharedWithAll  Boolean          @default(false)
-  sharedWith     String[]         @default([])
-  approvedAt     DateTime?
-  approvedBy     String?
-  rejectionNote  String?
-  status         DocumentStatus   @default(PENDING)
-  uploadedByRole DocumentSource   @default(STAFF)
-  staff_users    staff_users      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  id                  String                @id
+  title               String
+  category            DocumentCategory
+  uploadedBy          String
+  size                String
+  fileUrl             String?
+  content             String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  staffUserId         String
+  source              DocumentSource        @default(STAFF)
+  sharedWithAll       Boolean               @default(false)
+  sharedWith          String[]              @default([])
+  approvedAt          DateTime?
+  approvedBy          String?
+  rejectionNote       String?
+  status              DocumentStatus        @default(PENDING)
+  uploadedByRole      DocumentSource        @default(STAFF)
+  staff_users         staff_users           @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  document_embeddings document_embeddings[]
+}
+
+model document_embeddings {
+  id         String                     @id @default(uuid())
+  documentId String
+  chunkIndex Int
+  chunkText  String
+  embedding  Unsupported("vector(1536)")
+  metadata   Json?
+  createdAt  DateTime                   @default(now())
+  documents  documents                  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+}
+
+model ai_conversations {
+  id          String      @id @default(uuid())
+  staffUserId String
+  message     String
+  role        String
+  isPinned    Boolean     @default(false)
+  contextUsed Json?
+  createdAt   DateTime    @default(now())
+  staff_users staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@index([staffUserId, createdAt])
+  @@index([staffUserId, isPinned])
 }
 
 model employment_contracts {
@@ -665,6 +694,7 @@ model staff_users {
   companyId                       String?
   active                          Boolean                 @default(true)
   activity_posts                  activity_posts[]
+  ai_conversations                ai_conversations[]
   breaks                          breaks[]
   documents                       documents[]
   employment_contracts            employment_contracts?

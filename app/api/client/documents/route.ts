@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/supabase"
 import CloudConvert from 'cloudconvert'
 import { randomUUID } from "crypto"
+import { processDocumentForRAG } from "@/lib/document-processor"
 
 // GET - Fetch documents for client: own uploads + staff documents shared with them
 export async function GET(request: NextRequest) {
@@ -389,6 +390,17 @@ export async function POST(request: NextRequest) {
       company: clientUser.company.companyName,
       shareMode: sharedWithAll ? 'ALL_COMPANY_STAFF' : `SPECIFIC (${sharedWith.length} users)`
     })
+
+    // 🚀 Auto-process document for RAG if it has content
+    if (document.content && document.content.trim().length > 0) {
+      console.log(`🤖 [RAG] Queueing client document "${title}" for embedding generation`)
+      // Process asynchronously (don't block the response)
+      processDocumentForRAG(document.id).catch((ragError) => {
+        console.error(`❌ [RAG] Failed to process document for RAG:`, ragError)
+      })
+    } else {
+      console.log(`ℹ️ [RAG] Document "${title}" has no content, skipping RAG processing`)
+    }
 
     return NextResponse.json({
       success: true,
