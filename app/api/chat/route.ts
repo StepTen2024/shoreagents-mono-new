@@ -467,10 +467,34 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
       model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       system: systemPrompt,
-      messages: messages.map((msg: any) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
+      messages: messages.map((msg: any) => {
+        // If message has an image, format it for Claude's Vision API
+        if (msg.image && msg.imageType) {
+          return {
+            role: msg.role,
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: msg.imageType,
+                  data: msg.image,
+                },
+              },
+              {
+                type: 'text',
+                text: msg.content,
+              },
+            ],
+          }
+        }
+        
+        // Regular text-only message
+        return {
+          role: msg.role,
+          content: msg.content,
+        }
+      }),
       tools: AI_TOOLS as any, // Enable Claude function calling!
     })
     

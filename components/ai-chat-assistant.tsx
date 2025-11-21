@@ -6,7 +6,7 @@ import {
   Send, Bot, User, Sparkles, BookOpen, FileText, Users, HelpCircle,
   FolderOpen, Search, Upload, Clock, Database, Building2, GraduationCap,
   Settings, Briefcase, TrendingUp, FileCheck, ChevronRight, X, Trash2, Download, Loader2, RefreshCw, Pin, PinOff,
-  Brain, History, Star, Lightbulb, Target, Workflow, UserCircle
+  Brain, History, Star, Lightbulb, Target, Workflow, UserCircle, Image as ImageIcon, XCircle
 } from "lucide-react"
 import { useRef, useEffect, useState } from "react"
 import ReactMarkdown from 'react-markdown'
@@ -22,6 +22,8 @@ type Message = {
   sources?: string[] // Referenced documents
   isPinned?: boolean // Whether message is pinned
   createdAt?: string // When message was created
+  image?: string // Base64 encoded image data
+  imageType?: string // MIME type (e.g., "image/png")
 }
 
 type Document = {
@@ -97,6 +99,9 @@ export default function AIChatAssistant() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingDocs, setLoadingDocs] = useState(true)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [selectedImageType, setSelectedImageType] = useState<string | null>(null)
+  const [analyzingImage, setAnalyzingImage] = useState(false)
   
   // Memory & Search States
   const [memories, setMemories] = useState<Memory[]>([])
@@ -615,11 +620,18 @@ export default function AIChatAssistant() {
       id: Date.now().toString(),
       role: "user",
       content: text,
+      image: selectedImage || undefined,
+      imageType: selectedImageType || undefined,
     }
 
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
     setInput("")
+    
+    // Show analyzing state if there's an image
+    if (selectedImage) {
+      setAnalyzingImage(true)
+    }
 
     try {
       // Extract document and task references from @mentions
@@ -688,6 +700,8 @@ export default function AIChatAssistant() {
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content,
+            image: m.image,
+            imageType: m.imageType,
           })),
           documentIds: documentIds.length > 0 ? documentIds : undefined,
           taskIds: taskIds.length > 0 ? taskIds : undefined,
@@ -733,13 +747,72 @@ export default function AIChatAssistant() {
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      setAnalyzingImage(false)
+      setSelectedImage(null)
+      setSelectedImageType(null)
     }
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an image file (PNG, JPG, WEBP, etc.)",
+        variant: "destructive",
+        duration: 3000,
+      })
+      return
+    }
+
+    // Check file size (max 5MB for base64 encoding)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive",
+        duration: 3000,
+      })
+      return
+    }
+
+    // Convert to base64
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      // Extract just the base64 data (remove data:image/png;base64, prefix)
+      const base64Data = base64.split(',')[1]
+      setSelectedImage(base64Data)
+      setSelectedImageType(file.type)
+      toast({
+        title: "✅ Image Uploaded",
+        description: "Image ready to send. Type a message or send as-is!",
+        duration: 3000,
+      })
+    }
+    reader.onerror = () => {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to read image file",
+        variant: "destructive",
+        duration: 3000,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removeImage = () => {
+    setSelectedImage(null)
+    setSelectedImageType(null)
   }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
-    sendMessage(input)
+    if ((!input.trim() && !selectedImage) || isLoading) return
+    sendMessage(input || "Analyze this image")
     setInput("")
   }
 
@@ -1128,7 +1201,17 @@ export default function AIChatAssistant() {
                         </ReactMarkdown>
                       </div>
                     ) : (
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                      <>
+                        {/* User Message Image */}
+                        {message.image && (
+                          <img 
+                            src={`data:${message.imageType};base64,${message.image}`}
+                            alt="Uploaded" 
+                            className="mb-2 max-h-64 w-full rounded-lg object-contain bg-slate-900/50 ring-1 ring-white/10"
+                          />
+                        )}
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                      </>
                     )}
                     
                     {/* Pin button for assistant messages */}
@@ -1286,6 +1369,32 @@ export default function AIChatAssistant() {
             </div>
           )}
 
+          {/* Image Preview */}
+          {selectedImage && (
+            <div className="mb-3 relative rounded-lg overflow-hidden ring-1 ring-indigo-500/50">
+              <img 
+                src={`data:${selectedImageType};base64,${selectedImage}`}
+                alt="Selected" 
+                className="max-h-48 w-full object-contain bg-slate-800/50"
+              />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute top-2 right-2 rounded-full bg-red-500/80 p-1.5 text-white ring-2 ring-white/50 transition-all hover:bg-red-600"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+              {analyzingImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-400 mx-auto mb-2" />
+                    <p className="text-sm text-white font-medium">🔍 Analyzing image...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3">
             <div className="relative flex-1">
               <input
@@ -1293,17 +1402,30 @@ export default function AIChatAssistant() {
                 type="text"
                 value={input}
                 onChange={handleInputChange}
-                placeholder="Ask about clients, procedures, training... Use @ to mention documents or tasks"
+                placeholder={selectedImage ? "Describe what you need help with..." : "Ask about clients, procedures, training... Use @ to mention documents or tasks"}
                 disabled={isLoading}
                 className="w-full rounded-lg bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 outline-none ring-1 ring-white/10 transition-all focus:ring-indigo-400/50 disabled:opacity-50"
               />
             </div>
+            
+            {/* Image Upload Button */}
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-slate-800/50 px-4 py-3 font-medium text-slate-300 ring-1 ring-white/10 transition-all hover:bg-slate-700/50 hover:text-white hover:ring-indigo-400/30">
+              <ImageIcon className="h-5 w-5" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={isLoading}
+                className="hidden"
+              />
+            </label>
+
             <button
               type="submit"
-              disabled={isLoading || !input.trim()}
+              disabled={isLoading || (!input.trim() && !selectedImage)}
               className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500/30 to-purple-500/30 px-6 py-3 font-medium text-white ring-1 ring-indigo-400/50 transition-all hover:from-indigo-500/40 hover:to-purple-500/40 disabled:opacity-50"
             >
-              <Send className="h-5 w-5" />
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               <span className="hidden md:inline">Send</span>
             </button>
           </div>
