@@ -5,9 +5,10 @@ import { prisma } from "@/lib/prisma"
 // POST /api/activity/[id]/comments - Add a comment to a post
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await auth()
 
     if (!session?.user?.id) {
@@ -26,7 +27,7 @@ export async function POST(
 
     // Check if post exists
     const post = await prisma.activity_posts.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!post) {
@@ -36,7 +37,7 @@ export async function POST(
     // Create comment
     const comment = await prisma.post_comments.create({
       data: {
-        postId: params.id,
+        postId: id,
         authorId: session.user.id,
         content,
       },

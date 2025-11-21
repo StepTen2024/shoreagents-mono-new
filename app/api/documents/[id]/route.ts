@@ -6,9 +6,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 // DELETE /api/documents/[id] - Delete document
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await auth()
     
     if (!session?.user?.id) {
@@ -26,7 +27,7 @@ export async function DELETE(
 
     // Get document
     const document = await prisma.document.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!document) {

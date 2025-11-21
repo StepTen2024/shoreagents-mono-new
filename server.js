@@ -46,9 +46,19 @@ app.prepare().then(() => {
       const parsedUrl = parse(req.url, true)
       await handle(req, res, parsedUrl)
     } catch (err) {
-      console.error('Error occurred handling', req.url, err)
-      res.statusCode = 500
-      res.end('internal server error')
+      // Silently skip ENOENT errors for temporary build manifest files
+      // These are expected in dev mode and Next.js handles them internally
+      if (err.code === 'ENOENT' && err.path && (err.path.includes('_buildManifest') || err.path.includes('.tmp.'))) {
+        // Do nothing - these errors are expected during on-demand compilation
+      } else {
+        // Log other errors
+        console.error('❌ Error occurred handling', req.url, err)
+        // Only send error response if not already sent
+        if (!res.headersSent) {
+          res.statusCode = 500
+          res.end('Internal Server Error')
+        }
+      }
     }
   })
 

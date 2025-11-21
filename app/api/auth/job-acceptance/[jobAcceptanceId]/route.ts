@@ -10,10 +10,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobAcceptanceId: string } }
+  { params }: { params: Promise<{ jobAcceptanceId: string }> }
 ) {
   try {
-    const { jobAcceptanceId } = params
+    const { jobAcceptanceId } = await params
 
     if (!jobAcceptanceId) {
       return NextResponse.json({ error: 'Job acceptance ID is required' }, { status: 400 })

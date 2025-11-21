@@ -381,8 +381,8 @@ export default function TicketDetailModal({
       })
 
       setShowCancelModal(false)
-      onClose()
-      onUpdate()
+      setCancelReason("") // Reset cancel reason
+      onUpdate() // Keep modal open so user can review cancelled ticket
     } catch (error: any) {
       toast({
         title: "Error",
@@ -534,85 +534,83 @@ export default function TicketDetailModal({
                 {ticket.title}
               </h2>
             </div>
-            <div className="flex items-center gap-2">
-              {/* 🔄 REASSIGN BUTTON - Management Only */}
-              {console.log('🔍 [REASSIGN BUTTON DEBUG]', { isManagement, isClient })}
-              {/* ✨ EDIT BUTTON - Staff (own) / Management (any) */}
-              {(isManagement || (!isManagement && !isClient && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && ticket.status !== "CANCELLED")) && (
-                <Button
-                  onClick={() => setShowEditModal(true)}
-                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
-                    isDark
-                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/50"
-                      : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
-                  }`}
-                >
-                  <Edit3 className="h-4 w-4" />
-                  Edit
-                </Button>
-              )}
+            
+            {/* Close Button - Top Right */}
+            <button
+              onClick={onClose}
+              className={`absolute top-6 right-6 rounded-xl p-2.5 transition-all hover:scale-110 ring-1 backdrop-blur-sm ${
+                isDark
+                  ? "text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-slate-700 hover:ring-red-500"
+                  : "text-gray-600 hover:bg-red-500/10 hover:text-red-600 ring-gray-300 hover:ring-red-400"
+              }`}
+              title="Close"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
 
-              {isManagement ? (
-                <>
-                  {console.log('✅ [REASSIGN BUTTON] Rendering button NOW!')}
-                  <Button
-                    onClick={() => {
-                      console.log('🔄 [REASSIGN BUTTON] Button clicked!')
-                      setShowReassignModal(true)
-                      fetchAvailableManagers()
-                    }}
-                    className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
-                      isDark
-                        ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-amber-500/50"
-                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30"
-                    }`}
-                  >
-                    <Users className="h-4 w-4" />
-                    Reassign
-                  </Button>
-                </>
-              ) : (
-                console.log('❌ [REASSIGN BUTTON] NOT rendering (isManagement is false)')
-              )}
-
-              {/* ✨ CANCEL BUTTON - Staff (own, if open) / Management (any) */}
-              {(isManagement || (!isManagement && !isClient && (ticket.status === "OPEN" || ticket.status === "IN_PROGRESS"))) && ticket.status !== "CANCELLED" && (
-                <Button
-                  onClick={() => setShowCancelModal(true)}
-                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
-                    isDark
-                      ? "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-red-500/50"
-                      : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-red-500/30"
-                  }`}
-                >
-                  <XCircle className="h-4 w-4" />
-                  Cancel
-                </Button>
-              )}
-              
+          {/* Action Buttons - Cleaner Row Below Header */}
+          <div className="mt-4 flex items-center gap-3 flex-wrap">
+            {/* ✨ EDIT BUTTON - Staff (own) / Management (any) */}
+            {(isManagement || (!isManagement && !isClient && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && ticket.status !== "CANCELLED")) && (
               <Button
-                onClick={handleStartVideoCall}
+                onClick={() => setShowEditModal(true)}
                 className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
                   isDark
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/50"
+                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/50"
                     : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
                 }`}
               >
-                <Video className="h-4 w-4" />
-                Video Call 📹
+                <Edit3 className="h-4 w-4" />
+                Edit
               </Button>
-              <button
-                onClick={onClose}
-                className={`rounded-xl p-2.5 transition-all hover:scale-110 ring-1 backdrop-blur-sm ${
+            )}
+
+            {/* 🔄 REASSIGN BUTTON - Management Only */}
+            {isManagement && (
+              <Button
+                onClick={() => {
+                  setShowReassignModal(true)
+                  fetchAvailableManagers()
+                }}
+                className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
                   isDark
-                    ? "text-slate-400 hover:bg-red-500/20 hover:text-red-400 ring-slate-700 hover:ring-red-500"
-                    : "text-gray-600 hover:bg-red-500/10 hover:text-red-600 ring-gray-300 hover:ring-red-400"
+                    ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-amber-500/50"
+                    : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30"
                 }`}
-                title="Close"
               >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+                <Users className="h-4 w-4" />
+                Reassign
+              </Button>
+            )}
+
+            {/* ✨ CANCEL BUTTON - Staff (own, if open) / Management (any) */}
+            {(isManagement || (!isManagement && !isClient && (ticket.status === "OPEN" || ticket.status === "IN_PROGRESS"))) && ticket.status !== "CANCELLED" && (
+              <Button
+                onClick={() => setShowCancelModal(true)}
+                className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                  isDark
+                    ? "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-red-500/50"
+                    : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-red-500/30"
+                }`}
+              >
+                <XCircle className="h-4 w-4" />
+                Cancel
+              </Button>
+            )}
+            
+            {/* Video Call Button */}
+            <Button
+              onClick={handleStartVideoCall}
+              className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                isDark
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/50"
+                  : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
+              }`}
+            >
+              <Video className="h-4 w-4" />
+              Video Call 📹
+            </Button>
           </div>
         </div>
 

@@ -5,9 +5,10 @@ import { auth } from "@/lib/auth"
 // PATCH /api/client/tickets/[ticketId]/attachments - Add attachments to ticket
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { ticketId: string } }
+  { params }: { params: Promise<{ ticketId: string }> }
 ) {
   try {
+    const { ticketId } = await params
     const session = await auth()
 
     if (!session?.user?.id) {
@@ -21,8 +22,6 @@ export async function PATCH(
     if (!clientUser) {
       return NextResponse.json({ error: "Client user not found" }, { status: 404 })
     }
-
-    const { ticketId } = params
     const body = await request.json()
     const { attachmentUrls } = body
 
