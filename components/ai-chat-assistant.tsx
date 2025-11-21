@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown'
 import DocumentUpload from "./document-upload"
 import { DocumentSourceBadge } from "@/components/ui/document-source-badge"
 import { useSession } from "next-auth/react"
+import { useToast } from "@/hooks/use-toast"
 
 type Message = {
   id: string // Database ID from ai_conversations table
@@ -66,6 +67,7 @@ const categoryConfig: Record<string, { label: string; color: string; icon: any }
 }
 
 export default function AIChatAssistant() {
+  const { toast } = useToast()
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
@@ -301,18 +303,45 @@ export default function AIChatAssistant() {
       })
 
       if (response.ok) {
+        const wasPinned = message.isPinned
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === messageId ? { ...msg, isPinned: !msg.isPinned } : msg
           )
         )
-        console.log(`📌 ${message.isPinned ? 'Unpinned' : 'Pinned'} message: ${messageId}`)
+        
+        // Show success toast
+        if (wasPinned) {
+          toast({
+            title: "Message Unpinned",
+            description: "Message removed from pinned section. It will be deleted after 30 days.",
+            duration: 3000,
+          })
+        } else {
+          toast({
+            title: "📌 Message Pinned!",
+            description: "This message is now saved forever and will appear at the top of your chat.",
+            duration: 4000,
+          })
+        }
+        
+        console.log(`📌 ${wasPinned ? 'Unpinned' : 'Pinned'} message: ${messageId}`)
       } else {
-        alert('Failed to pin/unpin message')
+        toast({
+          title: "Error",
+          description: "Failed to pin/unpin message. Please try again.",
+          variant: "destructive",
+          duration: 3000,
+        })
       }
     } catch (error) {
       console.error('Error pinning message:', error)
-      alert('Failed to pin/unpin message')
+      toast({
+        title: "Error",
+        description: "Failed to pin/unpin message. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      })
     } finally {
       setPinningId(null)
     }
@@ -564,10 +593,10 @@ export default function AIChatAssistant() {
             <div className="space-y-4">
               {/* Pinned Messages Section */}
               {messages.some(m => m.isPinned) && (
-                <div className="rounded-xl bg-indigo-900/20 p-4 ring-1 ring-indigo-500/30">
-                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-indigo-300">
-                    <Pin className="h-4 w-4" />
-                    <span>PINNED MESSAGES</span>
+                <div className="rounded-xl bg-gradient-to-br from-indigo-900/40 via-purple-900/30 to-indigo-900/40 p-4 ring-2 ring-indigo-400/50 shadow-lg shadow-indigo-500/20 animate-pulse-slow">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-bold text-indigo-200">
+                    <Pin className="h-5 w-5 text-indigo-300" />
+                    <span>📌 PINNED MESSAGES (Saved Forever)</span>
                   </div>
                   <div className="space-y-3">
                     {messages.filter(m => m.isPinned && m.role === 'assistant').map((message) => (
@@ -643,25 +672,26 @@ export default function AIChatAssistant() {
                     
                     {/* Pin button for assistant messages */}
                     {message.role === "assistant" && (
-                      <div className="mt-2 flex items-center justify-end">
+                      <div className="mt-3 flex items-center justify-end">
                         <button
                           onClick={() => handlePinMessage(message.id)}
                           disabled={pinningId === message.id}
-                          className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors ${
+                          title={message.isPinned ? "Unpin this message" : "Pin this message to save it forever"}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                             message.isPinned
-                              ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
-                              : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
-                          } ${pinningId === message.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              ? 'bg-indigo-500/30 text-indigo-200 ring-2 ring-indigo-400/50 shadow-lg shadow-indigo-500/20 hover:bg-indigo-500/40 hover:scale-105'
+                              : 'bg-slate-700/50 text-slate-300 ring-1 ring-slate-600/50 hover:bg-slate-600/50 hover:text-white hover:ring-indigo-400/30 hover:scale-105'
+                          } ${pinningId === message.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                         >
                           {message.isPinned ? (
                             <>
-                              <PinOff className="h-3 w-3" />
+                              <PinOff className="h-4 w-4" />
                               <span>Unpin</span>
                             </>
                           ) : (
                             <>
-                              <Pin className="h-3 w-3" />
-                              <span>Pin</span>
+                              <Pin className="h-4 w-4" />
+                              <span>📌 Save Forever</span>
                             </>
                           )}
                         </button>
