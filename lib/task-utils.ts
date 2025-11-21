@@ -2,7 +2,7 @@
 
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "STUCK" | "FOR_REVIEW" | "COMPLETED"
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
-export type TaskSource = "SELF" | "CLIENT" | "MANAGEMENT"
+export type TaskSource = "SELF" | "CLIENT" | "MANAGEMENT" | "AI_AGENT"
 
 // Status configuration with colors and emojis
 export function getStatusConfig(status: TaskStatus) {
@@ -110,6 +110,12 @@ export function getSourceConfig(source: TaskSource) {
       emoji: "📋",
       lightColor: "bg-amber-100 text-amber-600",
       darkColor: "bg-amber-500/20 text-amber-300",
+    },
+    AI_AGENT: {
+      label: "AI Created",
+      emoji: "🤖",
+      lightColor: "bg-indigo-100 text-indigo-600",
+      darkColor: "bg-indigo-500/20 text-indigo-300 ring-indigo-500/30",
     },
   }
   return configs[source]
