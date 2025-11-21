@@ -272,9 +272,19 @@ TASK DETAILS:\n` + tasks.map(task => {
       console.log(`🧠 [RAG] Building enhanced context for staff ${user.name}`)
       
       // Build comprehensive staff context (tasks, reviews, time entries)
+      console.log(`🔍 [STAFF-CONTEXT] Building context for staff ID: ${user.id}`)
       const staffContext = await buildStaffContext(user.id)
       staffFullContext = formatStaffContextForAI(staffContext)
       console.log(`✅ [RAG] Staff context built (${staffFullContext.length} chars)`)
+      console.log(`📋 [TASKS] Found ${staffContext.recentTasks?.length || 0} tasks`)
+      console.log(`📊 [REVIEWS] Found ${staffContext.recentReviews?.length || 0} reviews`)
+      console.log(`⏰ [TIME] Found ${staffContext.recentTimeEntries?.length || 0} time entries`)
+      if (staffContext.recentTasks && staffContext.recentTasks.length > 0) {
+        console.log(`📋 [TASKS] Task titles:`, staffContext.recentTasks.map(t => t.title))
+      } else {
+        console.log(`⚠️ [TASKS] No tasks found for staff member ${user.name}`)
+      }
+      console.log(`📝 [FULL-CONTEXT] Staff context preview:`, staffFullContext.substring(0, 500))
       
       // Use RAG to search for relevant document chunks
       const lastUserMessage = messages[messages.length - 1]?.content || ''
