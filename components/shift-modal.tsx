@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface ShiftModalProps {
   isOpen: boolean
-  type: 'late-clock-in' | 'early-clock-in' | 'break-reminder' | 'clock-out' | 'clock-out-early'
+  type: 'late-clock-in' | 'early-clock-in' | 'break-reminder' | 'clock-out' | 'clock-out-early' | 'shift-end-warning'
   data?: any
   onAction: (selectedReason?: string) => void
   onDismiss?: () => void
@@ -91,6 +91,15 @@ export function ShiftModal({ isOpen, type, data, onAction, onDismiss }: ShiftMod
       iconColor: 'text-amber-400',
       bgColor: 'bg-amber-500/10',
       actionLabel: 'Confirm Early Clock Out',
+      canDismiss: true
+    },
+    'shift-end-warning': {
+      title: data?.title || 'Shift Ending Soon',
+      message: data?.message || 'Your shift is ending soon. Please prepare to clock out.',
+      icon: Clock,
+      iconColor: 'text-amber-400',
+      bgColor: 'bg-amber-500/10',
+      actionLabel: 'Got It',
       canDismiss: true
     }
   }

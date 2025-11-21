@@ -2141,7 +2141,7 @@ export default function TimeTracking() {
       {/* 15-Minute Shift End Warning */}
       <ShiftModal
         isOpen={showShiftEndWarning}
-        type="break-reminder"
+        type="shift-end-warning"
         data={{
           title: "Shift Ending Soon",
           message: `Your shift ends in 15 minutes at ${shiftEndTime?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. Please wrap up your work and prepare to clock out.`,
@@ -2154,7 +2154,7 @@ export default function TimeTracking() {
       {/* 5-Minute Final Warning */}
       <ShiftModal
         isOpen={showFinalWarning}
-        type="break-reminder"
+        type="shift-end-warning"
         data={{
           title: "Final Warning - Shift Ending",
           message: `Your shift ends in 5 minutes at ${shiftEndTime?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. You will be automatically clocked out.`,
