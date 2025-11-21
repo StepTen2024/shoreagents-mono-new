@@ -254,9 +254,17 @@ export default function KnowledgeBasePage() {
   }
 
   const updateDocument = (id: string, updates: Partial<DocumentToUpload>) => {
-    setDocumentsToUpload(documentsToUpload.map(doc => 
-      doc.id === id ? { ...doc, ...updates } : doc
-    ))
+    console.log('🔄 [UPDATE] Updating document:', id, updates)
+    const newDocs = documentsToUpload.map(doc => {
+      if (doc.id === id) {
+        const updated = { ...doc, ...updates }
+        console.log('🔄 [UPDATE] Document updated:', updated)
+        return updated
+      }
+      return doc
+    })
+    console.log('🔄 [UPDATE] New documents array:', newDocs)
+    setDocumentsToUpload(newDocs)
   }
 
   const resetUploadForm = () => {
@@ -267,9 +275,24 @@ export default function KnowledgeBasePage() {
   }
 
   const handleUpload = async () => {
+    // DEBUG: Log what we're trying to upload
+    console.log('🔍 [UPLOAD] Attempting to upload:', documentsToUpload)
+    
     // Validate all documents
-    const invalidDocs = documentsToUpload.filter(doc => !doc.title || !doc.file)
+    const invalidDocs = documentsToUpload.filter(doc => {
+      const hasTitle = doc.title && doc.title.trim().length > 0
+      const hasFile = doc.file !== null
+      console.log(`🔍 [UPLOAD] Doc validation:`, { 
+        title: doc.title, 
+        hasTitle, 
+        hasFile, 
+        file: doc.file?.name 
+      })
+      return !hasTitle || !hasFile
+    })
+    
     if (invalidDocs.length > 0) {
+      console.error('❌ [UPLOAD] Invalid docs found:', invalidDocs)
       toast({
         title: "Missing Information",
         description: "Please provide a title and file for all documents.",
@@ -289,6 +312,7 @@ export default function KnowledgeBasePage() {
       return
     }
 
+    console.log('✅ [UPLOAD] Validation passed! Starting upload...')
     setUploading(true)
     setUploadProgress({ current: 0, total: documentsToUpload.length })
 
@@ -299,12 +323,13 @@ export default function KnowledgeBasePage() {
     // Upload each document sequentially
     for (let i = 0; i < documentsToUpload.length; i++) {
       const doc = documentsToUpload[i]
+      console.log(`📤 [UPLOAD] Uploading document ${i + 1}/${documentsToUpload.length}:`, doc.title)
       setUploadProgress({ current: i + 1, total: documentsToUpload.length })
 
       try {
         const formData = new FormData()
         formData.append('file', doc.file!)
-        formData.append('title', doc.title)
+        formData.append('title', doc.title.trim())
         formData.append('category', doc.category.toUpperCase())
         
         // For "all" mode, use sharedWithAll flag (company-scoped)
@@ -593,20 +618,20 @@ export default function KnowledgeBasePage() {
         setShowUploadDialog(open)
         if (!open) resetUploadForm()
       }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto bg-white">
           <DialogHeader>
-            <DialogTitle>Upload Document</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gray-900">Upload Document</DialogTitle>
+            <DialogDescription className="text-gray-600">
               Share documents with your offshore staff. They will be able to view and reference these documents.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {documentsToUpload.map((doc, index) => (
-              <div key={doc.id} className="border border-gray-200 rounded-lg p-4">
+              <div key={doc.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                 {documentsToUpload.length > 1 && (
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-                    <h4 className="text-sm font-bold text-white">
+                    <h4 className="text-sm font-bold text-gray-900">
                       Document {index + 1}
                     </h4>
                     <Button
@@ -624,56 +649,62 @@ export default function KnowledgeBasePage() {
 
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor={`title-${doc.id}`}>Document Title *</Label>
+                    <Label htmlFor={`title-${doc.id}`} className="text-gray-900">Document Title *</Label>
                     <Input
                       id={`title-${doc.id}`}
                       placeholder="e.g., Customer Service Guidelines"
                       value={doc.title}
                       onChange={(e) => updateDocument(doc.id, { title: e.target.value })}
                       disabled={uploading}
+                      className="bg-white text-gray-900"
                     />
+                    {doc.title && !doc.file && (
+                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                        <span className="font-bold">⚠️</span> Title is set, but you still need to upload a file below!
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor={`category-${doc.id}`}>Category *</Label>
+                    <Label htmlFor={`category-${doc.id}`} className="text-gray-900">Category *</Label>
                     <Select 
                       value={doc.category} 
                       onValueChange={(value) => updateDocument(doc.id, { category: value })}
                       disabled={uploading}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger className="bg-white text-gray-900">
+                        <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="client">Client Resources</SelectItem>
-                        <SelectItem value="procedure">Procedures & SOPs</SelectItem>
-                        <SelectItem value="training">Training Materials</SelectItem>
-                        <SelectItem value="culture">Company Culture</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="client" className="text-gray-900">Client Resources</SelectItem>
+                        <SelectItem value="procedure" className="text-gray-900">Procedures & SOPs</SelectItem>
+                        <SelectItem value="training" className="text-gray-900">Training Materials</SelectItem>
+                        <SelectItem value="culture" className="text-gray-900">Company Culture</SelectItem>
+                        <SelectItem value="other" className="text-gray-900">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="grid gap-3">
-                    <Label>Share With *</Label>
+                    <Label className="text-gray-900">Share With *</Label>
                     <RadioGroup 
                       value={doc.shareMode} 
                       onValueChange={(value: 'all' | 'specific') => updateDocument(doc.id, { shareMode: value })}
                       disabled={uploading}
                       className="space-y-2"
                     >
-                      <div className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-700 transition-colors">
+                      <div className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors bg-white">
                         <RadioGroupItem value="all" id={`all-${doc.id}`} />
                         <Label htmlFor={`all-${doc.id}`} className="font-normal cursor-pointer flex-1">
-                          <div className="font-medium text-white">All assigned staff</div>
-                          <div className="text-xs text-gray-400 mt-0.5">Everyone can access this document</div>
+                          <div className="font-medium text-gray-900">All assigned staff</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Everyone can access this document</div>
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-700 transition-colors">
+                      <div className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors bg-white">
                         <RadioGroupItem value="specific" id={`specific-${doc.id}`} />
                         <Label htmlFor={`specific-${doc.id}`} className="font-normal cursor-pointer flex-1">
-                          <div className="font-medium text-white">Specific staff members only</div>
-                          <div className="text-xs text-gray-400 mt-0.5">Choose who can access this document</div>
+                          <div className="font-medium text-gray-900">Specific staff members only</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Choose who can access this document</div>
                         </Label>
                       </div>
                     </RadioGroup>
@@ -681,12 +712,12 @@ export default function KnowledgeBasePage() {
                     {doc.shareMode === 'specific' && (
                       <div>
                         {/* Staff Selection */}
-                        <div className="border border-gray-200 rounded-lg">
+                        <div className="border border-gray-200 rounded-lg bg-white">
                           {/* Selected Staff Display */}
                           {doc.sharedWith.length > 0 && (
                             <div className="px-3 py-3 border-b border-gray-200">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-medium text-white">
+                                <span className="text-xs font-medium text-gray-900">
                                   {doc.sharedWith.length} selected
                                 </span>
                                 <Button
@@ -747,7 +778,7 @@ export default function KnowledgeBasePage() {
                             {assignedStaff.length === 0 ? (
                               <div className="p-4 text-center">
                                 <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                                <p className="text-sm text-white">No staff assigned to your company yet.</p>
+                                <p className="text-sm text-gray-600">No staff assigned to your company yet.</p>
                               </div>
                             ) : (
                               (() => {
@@ -760,7 +791,7 @@ export default function KnowledgeBasePage() {
                                 if (filteredStaff.length === 0) {
                                   return (
                                     <div className="p-4 text-center">
-                                      <p className="text-sm text-white">No staff found matching "{staffSearchQueries[doc.id]}"</p>
+                                      <p className="text-sm text-gray-600">No staff found matching "{staffSearchQueries[doc.id]}"</p>
                                     </div>
                                   )
                                 }
@@ -768,7 +799,7 @@ export default function KnowledgeBasePage() {
                                 return filteredStaff.map((staff) => (
                                   <div 
                                     key={staff.id} 
-                                    className="flex items-center space-x-3 p-2 rounded hover:bg-gray-700 transition-colors"
+                                    className="flex items-center space-x-3 p-2 rounded hover:bg-gray-100 transition-colors"
                                   >
                                     <Checkbox
                                       id={`staff-${doc.id}-${staff.id}`}
@@ -785,8 +816,8 @@ export default function KnowledgeBasePage() {
                                       htmlFor={`staff-${doc.id}-${staff.id}`}
                                       className="text-sm font-normal cursor-pointer flex-1"
                                     >
-                                      <div className="font-medium text-white">{staff.name}</div>
-                                      <div className="text-xs text-gray-400">{staff.email}</div>
+                                      <div className="font-medium text-gray-900">{staff.name}</div>
+                                      <div className="text-xs text-gray-500">{staff.email}</div>
                                     </Label>
                                   </div>
                                 ))
@@ -799,45 +830,67 @@ export default function KnowledgeBasePage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor={`file-${doc.id}`}>Document File *</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                    <Label htmlFor={`file-${doc.id}`} className="text-gray-900">Document File *</Label>
+                    <div 
+                      onClick={() => {
+                        const input = document.getElementById(`file-${doc.id}`) as HTMLInputElement
+                        if (input) {
+                          console.log('🖱️ [UPLOAD] File input clicked')
+                          input.click()
+                        }
+                      }}
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                        doc.file ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:border-blue-400'
+                      }`}
+                    >
                       <input
                         id={`file-${doc.id}`}
                         type="file"
                         accept=".pdf,.doc,.docx,.txt,.md"
                         onChange={(e) => {
+                          console.log('📁 [UPLOAD] File input onChange triggered', e.target.files)
                           const file = e.target.files?.[0] || null
-                          updateDocument(doc.id, { file })
+                          console.log('📁 [UPLOAD] Selected file:', file?.name)
+                          
                           // Auto-fill title from filename if title is empty
                           if (file && !doc.title) {
                             const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
-                            updateDocument(doc.id, { title: fileNameWithoutExt })
+                            updateDocument(doc.id, { file, title: fileNameWithoutExt })
+                          } else {
+                            // Just set the file, keep existing title
+                            updateDocument(doc.id, { file })
                           }
                         }}
-                        className="hidden"
+                        style={{ display: 'none' }}
                         disabled={uploading}
                       />
-                      <label htmlFor={`file-${doc.id}`} className="cursor-pointer">
-                        {doc.file ? (
-                          <div className="space-y-2">
-                            <FileText className="h-8 w-8 text-blue-600 mx-auto" />
-                            <p className="text-sm font-medium text-white">{doc.file.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {(doc.file.size / 1024).toFixed(2)} KB
-                            </p>
+                      {doc.file ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-center gap-2">
+                            <FileText className="h-10 w-10 text-blue-600" />
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-                            <p className="text-sm font-medium text-white">
-                              Click to upload or drag and drop
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              PDF, DOC, DOCX, TXT, or MD (Max 10MB)
-                            </p>
-                          </div>
-                        )}
-                      </label>
+                          <p className="text-sm font-bold text-blue-600">✅ File Selected!</p>
+                          <p className="text-sm font-medium text-gray-900">{doc.file.name}</p>
+                          <p className="text-xs text-gray-600">
+                            {(doc.file.size / 1024 / 1024).toFixed(2)} MB • Click to change file
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="h-10 w-10 text-gray-400 mx-auto" />
+                          <p className="text-sm font-medium text-gray-900">
+                            Click to upload or drag and drop
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            PDF, DOC, DOCX, TXT, or MD (Max 10MB)
+                          </p>
+                        </div>
+                      )}
                     </div>
                     {index === 0 && (
                       <p className="text-xs text-gray-500">
@@ -873,7 +926,7 @@ export default function KnowledgeBasePage() {
                 type="button"
                 variant="outline"
                 onClick={addAnotherDocument}
-                className="w-full"
+                className="w-full bg-white text-gray-900 border-gray-300 hover:bg-gray-100"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Another Document
@@ -886,13 +939,14 @@ export default function KnowledgeBasePage() {
               variant="outline" 
               onClick={() => setShowUploadDialog(false)} 
               disabled={uploading}
+              className="bg-white text-gray-900 border-gray-300 hover:bg-gray-100"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleUpload} 
               disabled={uploading} 
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {uploading 
                 ? `Uploading ${uploadProgress.current}/${uploadProgress.total}...` 

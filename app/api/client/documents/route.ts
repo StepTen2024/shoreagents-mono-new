@@ -361,6 +361,9 @@ export async function POST(request: NextRequest) {
         title,
         category,
         source: 'CLIENT',  // Mark as client upload
+        status: 'APPROVED',  // Client uploads are auto-approved (they own the content!)
+        approvedBy: clientUser.email,  // Mark as approved by the client who uploaded
+        approvedAt: now,  // Approved immediately
         content,
         size: fileSize,
         fileUrl,
