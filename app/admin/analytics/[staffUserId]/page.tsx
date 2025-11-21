@@ -23,11 +23,8 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
-<<<<<<< HEAD
   Coffee,
   Trash2,
-=======
->>>>>>> e4c093bff80faea1671f6031d7fbe49c7b163523
 } from "lucide-react"
 
 export default function StaffAnalyticsDetailPage() {
@@ -570,7 +567,6 @@ export default function StaffAnalyticsDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-<<<<<<< HEAD
                   <CardTitle>Screenshots</CardTitle>
                   <CardDescription>Captured screenshots during work hours (for future analysis)</CardDescription>
                 </div>
@@ -600,17 +596,10 @@ export default function StaffAnalyticsDetailPage() {
                     </Button>
                   </div>
                 )}
-=======
-                  <CardTitle>📸 Screenshots ({screenshots.length})</CardTitle>
-                  <CardDescription>Automatically captured every 60 seconds during active work</CardDescription>
-                </div>
-                <Camera className="h-8 w-8 text-muted-foreground opacity-50" />
->>>>>>> e4c093bff80faea1671f6031d7fbe49c7b163523
               </div>
             </CardHeader>
             <CardContent>
               {screenshots.length > 0 ? (
-<<<<<<< HEAD
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {screenshots.map((screenshot: any, index: number) => (
                     <div 
@@ -633,56 +622,8 @@ export default function StaffAnalyticsDetailPage() {
                         onClick={() => toggleScreenshot(screenshot.url)}
                       />
                       <p className="text-xs text-muted-foreground mt-1">{formatAdminDateTime(screenshot.date)}</p>
-=======
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {screenshots.map((screenshot: any, index: number) => {
-                    const imageUrl = typeof screenshot === 'string' ? screenshot : screenshot.url
-                    
-                    // 🔍 DEBUG: Log screenshot URL to console
-                    if (index < 5) {
-                      console.log(`📸 Screenshot ${index + 1}:`, imageUrl)
-                    }
-                    
-                    return (
-                      <div key={index} className="group relative border rounded-lg overflow-hidden hover:shadow-lg transition-all">
-                        <div className="aspect-video bg-muted relative overflow-hidden">
-                          <img 
-                            src={imageUrl} 
-                            alt={`Screenshot ${index + 1}`} 
-                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              console.error(`❌ Screenshot ${index + 1} failed to load:`, imageUrl)
-                              target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23f0f0f0" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="Arial" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E'
-                            }}
-                            onLoad={() => {
-                              if (index < 5) {
-                                console.log(`✅ Screenshot ${index + 1} loaded successfully`)
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="p-2 bg-background">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatAdminDateTime(screenshot.date)}
-                          </p>
-                        </div>
-                        {/* Expand on click */}
-                        <a 
-                          href={imageUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/50 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <div className="text-white font-medium px-3 py-1 bg-black/75 rounded">
-                            View Full Size
-                          </div>
-                        </a>
->>>>>>> e4c093bff80faea1671f6031d7fbe49c7b163523
                     </div>
-                    )
-                  })}
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-16">
