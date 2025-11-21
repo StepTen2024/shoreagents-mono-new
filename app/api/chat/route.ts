@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildStaffContext, formatStaffContextForAI } from '@/lib/staff-context'
 import { searchRelevantChunks, searchConversationHistory } from '@/lib/vector-search'
+import { generateEmbedding } from '@/lib/embeddings'
 
 // ⚡ Get API key fresh every time to avoid caching issues
 function getApiKey() {
@@ -286,6 +287,30 @@ TASK DETAILS:\n` + tasks.map(task => {
       }
       console.log(`📝 [FULL-CONTEXT] Staff context preview:`, staffFullContext.substring(0, 500))
       
+      // Fetch staff memories
+      let memoriesContext = ''
+      try {
+        const memories = await prisma.staff_memories.findMany({
+          where: { staffUserId: user.id },
+          orderBy: [
+            { importance: 'desc' },
+            { createdAt: 'desc' },
+          ],
+          take: 10, // Top 10 most important memories
+        })
+        
+        if (memories.length > 0) {
+          memoriesContext = '\n\n🧠 AI MEMORIES ABOUT YOU:\n'
+          memories.forEach((mem) => {
+            const importance = '⭐'.repeat(Math.min(mem.importance, 5))
+            memoriesContext += `${importance} [${mem.category}] ${mem.memory}\n`
+          })
+          console.log(`✅ [MEMORIES] Loaded ${memories.length} memories for ${user.name}`)
+        }
+      } catch (memError) {
+        console.error(`❌ [MEMORIES] Failed to load memories:`, memError)
+      }
+      
       // Use RAG to search for relevant document chunks
       const lastUserMessage = messages[messages.length - 1]?.content || ''
       if (lastUserMessage && lastUserMessage.length > 10) {
@@ -369,6 +394,8 @@ TASK DETAILS:\n` + tasks.map(task => {
 IMPORTANT: Always greet ${firstName} by their first name when starting your responses (e.g., "Hi ${firstName}," or "Hey ${firstName},").${personalizationContext}
 
 ${staffFullContext ? `\n${staffFullContext}\n` : ''}
+
+${memoriesContext}
 
 ${ragContext}
 
@@ -487,6 +514,28 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
         })
         
         console.log(`💾 [CONVERSATION] Saved conversation for ${user.name} (user: ${userConv.id}, assistant: ${assistantConv.id})`)
+        
+        // Generate embeddings for conversations (async, don't block response)
+        if (userConv && assistantConv) {
+          Promise.all([
+            generateEmbedding(lastUserMessage).then((embedding) =>
+              prisma.ai_conversations.update({
+                where: { id: userConv.id },
+                data: { embedding: embedding as any },
+              })
+            ),
+            generateEmbedding(assistantMessage).then((embedding) =>
+              prisma.ai_conversations.update({
+                where: { id: assistantConv.id },
+                data: { embedding: embedding as any },
+              })
+            ),
+          ]).then(() => {
+            console.log(`🔍 [EMBEDDINGS] Generated embeddings for conversation`)
+          }).catch((embError) => {
+            console.error(`❌ [EMBEDDINGS] Failed to generate embeddings:`, embError)
+          })
+        }
         
         // Clean up old conversations (older than 30 days, unpinned only)
         const thirtyDaysAgo = new Date()

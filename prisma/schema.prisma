@@ -192,17 +192,40 @@ model document_embeddings {
 }
 
 model ai_conversations {
-  id          String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id          String                     @id @default(dbgenerated("(gen_random_uuid())::text"))
   staffUserId String
   message     String
   role        String
-  isPinned    Boolean?    @default(false)
+  isPinned    Boolean?                   @default(false)
   contextUsed Json?
-  createdAt   DateTime?   @default(now()) @db.Timestamp(6)
-  staff_users staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ai_conversations_staffuserid_fkey")
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime?                  @default(now()) @db.Timestamp(6)
+  staff_users staff_users                @relation(fields: [staffUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ai_conversations_staffuserid_fkey")
 
   @@index([staffUserId, createdAt], map: "ai_conversations_staffuserid_createdat_idx")
   @@index([staffUserId, isPinned], map: "ai_conversations_staffuserid_ispinned_idx")
+}
+
+model staff_memories {
+  id          String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  staffUserId String
+  memory      String
+  category    MemoryCategory @default(FACT)
+  importance  Int         @default(5)
+  createdAt   DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime    @default(now()) @db.Timestamp(6)
+  staff_users staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "staff_memories_staffuserid_fkey")
+
+  @@index([staffUserId, createdAt], map: "staff_memories_staffuserid_createdat_idx")
+  @@index([staffUserId, importance], map: "staff_memories_staffuserid_importance_idx")
+}
+
+enum MemoryCategory {
+  PREFERENCE
+  FACT
+  GOAL
+  WORKFLOW
+  CLIENT_INFO
 }
 
 model employment_contracts {
@@ -707,6 +730,7 @@ model staff_users {
   performance_metrics             performance_metrics[]
   reviews                         reviews[]
   staff_interests                 staff_interests?
+  staff_memories                  staff_memories[]
   staff_offboarding               staff_offboarding?
   staff_onboarding                staff_onboarding?
   staff_personal_records          staff_personal_records?
