@@ -6,7 +6,7 @@ import { logTaskCompleted } from "@/lib/activity-generator"
 // PUT /api/tasks/[id] - Update a task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth()
@@ -15,7 +15,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const {
       title,

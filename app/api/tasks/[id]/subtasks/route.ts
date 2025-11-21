@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth"
 // GET /api/tasks/[id]/subtasks - Get all subtasks for a task
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth()
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
 
     // Check if task exists
     const task = await prisma.tasks.findUnique({
@@ -57,7 +57,7 @@ export async function GET(
 // POST /api/tasks/[id]/subtasks - Create a new subtask
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth()
@@ -66,7 +66,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const { title } = body
 
@@ -116,7 +116,7 @@ export async function POST(
 // PUT /api/tasks/[id]/subtasks - Update subtask (toggle completed or edit title)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth()
@@ -125,7 +125,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const { subtaskId, completed, title } = body
 
@@ -179,7 +179,7 @@ export async function PUT(
 // DELETE /api/tasks/[id]/subtasks?subtaskId=xxx - Delete a subtask
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth()
@@ -188,7 +188,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { id } = await params
+    const { id } = params
     const { searchParams } = new URL(request.url)
     const subtaskId = searchParams.get('subtaskId')
 
