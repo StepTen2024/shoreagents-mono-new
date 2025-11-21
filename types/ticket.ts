@@ -1,4 +1,4 @@
-export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"
+export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" | "CANCELLED"
 export type TicketCategory =
   // Staff & Management shared
   | "IT"
@@ -76,6 +76,13 @@ export interface Ticket {
   managementUserId: string | null
   clientUserId: string | null
   responses: TicketResponse[]
+  // ✨ NEW FIELDS
+  dueDate?: string | null // Admin-set deadline
+  cancelledReason?: string | null // Why ticket was cancelled
+  cancelledBy?: string | null // Who cancelled it (staff/admin ID)
+  cancelledAt?: string | null // When it was cancelled
+  lastEditedAt?: string | null // Last edit timestamp
+  lastEditedBy?: string | null // Who last edited (audit trail)
   staffUser?: {
     id: string
     name: string

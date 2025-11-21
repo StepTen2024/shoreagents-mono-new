@@ -43,6 +43,7 @@ const syncService = require('./services/syncService')
 const breakHandler = require('./services/breakHandler')
 const activityTracker = require('./activity-tracker')
 const screenshotService = require('./services/screenshotService')
+const networkTracker = require('./services/networkTracker')
 const permissions = require('./utils/permissions')
 const config = require('./config/trackerConfig')
 const autoUpdater = require('./services/autoUpdater')
@@ -308,6 +309,7 @@ function createWindow() {
       if (shouldDisableTracking && performanceTracker.getStatus().isTracking) {
         console.log('[Main] 🚫 User switched to non-staff portal - stopping performance tracking')
         performanceTracker.stop()
+        networkTracker.stop()
         activityTracker.destroy()
         screenshotService.destroy()
         // Also stop sync service for non-staff portals
@@ -335,6 +337,7 @@ function createWindow() {
       if (shouldDisableTracking && performanceTracker.getStatus().isTracking) {
         console.log('[Main] 🚫 Non-staff page loaded - stopping performance tracking')
         performanceTracker.stop()
+        networkTracker.stop()
         activityTracker.destroy()
         screenshotService.destroy()
         // Also stop sync service for non-staff portals
@@ -690,6 +693,7 @@ async function initializeTracking() {
     if (performanceTracker.getStatus().isTracking) {
       console.log('[Main] Stopping existing performance tracking...')
       performanceTracker.stop()
+      networkTracker.stop()
       activityTracker.destroy()
       screenshotService.destroy()
     }
@@ -729,6 +733,10 @@ async function initializeTracking() {
   // Start performance tracking
   performanceTracker.start()
   console.log('[Main] Performance tracking started')
+  
+  // Start network tracking (downloads, uploads, bandwidth)
+  networkTracker.start(mainWindow)
+  console.log('[Main] Network tracking started (downloads, uploads, bandwidth)')
   
   // Initialize activity tracker with performance tracker and screenshot service integration
   activityTracker.initialize(mainWindow, performanceTracker, screenshotService)
@@ -875,6 +883,9 @@ function setupIPC() {
     
     // Reset performance tracker (sets all metrics to zero)
     performanceTracker.resetMetrics()
+    
+    // Reset network tracker (downloads, uploads, bandwidth)
+    networkTracker.reset()
     
     // Reset sync service (clears last synced snapshot, forces fresh baseline)
     syncService.reset()
@@ -1045,6 +1056,7 @@ function setupIPC() {
     console.log('[Main] Stopping all services...')
     try {
       performanceTracker.stop()
+      networkTracker.stop()
       syncService.stop()
       activityTracker.destroy()
       screenshotService.destroy()
@@ -1173,6 +1185,7 @@ app.on('before-quit', () => {
   // Stop tracking services
   console.log('[Main] Stopping tracking services...')
   performanceTracker.stop()
+  networkTracker.stop()
   syncService.stop()
   activityTracker.destroy()
   screenshotService.destroy()

@@ -14,6 +14,10 @@ import {
   Gift,
   Bus,
   Video,
+  Calendar,
+  Edit3,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react"
 import { Ticket, TicketResponse } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -85,6 +89,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   IN_PROGRESS: { label: "⚡ In Progress", color: "bg-gradient-to-r from-amber-500 to-orange-500" },
   RESOLVED: { label: "✅ Resolved", color: "bg-gradient-to-r from-emerald-500 to-green-500" },
   CLOSED: { label: "📦 Closed", color: "bg-gradient-to-r from-slate-500 to-gray-500" },
+  CANCELLED: { label: "❌ Cancelled", color: "bg-gradient-to-r from-red-500 to-rose-500" },
 }
 
 export default function TicketDetailModal({
@@ -102,6 +107,26 @@ export default function TicketDetailModal({
   const [showLightbox, setShowLightbox] = useState(false)
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [ticketAttachments, setTicketAttachments] = useState<string[]>(ticket.attachments || [])
+  
+  // 🔄 REASSIGNMENT STATE
+  const [showReassignModal, setShowReassignModal] = useState(false)
+  const [availableManagers, setAvailableManagers] = useState<any[]>([])
+  const [selectedNewAssignee, setSelectedNewAssignee] = useState("")
+  const [reassignReason, setReassignReason] = useState("")
+  const [reassigning, setReassigning] = useState(false)
+
+  // ✨ NEW FEATURES STATE
+  const [editingPriority, setEditingPriority] = useState(false)
+  const [selectedPriority, setSelectedPriority] = useState(ticket.priority)
+  const [showDueDateModal, setShowDueDateModal] = useState(false)
+  const [dueDate, setDueDate] = useState(ticket.dueDate || "")
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
+  const [cancelling, setCancelling] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editTitle, setEditTitle] = useState(ticket.title)
+  const [editDescription, setEditDescription] = useState(ticket.description)
+  const [editing, setEditing] = useState(false)
 
   const CategoryIcon = categoryConfig[ticket.category]?.icon || HelpCircle
 
@@ -201,6 +226,216 @@ export default function TicketDetailModal({
     router.push(`/call/ticket-${ticket.ticketId}?ticketId=${ticket.id}`)
   }
 
+  // 🔄 REASSIGNMENT FUNCTIONS
+  const fetchAvailableManagers = async () => {
+    try {
+      const response = await fetch("/api/management/available")
+      if (!response.ok) throw new Error("Failed to fetch managers")
+      const data = await response.json()
+      setAvailableManagers(data.managers || [])
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load available managers",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleReassign = async () => {
+    if (!selectedNewAssignee) {
+      toast({
+        title: "Error",
+        description: "Please select a manager to reassign to",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setReassigning(true)
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/reassign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newAssigneeId: selectedNewAssignee,
+          reason: reassignReason
+        })
+      })
+
+      if (!response.ok) throw new Error("Failed to reassign ticket")
+
+      const data = await response.json()
+      
+      toast({
+        title: "Success!",
+        description: data.message || "Ticket reassigned successfully"
+      })
+
+      // Reset state
+      setShowReassignModal(false)
+      setSelectedNewAssignee("")
+      setReassignReason("")
+      
+      // Refresh ticket data
+      onUpdate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reassign ticket. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setReassigning(false)
+    }
+  }
+
+  // ✨ NEW: CHANGE PRIORITY
+  const handleChangePriority = async (newPriority: string) => {
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/priority`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority })
+      })
+
+      if (!response.ok) throw new Error("Failed to change priority")
+
+      toast({
+        title: "Success!",
+        description: `Priority changed to ${newPriority}`
+      })
+
+      setSelectedPriority(newPriority)
+      setEditingPriority(false)
+      onUpdate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change priority",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // ✨ NEW: SET DUE DATE
+  const handleSetDueDate = async () => {
+    if (!dueDate) {
+      toast({
+        title: "Error",
+        description: "Please select a due date",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/due-date`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dueDate: new Date(dueDate).toISOString() })
+      })
+
+      if (!response.ok) throw new Error("Failed to set due date")
+
+      toast({
+        title: "Success!",
+        description: "Due date set successfully"
+      })
+
+      setShowDueDateModal(false)
+      onUpdate()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to set due date",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // ✨ NEW: CANCEL TICKET
+  const handleCancelTicket = async () => {
+    if (!cancelReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a cancellation reason",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setCancelling(true)
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/cancel`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason })
+      })
+
+      if (!response.ok) throw new Error("Failed to cancel ticket")
+
+      toast({
+        title: "Success!",
+        description: "Ticket cancelled successfully"
+      })
+
+      setShowCancelModal(false)
+      onClose()
+      onUpdate()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel ticket",
+        variant: "destructive"
+      })
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  // ✨ NEW: EDIT TICKET
+  const handleEditTicket = async () => {
+    if (!editTitle.trim() || !editDescription.trim()) {
+      toast({
+        title: "Error",
+        description: "Title and description cannot be empty",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setEditing(true)
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/edit`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title: editTitle,
+          description: editDescription
+        })
+      })
+
+      if (!response.ok) throw new Error("Failed to edit ticket")
+
+      toast({
+        title: "Success!",
+        description: "Ticket updated successfully"
+      })
+
+      setShowEditModal(false)
+      onUpdate()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to edit ticket",
+        variant: "destructive"
+      })
+    } finally {
+      setEditing(false)
+    }
+  }
+
   // Client gets LIGHT theme, Staff/Management get DARK theme
   const isDark = !isClient  // Light theme for clients, dark for staff/management
   
@@ -242,6 +477,54 @@ export default function TicketDetailModal({
                 >
                   {statusConfig[ticket.status]?.label}
                 </span>
+
+                {/* ✨ PRIORITY - Management can edit, others can view */}
+                {isManagement ? (
+                  <select
+                    value={selectedPriority}
+                    onChange={(e) => handleChangePriority(e.target.value)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${
+                      selectedPriority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
+                      selectedPriority === "HIGH" ? "bg-orange-500 text-white" :
+                      selectedPriority === "MEDIUM" ? "bg-blue-500 text-white" :
+                      "bg-slate-500 text-white"
+                    }`}
+                  >
+                    <option value="LOW">🔵 Low</option>
+                    <option value="MEDIUM">⚪ Medium</option>
+                    <option value="HIGH">🟠 High</option>
+                    <option value="URGENT">🔴 Urgent</option>
+                  </select>
+                ) : (
+                  <span className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+                    ticket.priority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
+                    ticket.priority === "HIGH" ? "bg-orange-500 text-white" :
+                    ticket.priority === "MEDIUM" ? "bg-blue-500 text-white" :
+                    "bg-slate-500 text-white"
+                  }`}>
+                    {ticket.priority === "URGENT" ? "🔴 Urgent" :
+                     ticket.priority === "HIGH" ? "🟠 High" :
+                     ticket.priority === "MEDIUM" ? "⚪ Medium" :
+                     "🔵 Low"}
+                  </span>
+                )}
+
+                {/* ✨ DUE DATE - Management can set, others can view */}
+                {isManagement && !ticket.dueDate && (
+                  <Button
+                    onClick={() => setShowDueDateModal(true)}
+                    className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all"
+                  >
+                    <Calendar className="h-3 w-3" />
+                    Set Due Date
+                  </Button>
+                )}
+                {ticket.dueDate && (
+                  <span className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold bg-purple-500 text-white">
+                    <Calendar className="h-3 w-3" />
+                    Due: {new Date(ticket.dueDate).toLocaleDateString()}
+                  </span>
+                )}
               </div>
               <h2 className={`text-3xl font-bold ${
                 isDark 
@@ -252,6 +535,61 @@ export default function TicketDetailModal({
               </h2>
             </div>
             <div className="flex items-center gap-2">
+              {/* 🔄 REASSIGN BUTTON - Management Only */}
+              {console.log('🔍 [REASSIGN BUTTON DEBUG]', { isManagement, isClient })}
+              {/* ✨ EDIT BUTTON - Staff (own) / Management (any) */}
+              {(isManagement || (!isManagement && !isClient && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && ticket.status !== "CANCELLED")) && (
+                <Button
+                  onClick={() => setShowEditModal(true)}
+                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                    isDark
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/50"
+                      : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-blue-500/30"
+                  }`}
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+
+              {isManagement ? (
+                <>
+                  {console.log('✅ [REASSIGN BUTTON] Rendering button NOW!')}
+                  <Button
+                    onClick={() => {
+                      console.log('🔄 [REASSIGN BUTTON] Button clicked!')
+                      setShowReassignModal(true)
+                      fetchAvailableManagers()
+                    }}
+                    className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                      isDark
+                        ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-amber-500/50"
+                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30"
+                    }`}
+                  >
+                    <Users className="h-4 w-4" />
+                    Reassign
+                  </Button>
+                </>
+              ) : (
+                console.log('❌ [REASSIGN BUTTON] NOT rendering (isManagement is false)')
+              )}
+
+              {/* ✨ CANCEL BUTTON - Staff (own, if open) / Management (any) */}
+              {(isManagement || (!isManagement && !isClient && (ticket.status === "OPEN" || ticket.status === "IN_PROGRESS"))) && ticket.status !== "CANCELLED" && (
+                <Button
+                  onClick={() => setShowCancelModal(true)}
+                  className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
+                    isDark
+                      ? "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-red-500/50"
+                      : "bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-red-500/30"
+                  }`}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancel
+                </Button>
+              )}
+              
               <Button
                 onClick={handleStartVideoCall}
                 className={`flex items-center gap-2 text-white shadow-lg hover:scale-105 transition-all rounded-xl px-4 py-2 ${
@@ -645,6 +983,251 @@ export default function TicketDetailModal({
         </div>
       </div>
       
+      {/* 🔄 REASSIGNMENT MODAL */}
+      {showReassignModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="w-full max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-amber-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+            {/* Header */}
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">
+                Reassign Ticket
+              </h3>
+              <p className="text-sm text-slate-400 mt-2">
+                Assign this ticket to a different manager
+              </p>
+            </div>
+
+            {/* Current Assignment */}
+            {ticket.management_users && (
+              <div className="mb-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                <p className="text-xs text-slate-400 mb-2">Currently assigned to:</p>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 ring-2 ring-amber-500/30">
+                    <AvatarImage src={ticket.management_users.avatar} />
+                    <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold">
+                      {ticket.management_users.name?.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-bold text-white">{ticket.management_users.name}</p>
+                    <p className="text-xs text-slate-400">{ticket.management_users.department?.replace('_', ' ')}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* New Assignee Dropdown */}
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Reassign to: <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={selectedNewAssignee}
+                onChange={(e) => setSelectedNewAssignee(e.target.value)}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">Select a manager...</option>
+                {availableManagers
+                  .filter(m => m.id !== ticket.managementUserId)
+                  .map(manager => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.name} ({manager.department.replace('_', ' ')})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Reason (Optional) */}
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Reason (optional)
+              </label>
+              <textarea
+                value={reassignReason}
+                onChange={(e) => setReassignReason(e.target.value)}
+                placeholder="e.g., Manager is on leave today"
+                rows={3}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-500 resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowReassignModal(false)
+                  setSelectedNewAssignee("")
+                  setReassignReason("")
+                }}
+                disabled={reassigning}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3 transition-all"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleReassign}
+                disabled={reassigning || !selectedNewAssignee}
+                className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl py-3 shadow-lg shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {reassigning ? "Reassigning..." : "Reassign"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: EDIT TICKET MODAL */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="w-full max-w-2xl rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-blue-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                Edit Ticket
+              </h3>
+              <p className="text-sm text-slate-400 mt-2">
+                Update the ticket title and description
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Title <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Description <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={6}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowEditModal(false)}
+                disabled={editing}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEditTicket}
+                disabled={editing || !editTitle.trim() || !editDescription.trim()}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl py-3 shadow-lg shadow-blue-500/30 disabled:opacity-50"
+              >
+                {editing ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: CANCEL TICKET MODAL */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="w-full max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-red-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-3 rounded-full bg-red-500/20">
+                  <AlertTriangle className="h-6 w-6 text-red-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-400">
+                  Cancel Ticket
+                </h3>
+              </div>
+              <p className="text-sm text-slate-400 mt-2">
+                This ticket will be marked as cancelled. Please provide a reason.
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Cancellation Reason <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., Issue resolved itself, Duplicate ticket, etc."
+                rows={4}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-slate-500 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowCancelModal(false)}
+                disabled={cancelling}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3"
+              >
+                Go Back
+              </Button>
+              <Button
+                onClick={handleCancelTicket}
+                disabled={cancelling || !cancelReason.trim()}
+                className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl py-3 shadow-lg shadow-red-500/30 disabled:opacity-50"
+              >
+                {cancelling ? "Cancelling..." : "Cancel Ticket"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: SET DUE DATE MODAL (Management only) */}
+      {showDueDateModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="w-full max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-900 ring-2 ring-purple-500/30 backdrop-blur-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-500">
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                Set Due Date
+              </h3>
+              <p className="text-sm text-slate-400 mt-2">
+                Set a deadline for when this ticket should be resolved
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
+                Due Date & Time <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full rounded-xl bg-slate-800/50 px-4 py-3 text-white ring-1 ring-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowDueDateModal(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-3"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSetDueDate}
+                disabled={!dueDate}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl py-3 shadow-lg shadow-purple-500/30 disabled:opacity-50"
+              >
+                Set Due Date
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Image Lightbox */}
       {showLightbox && (
         <ImageLightbox

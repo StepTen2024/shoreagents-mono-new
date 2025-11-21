@@ -144,7 +144,13 @@ export async function GET(request: NextRequest) {
       const totalKeystrokes = metrics.reduce((sum, m) => sum + m.keystrokes, 0)
       const totalActiveTime = metrics.reduce((sum, m) => sum + m.activeTime, 0)
       const totalIdleTime = metrics.reduce((sum, m) => sum + m.idleTime, 0)
+      const totalScreenTime = metrics.reduce((sum, m) => sum + m.screenTime, 0)
       const totalUrlsVisited = metrics.reduce((sum, m) => sum + m.urlsVisited, 0)
+      const totalTabsSwitched = metrics.reduce((sum, m) => sum + m.tabsSwitched, 0)
+      const totalClipboardActions = metrics.reduce((sum, m) => sum + m.clipboardActions, 0)
+      const totalDownloads = metrics.reduce((sum, m) => sum + m.downloads, 0)
+      const totalUploads = metrics.reduce((sum, m) => sum + m.uploads, 0)
+      const totalBandwidth = metrics.reduce((sum, m) => sum + m.bandwidth, 0)
 
       // Calculate productivity score using Electron's weighted formula (40% time + 30% keystrokes + 30% mouse)
       // This ensures consistency with client analytics and Electron tracking
@@ -209,7 +215,13 @@ export async function GET(request: NextRequest) {
           totalKeystrokes,
           totalActiveTime,
           totalIdleTime,
+          totalScreenTime,
           totalUrlsVisited,
+          totalTabsSwitched,
+          totalClipboardActions,
+          totalDownloads,
+          totalUploads,
+          totalBandwidth,
           lateBreaks,
           hasSuspiciousActivity,
           suspiciousUrlCount: suspiciousUrls.length,

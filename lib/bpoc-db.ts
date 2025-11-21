@@ -237,10 +237,96 @@ export async function checkCandidateAvailability(candidateId: string) {
   return result.rows[0] || null
 }
 
+/**
+ * Get application counts for job requests
+ * @param jobRequestIds Array of job request IDs to get counts for
+ * @returns Map of job_request_id -> application count
+ */
+export async function getApplicationCounts(jobRequestIds: string[]): Promise<Map<string, number>> {
+  if (jobRequestIds.length === 0) {
+    return new Map()
+  }
+
+  // BPOC uses job_id (integer) to link applications to job_requests
+  const sql = `
+    SELECT 
+      job_id,
+      COUNT(*) as application_count
+    FROM applications
+    WHERE job_id = ANY($1::int[])
+    GROUP BY job_id
+  `
+
+  try {
+    // Convert string IDs to integers for BPOC
+    const jobIds = jobRequestIds.map(id => parseInt(id))
+    console.log(`🔍 [BPOC] Fetching application counts for job IDs:`, jobIds)
+    
+    const result = await queryBPOC(sql, [jobIds])
+    const countMap = new Map<string, number>()
+    
+    result.rows.forEach((row: any) => {
+      countMap.set(row.job_id.toString(), parseInt(row.application_count))
+    })
+    
+    console.log(`📊 [BPOC] Application counts:`, Object.fromEntries(countMap))
+    return countMap
+  } catch (error) {
+    console.error('❌ [BPOC] Error fetching application counts:', error)
+    return new Map()
+  }
+}
+
+/**
+ * Get applications for a specific job request
+ * @param jobRequestId Job request ID
+ * @returns Array of applications with candidate info
+ */
+export async function getApplicationsForJobRequest(jobRequestId: string) {
+  console.log(`🔍 [BPOC] Fetching applications for job_id: ${jobRequestId}`)
+  
+  // BPOC uses job_id (integer) to link applications to job_requests
+  const sql = `
+    SELECT 
+      a.id,
+      a.job_id,
+      a.user_id as candidate_id,
+      a.status,
+      a.created_at,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.avatar_url,
+      u.position,
+      u.location_city,
+      u.location_country
+    FROM applications a
+    LEFT JOIN users u ON a.user_id = u.id
+    WHERE a.job_id = $1
+    ORDER BY a.created_at DESC
+  `
+
+  try {
+    const jobId = parseInt(jobRequestId)
+    console.log(`🔍 [BPOC] Querying applications for job_id: ${jobId}`)
+    
+    const result = await queryBPOC(sql, [jobId])
+    console.log(`📋 [BPOC] Found ${result.rows.length} applications`)
+    
+    if (result.rows.length > 0) {
+      console.log(`📋 [BPOC] Sample application:`, {
+        candidate: result.rows[0].first_name,
+        position: result.rows[0].position,
+        status: result.rows[0].status
+      })
+    }
+    
+    return result.rows
+  } catch (error) {
+    console.error(`❌ [BPOC] Error fetching applications:`, error)
+    return []
+  }
+}
+
 // Export pool for cleanup if needed
 export { pool as bpocPool }
-
-
-
-
-

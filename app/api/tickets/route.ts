@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { mapCategoryToDepartment } from "@/lib/category-department-map"
+import { smartAssignTicket } from "@/lib/smart-ticket-assignment"
 import { randomUUID } from "crypto"
 
 // GET /api/tickets - Get all tickets for current user
@@ -112,16 +112,21 @@ export async function GET(request: NextRequest) {
 // POST /api/tickets - Create a new ticket
 export async function POST(request: NextRequest) {
   try {
+    console.log('🎫 [TICKETS API] Starting ticket creation...')
+    
     const session = await auth()
+    console.log('🔐 Session:', session?.user?.id ? 'Authenticated' : 'Not authenticated')
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log('📝 Request body:', { title: body.title, category: body.category, priority: body.priority, attachments: body.attachments?.length })
     const { title, description, category, priority, attachments } = body
 
     if (!title || !description || !category) {
+      console.log('❌ Missing required fields')
       return NextResponse.json(
         { error: "Title, description, and category are required" },
         { status: 400 }
@@ -129,67 +134,46 @@ export async function POST(request: NextRequest) {
     }
 
     // Get staff user first
+    console.log('🔍 Looking for staff user with authUserId:', session.user.id)
     const staffUser = await prisma.staff_users.findUnique({
       where: { authUserId: session.user.id }
     })
 
     if (!staffUser) {
+      console.log('❌ Staff user not found')
       return NextResponse.json({ error: "Staff user not found" }, { status: 404 })
     }
+    console.log('✅ Found staff user:', staffUser.name)
 
-    // Generate unique ticket ID (safe from race conditions)
+    // Generate unique ticket ID - Find the highest existing ticket number
     const lastTicket = await prisma.tickets.findFirst({
-      orderBy: { createdAt: "desc" },
-      select: { ticketId: true },
+      orderBy: { ticketId: 'desc' },
+      select: { ticketId: true }
     })
 
     let ticketNumber = 1
-    if (lastTicket?.ticketId) {
+    if (lastTicket) {
+      // Extract number from "TKT-0014" -> 14
       const match = lastTicket.ticketId.match(/TKT-(\d+)/)
       if (match) {
-        ticketNumber = parseInt(match[1]) + 1
+        ticketNumber = parseInt(match[1], 10) + 1
       }
     }
 
-    // Keep trying until we find a unique ticketId (handles race conditions)
-    let ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
-    let attempts = 0
-    while (attempts < 10) {
-      const existing = await prisma.tickets.findUnique({
-        where: { ticketId },
-        select: { id: true }
-      })
-      if (!existing) break
-      ticketNumber++
-      ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
-      attempts++
+    const ticketId = `TKT-${String(ticketNumber).padStart(4, "0")}`
+    console.log('🎫 Generated ticket ID:', ticketId, '(Last ticket:', lastTicket?.ticketId || 'none', ')')
+
+    // 🎯 SMART AUTO-ASSIGN: Intelligently assign ticket to right person
+    const assignment = await smartAssignTicket(category, title, description)
+    const managementUserId = assignment.managementUserId
+
+    if (assignment.assignedToName) {
+      console.log(`✅ [TICKETS API] Smart-assigned to: ${assignment.assignedToName} (${assignment.department})`)
+    } else {
+      console.log(`⚠️  [TICKETS API] No available manager for ${assignment.department || category}`)
     }
 
-    if (attempts >= 10) {
-      return NextResponse.json(
-        { error: "Failed to generate unique ticket ID" },
-        { status: 500 }
-      )
-    }
-
-    // 🎯 AUTO-ASSIGN: Map category to department and find manager
-    const department = mapCategoryToDepartment(category)
-    let managementUserId: string | null = null
-
-    if (department) {
-      // Find a management user with matching department
-      const manager = await prisma.management_users.findFirst({
-        where: { department },
-      })
-
-      if (manager) {
-        managementUserId = manager.id
-        console.log(`✅ Auto-assigned ticket to ${manager.name} (${department})`)
-      } else {
-        console.log(`⚠️  No manager found for department: ${department}`)
-      }
-    }
-
+    console.log('💾 Creating ticket in database...')
     const ticket = await prisma.tickets.create({
       data: {
         id: randomUUID(),
@@ -232,10 +216,19 @@ export async function POST(request: NextRequest) {
     console.log(`✅ [TICKETS API] Created ticket ${ticketId} for staff ${staffUser.name}`)
 
     return NextResponse.json({ success: true, ticket }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating ticket:", error)
+  } catch (error: any) {
+    console.error('❌ [TICKETS API] ERROR CREATING TICKET:')
+    console.error('Error name:', error?.name)
+    console.error('Error message:', error?.message)
+    console.error('Error code:', error?.code)
+    console.error('Full error:', error)
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: error?.message || 'Unknown error',
+        code: error?.code || 'UNKNOWN'
+      },
       { status: 500 }
     )
   }

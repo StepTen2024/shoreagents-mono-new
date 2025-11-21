@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Pool } from "pg"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getApplicationCounts } from "@/lib/bpoc-db"
 
 // BPOC Database connection
 const bpocPool = new Pool({
@@ -46,33 +47,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    // Use the client's actual company ID from Shore Agents database
-    const companyId = clientUser.company.id
-    console.log("📋 Creating job request for company:", companyId, clientUser.company.companyName)
-
-    // Ensure company exists in BPOC members table (create if doesn't exist)
-    try {
-      const memberCheck = await bpocPool.query(
-        `SELECT company_id FROM members WHERE company_id = $1`,
-        [companyId]
-      )
-
-      if (memberCheck.rows.length === 0) {
-        console.log("🏢 Company not found in BPOC members, creating...")
-        await bpocPool.query(
-          `INSERT INTO members (company_id, company, created_at, updated_at) 
-           VALUES ($1, $2, NOW(), NOW())
-           ON CONFLICT (company_id) DO NOTHING`,
-          [companyId, clientUser.company.companyName]
-        )
-        console.log("✅ Company created in BPOC members")
-      } else {
-        console.log("✅ Company already exists in BPOC members")
-      }
-    } catch (memberError) {
-      console.error("Error ensuring company in BPOC members:", memberError)
-      // Continue anyway - the INSERT might still work
-    }
+    // ✅ FIX: Use Shore Agents company ID as BPOC company ID
+    // This ensures each client only sees THEIR job requests
+    const bpocCompanyId = clientUser.companyId // Use actual Shore Agents company ID
+    
+    console.log(`✅ POST Job Request for company: ${clientUser.company.companyName} (ID: ${bpocCompanyId})`)
 
     // Insert into BPOC database
     const result = await bpocPool.query(
@@ -181,10 +160,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Client user or company not found" }, { status: 404 })
     }
 
-    // Use the client's actual company ID from Shore Agents database
-    const companyId = clientUser.company.id
+    // ✅ FIX: Use Shore Agents company ID as BPOC company ID
+    // This ensures each client only sees THEIR job requests
+    const bpocCompanyId = clientUser.companyId // Use actual Shore Agents company ID
+    
+    console.log(`✅ GET Job Requests for company: ${clientUser.company.companyName} (ID: ${bpocCompanyId})`)
 
-    // Fetch job requests from BPOC database
+    // Fetch job requests from BPOC database - FILTERED BY CLIENT'S COMPANY
     const result = await bpocPool.query(
       `SELECT * FROM job_requests 
        WHERE company_id = $1 
@@ -192,7 +174,21 @@ export async function GET(request: NextRequest) {
       [companyId]
     )
 
-    return NextResponse.json(result.rows)
+    console.log(`📊 Found ${result.rows.length} job requests for ${clientUser.company.companyName}`)
+
+    // Fetch application counts for these job requests
+    const jobRequestIds = result.rows.map(job => job.id.toString())
+    const applicationCounts = await getApplicationCounts(jobRequestIds)
+
+    // Merge application counts into job requests
+    const enrichedJobRequests = result.rows.map(job => ({
+      ...job,
+      applicants: applicationCounts.get(job.id.toString()) || 0
+    }))
+
+    console.log(`✅ Enriched ${enrichedJobRequests.length} job requests with application counts`)
+
+    return NextResponse.json(enrichedJobRequests)
   } catch (error) {
     console.error("Error fetching job requests:", error)
     // Return empty array instead of error to allow form to show

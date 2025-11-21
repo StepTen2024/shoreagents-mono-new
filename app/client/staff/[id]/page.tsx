@@ -24,6 +24,17 @@ import {
   Star,
   Heart,
   Activity,
+  Sparkles,
+  Film,
+  BookOpen,
+  Music,
+  Trophy,
+  Gamepad2,
+  MapPinned,
+  Smile,
+  Quote,
+  Palette,
+  UtensilsCrossed,
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -102,6 +113,22 @@ interface StaffDetail {
     score: number
     activeTime: number
   }>
+  interests?: {
+    favoriteColor: string | null
+    favoriteFastFood: string | null
+    favoriteMovie: string | null
+    favoriteBook: string | null
+    favoriteMusic: string | null
+    favoriteSport: string | null
+    favoriteGame: string | null
+    favoriteSeason: string | null
+    favoriteQuote: string | null
+    hobby: string | null
+    petName: string | null
+    dreamDestination: string | null
+    funFact: string | null
+    additionalInfo: string | null
+  } | null
 }
 
 export default function StaffDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -466,6 +493,169 @@ export default function StaffDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
             </div>
+          </Card>
+        )}
+
+        {/* Get to Know - Fun Facts */}
+        {staff.interests && (
+          <Card className="p-6 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 border-2 border-purple-200 mb-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  Get to Know {staff.name.split(" ")[0]}! ✨
+                </h3>
+                <p className="text-sm text-gray-600">Build rapport with your team member</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {staff.interests.favoriteColor && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Palette className="h-5 w-5 text-pink-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Color</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteColor}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteFastFood && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UtensilsCrossed className="h-5 w-5 text-orange-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Food</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteFastFood}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteMovie && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Film className="h-5 w-5 text-red-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Movie</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteMovie}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteBook && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BookOpen className="h-5 w-5 text-blue-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Book</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteBook}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteMusic && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Music className="h-5 w-5 text-purple-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Music</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteMusic}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteSport && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="h-5 w-5 text-yellow-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Sport</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteSport}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteGame && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Gamepad2 className="h-5 w-5 text-green-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Game</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.favoriteGame}</p>
+                </div>
+              )}
+
+              {staff.interests.hobby && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="h-5 w-5 text-rose-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Hobbies</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.hobby}</p>
+                </div>
+              )}
+
+              {staff.interests.petName && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="h-5 w-5 text-pink-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Pet Name</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.petName}</p>
+                </div>
+              )}
+
+              {staff.interests.dreamDestination && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPinned className="h-5 w-5 text-cyan-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Dream Destination</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.dreamDestination}</p>
+                </div>
+              )}
+
+              {staff.interests.favoriteSeason && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-5 w-5 text-indigo-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorite Season</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900 capitalize">{staff.interests.favoriteSeason}</p>
+                </div>
+              )}
+
+              {staff.interests.funFact && (
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Smile className="h-5 w-5 text-amber-500" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fun Fact</span>
+                  </div>
+                  <p className="text-lg font-semibold text-gray-900">{staff.interests.funFact}</p>
+                </div>
+              )}
+            </div>
+
+            {staff.interests.favoriteQuote && (
+              <div className="mt-6 bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple-500">
+                <div className="flex items-start gap-3">
+                  <Quote className="h-6 w-6 text-purple-500 flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Favorite Quote</p>
+                    <p className="text-xl font-medium text-gray-900 italic">"{staff.interests.favoriteQuote}"</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {staff.interests.additionalInfo && (
+              <div className="mt-4 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-6 w-6 text-blue-500 flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">About Me</p>
+                    <p className="text-lg text-gray-900">{staff.interests.additionalInfo}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 

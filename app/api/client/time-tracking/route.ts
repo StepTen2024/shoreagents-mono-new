@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Fetch time entries with breaks
+    // Fetch time entries with breaks and work schedules
     const timeEntries = await prisma.time_entries.findMany({
       where: whereClause,
       include: {
@@ -142,7 +142,8 @@ export async function GET(req: NextRequest) {
             staff_profiles: {
               select: {
                 currentRole: true,
-                employmentStatus: true
+                employmentStatus: true,
+                timezone: true
               }
             }
           }
@@ -150,6 +151,14 @@ export async function GET(req: NextRequest) {
         breaks: {
           orderBy: {
             actualStart: 'asc'
+          }
+        },
+        work_schedules: {
+          select: {
+            startTime: true,
+            endTime: true,
+            dayOfWeek: true,
+            shiftType: true
           }
         }
       },
@@ -195,6 +204,9 @@ export async function GET(req: NextRequest) {
 
       // Calculate current hours for active entry (including break time deduction)
       let currentHours = 0
+      let liveOvertimeMinutes = 0
+      let isCurrentlyOvertime = false
+      
       if (activeEntry && !activeEntry.clockOut) {
         const clockInTime = new Date(activeEntry.clockIn).getTime()
         const now = new Date().getTime()
@@ -209,6 +221,16 @@ export async function GET(req: NextRequest) {
           }, 0)
         
         currentHours = Math.round(((totalMs - breakTimeMs) / (1000 * 60 * 60)) * 100) / 100
+        
+        // ✨ NEW: Calculate LIVE overtime if past expected clock-out
+        if (activeEntry.expectedClockOut) {
+          const expectedClockOutTime = new Date(activeEntry.expectedClockOut).getTime()
+          if (now > expectedClockOutTime) {
+            // Currently working overtime!
+            isCurrentlyOvertime = true
+            liveOvertimeMinutes = Math.floor((now - expectedClockOutTime) / (1000 * 60))
+          }
+        }
       }
 
       return {
@@ -227,6 +249,22 @@ export async function GET(req: NextRequest) {
           id: activeEntry.id,
           clockIn: activeEntry.clockIn,
           currentHours, // Add calculated current hours
+          expectedClockIn: activeEntry.expectedClockIn,
+          expectedClockOut: activeEntry.expectedClockOut,
+          wasLate: activeEntry.wasLate,
+          lateBy: activeEntry.lateBy,
+          wasEarly: activeEntry.wasEarly,
+          earlyBy: activeEntry.earlyBy,
+          lateReason: activeEntry.lateReason,
+          // ✨ NEW: Real-time overtime data
+          isCurrentlyOvertime,
+          liveOvertimeMinutes,
+          workSchedule: activeEntry.work_schedules ? {
+            startTime: activeEntry.work_schedules.startTime,
+            endTime: activeEntry.work_schedules.endTime,
+            dayOfWeek: activeEntry.work_schedules.dayOfWeek,
+            shiftType: activeEntry.work_schedules.shiftType
+          } : null,
           breaks: activeEntry.breaks.map((b: any) => ({
             id: b.id,
             type: b.type,
@@ -244,9 +282,26 @@ export async function GET(req: NextRequest) {
           clockIn: e.clockIn,
           clockOut: e.clockOut,
           totalHours: e.totalHours ? Number(e.totalHours) : 0,
+          expectedClockIn: e.expectedClockIn,
+          expectedClockOut: e.expectedClockOut,
           wasLate: e.wasLate,
           lateBy: e.lateBy,
+          wasEarly: e.wasEarly,
+          earlyBy: e.earlyBy,
+          wasEarlyClockOut: e.wasEarlyClockOut,
+          earlyClockOutBy: e.earlyClockOutBy,
+          overtimeMinutes: e.overtimeMinutes,
+          workedFullShift: e.workedFullShift,
+          lateReason: e.lateReason,
           clockOutReason: e.clockOutReason,
+          shiftDate: e.shiftDate,
+          shiftDayOfWeek: e.shiftDayOfWeek,
+          workSchedule: e.work_schedules ? {
+            startTime: e.work_schedules.startTime,
+            endTime: e.work_schedules.endTime,
+            dayOfWeek: e.work_schedules.dayOfWeek,
+            shiftType: e.work_schedules.shiftType
+          } : null,
           breaks: e.breaks.map((b: any) => ({
             id: b.id,
             type: b.type,

@@ -753,6 +753,12 @@ model tickets {
   createdByType    String            @default("STAFF")
   managementUserId String?
   clientUserId     String?
+  dueDate          DateTime?         // ✨ NEW: Admin-set deadline
+  cancelledReason  String?           // ✨ NEW: Why cancelled
+  cancelledBy      String?           // ✨ NEW: Who cancelled (staff/admin ID)
+  cancelledAt      DateTime?         // ✨ NEW: When cancelled
+  lastEditedAt     DateTime?         // ✨ NEW: Last edit timestamp
+  lastEditedBy     String?           // ✨ NEW: Who last edited (for audit)
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
@@ -770,10 +776,12 @@ model time_entries {
   breaksScheduled  Boolean         @default(false)
   clockOutReason   ClockOutReason?
   expectedClockIn  DateTime?
+  expectedClockOut DateTime?
   lateBy           Int?
   wasLate          Boolean         @default(false)
   earlyBy          Int?
   earlyClockOutBy  Int?
+  overtimeMinutes  Int?
   lateReason       LateReason?
   wasEarly         Boolean         @default(false)
   wasEarlyClockOut Boolean         @default(false)
@@ -1104,6 +1112,7 @@ enum TicketStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+  CANCELLED // ✨ NEW: For tickets cancelled by staff or admin
 }
 
 enum WorkLocationType {

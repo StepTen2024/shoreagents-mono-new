@@ -72,6 +72,10 @@ interface JobRequest {
   applicants: number
   views: number
   company_id: string
+  company_name?: string
+  client_user_name?: string
+  client_user_email?: string
+  applications?: any[]
 }
 
 interface PreferredTime {
@@ -192,6 +196,7 @@ export default function AdminRecruitmentPage() {
   const [jobsLoading, setJobsLoading] = useState(true)
   const [jobSearch, setJobSearch] = useState('')
   const [selectedJob, setSelectedJob] = useState<JobRequest | null>(null)
+  const [jobDetailsLoading, setJobDetailsLoading] = useState(false)
   
   // Interview Requests State
   const [interviews, setInterviews] = useState<InterviewRequest[]>([])
@@ -1336,7 +1341,24 @@ export default function AdminRecruitmentPage() {
                   <div
                     key={job.id}
                     className="flex items-start gap-4 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => setSelectedJob(job)}
+                    onClick={async () => {
+                      setJobDetailsLoading(true)
+                      try {
+                        // Fetch full job details with applications
+                        const response = await fetch(`/api/admin/recruitment/job-requests/${job.id}`)
+                        if (response.ok) {
+                          const data = await response.json()
+                          setSelectedJob(data.jobRequest)
+                        } else {
+                          setSelectedJob(job)
+                        }
+                      } catch (error) {
+                        console.error('Failed to fetch job details:', error)
+                        setSelectedJob(job)
+                      } finally {
+                        setJobDetailsLoading(false)
+                      }
+                    }}
                   >
                     <div className="p-3 bg-muted rounded-lg">
                       <Briefcase className="h-6 w-6 text-foreground" />
@@ -1353,6 +1375,19 @@ export default function AdminRecruitmentPage() {
                           {job.status}
                         </Badge>
                       </div>
+                      {/* NEW: Company and Client Info */}
+                      {(job.company_name || job.client_user_name) && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm text-blue-400 font-medium">
+                            🏢 {job.company_name}
+                          </span>
+                          {job.client_user_name && (
+                            <span className="text-sm text-muted-foreground">
+                              • {job.client_user_name}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Building2 className="h-3 w-3" />
@@ -2242,14 +2277,23 @@ export default function AdminRecruitmentPage() {
 
       {/* Job Detail Modal */}
       <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Job Request Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-blue-600" />
+              Job Request Details
+            </DialogTitle>
           </DialogHeader>
-          {selectedJob && (
-            <div className="space-y-4">
+          {jobDetailsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <p className="ml-3 text-muted-foreground">Loading job details...</p>
+            </div>
+          ) : selectedJob && (
+            <div className="space-y-6">
+              {/* Job Title and Status */}
               <div>
-                <h3 className="text-xl font-bold text-foreground">{selectedJob.job_title}</h3>
+                <h3 className="text-2xl font-bold text-foreground">{selectedJob.job_title}</h3>
                 <Badge className={
                   selectedJob.status === 'active' 
                     ? 'bg-green-600 text-white border border-green-500' 
@@ -2259,6 +2303,37 @@ export default function AdminRecruitmentPage() {
                 </Badge>
               </div>
 
+              {/* Client Information Section */}
+              {(selectedJob.company_name || selectedJob.client_user_name) && (
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Client Information
+                  </h4>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {selectedJob.company_name && (
+                      <div>
+                        <label className="text-xs text-blue-700 dark:text-blue-300">Company</label>
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{selectedJob.company_name}</p>
+                      </div>
+                    )}
+                    {selectedJob.client_user_name && (
+                      <div>
+                        <label className="text-xs text-blue-700 dark:text-blue-300">Client Contact</label>
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">{selectedJob.client_user_name}</p>
+                      </div>
+                    )}
+                    {selectedJob.client_user_email && (
+                      <div>
+                        <label className="text-xs text-blue-700 dark:text-blue-300">Email</label>
+                        <p className="text-sm text-blue-800 dark:text-blue-200">{selectedJob.client_user_email}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Job Details Grid */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-muted-foreground">Department</label>
@@ -2288,14 +2363,16 @@ export default function AdminRecruitmentPage() {
                 </div>
               </div>
 
+              {/* Description */}
               <div>
-                <label className="text-sm text-muted-foreground">Description</label>
-                <p className="text-foreground mt-1">{selectedJob.job_description}</p>
+                <label className="text-sm text-muted-foreground font-semibold">Description</label>
+                <p className="text-foreground mt-2 whitespace-pre-wrap">{selectedJob.job_description}</p>
               </div>
 
+              {/* Skills */}
               {selectedJob.skills && selectedJob.skills.length > 0 && (
                 <div>
-                  <label className="text-sm text-muted-foreground">Required Skills</label>
+                  <label className="text-sm text-muted-foreground font-semibold">Required Skills</label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {selectedJob.skills.map((skill, idx) => (
                       <Badge key={idx} className="bg-muted text-foreground border border-border">
@@ -2306,10 +2383,92 @@ export default function AdminRecruitmentPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>👁️ {selectedJob.views} views</span>
-                <span>📝 {selectedJob.applicants} applicants</span>
-                <span>📅 Posted {new Date(selectedJob.created_at).toLocaleDateString()}</span>
+              {/* Applications Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Applications ({selectedJob.applicants})
+                  </h4>
+                </div>
+
+                {selectedJob.applications && selectedJob.applications.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedJob.applications.map((application: any) => (
+                      <Card key={application.id} className="p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          {application.avatar_url ? (
+                            <Avatar className="h-12 w-12">
+                              <AvatarImage src={application.avatar_url} />
+                              <AvatarFallback>
+                                {application.first_name?.charAt(0) || 'C'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                              <User className="h-6 w-6 text-white" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <h5 className="text-base font-semibold text-foreground">
+                                  {application.first_name} {application.last_name}
+                                </h5>
+                                <p className="text-sm text-muted-foreground">{application.position}</p>
+                              </div>
+                              <Badge className="bg-blue-100 text-blue-800 border border-blue-200">
+                                {application.status || 'pending'}
+                              </Badge>
+                            </div>
+                            {application.location_city && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                📍 {application.location_city}, {application.location_country}
+                              </p>
+                            )}
+                            {application.cover_letter && (
+                              <div className="mt-3 p-3 bg-muted rounded-lg">
+                                <p className="text-xs font-semibold text-muted-foreground mb-1">Cover Letter:</p>
+                                <p className="text-sm text-foreground">{application.cover_letter}</p>
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Applied: {new Date(application.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-muted/50 rounded-lg border border-border">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No applications yet</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Candidates will see this job on the BPOC platform
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats Footer */}
+              <div className="flex items-center gap-4 text-sm text-muted-foreground border-t pt-4">
+                <span className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  {selectedJob.views} views
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  {selectedJob.applicants} applicants
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  Posted {new Date(selectedJob.created_at).toLocaleDateString()}
+                </span>
               </div>
             </div>
           )}

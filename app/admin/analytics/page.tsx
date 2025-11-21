@@ -141,7 +141,7 @@ export default function StaffAnalyticsPage() {
         </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
@@ -171,7 +171,7 @@ export default function StaffAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${getProductivityColor(avgProductivity)}`}>{avgProductivity}%</div>
-            <p className="text-xs text-muted-foreground">Active vs idle time</p>
+            <p className="text-xs text-muted-foreground">Weighted score</p>
           </CardContent>
           </Card>
 
@@ -287,8 +287,8 @@ export default function StaffAnalyticsPage() {
                     <p className="font-semibold">{formatTime(staffMember.stats.totalActiveTime)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Idle Time</p>
-                    <p className="font-semibold">{formatTime(staffMember.stats.totalIdleTime)}</p>
+                    <p className="text-muted-foreground">Keystrokes</p>
+                    <p className="font-semibold">{staffMember.stats.totalKeystrokes.toLocaleString()}</p>
                   </div>
           <div>
                     <p className="text-muted-foreground">Mouse Clicks</p>
