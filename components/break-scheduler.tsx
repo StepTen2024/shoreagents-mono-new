@@ -3,22 +3,50 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Coffee, Lock } from "lucide-react"
+import { Coffee, Lock, AlertCircle } from "lucide-react"
 
 interface BreakSchedulerProps {
   isOpen: boolean
   timeEntryId: string
+  shiftEndTime?: string | null  // Shift end time (e.g., "18:00:00")
   onScheduled: () => void
   onSkip: () => void
 }
 
-export function BreakScheduler({ isOpen, timeEntryId, onScheduled, onSkip }: BreakSchedulerProps) {
+export function BreakScheduler({ isOpen, timeEntryId, shiftEndTime, onScheduled, onSkip }: BreakSchedulerProps) {
   const [breaks, setBreaks] = useState([
-    { type: 'MORNING', label: 'Morning Break', duration: 15, scheduledStart: '10:00' },
-    { type: 'LUNCH', label: 'Lunch Break', duration: 60, scheduledStart: '12:00' },
-    { type: 'AFTERNOON', label: 'Afternoon Break', duration: 15, scheduledStart: '15:00' }
+    { type: 'MORNING', label: 'Morning Break', duration: 15, scheduledStart: '09:00' },
+    { type: 'LUNCH', label: 'Lunch Break', duration: 60, scheduledStart: '11:00' },
+    { type: 'AFTERNOON', label: 'Afternoon Break', duration: 15, scheduledStart: '13:00' }
   ])
   const [loading, setLoading] = useState(false)
+  
+  // Check if a break time has already passed
+  const isTimePassed = (timeString: string): boolean => {
+    const now = new Date()
+    const [hours, minutes] = timeString.split(':').map(Number)
+    const breakTime = new Date()
+    breakTime.setHours(hours, minutes, 0, 0)
+    return now > breakTime
+  }
+  
+  // Check if a break time (including duration) exceeds shift end time
+  const exceedsShiftEnd = (timeString: string, durationMinutes: number): boolean => {
+    if (!shiftEndTime) return false // No validation if shift end time is not provided
+    
+    const [breakHours, breakMinutes] = timeString.split(':').map(Number)
+    const [shiftHours, shiftMinutes] = shiftEndTime.split(':').map(Number)
+    
+    const breakTime = new Date()
+    breakTime.setHours(breakHours, breakMinutes, 0, 0)
+    
+    const breakEndTime = new Date(breakTime.getTime() + durationMinutes * 60 * 1000)
+    
+    const shiftEnd = new Date()
+    shiftEnd.setHours(shiftHours, shiftMinutes, 0, 0)
+    
+    return breakEndTime > shiftEnd
+  }
   
   const calculateEndTime = (startTime: string, durationMinutes: number): string => {
     const [hours, minutes] = startTime.split(':').map(Number)
@@ -130,10 +158,38 @@ export function BreakScheduler({ isOpen, timeEntryId, onScheduled, onSkip }: Bre
                 Breaks will be locked in
               </p>
               <p className="text-xs text-slate-400">
-                Both options will save and lock your breaks for today's shift. Customize times or use the defaults (10:00 AM, 12:00 PM, 3:00 PM).
+                Both options will save and lock your breaks for today's shift. Customize times or use the defaults (9:00 AM, 11:00 AM, 1:00 PM).
               </p>
             </div>
           </div>
+          
+          {breaks.some(b => isTimePassed(b.scheduledStart)) && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg bg-red-500/10 border border-red-500/30 p-4">
+              <AlertCircle className="h-5 w-5 text-red-400 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-300 mb-1">
+                  Warning: Some break times have already passed
+                </p>
+                <p className="text-xs text-slate-400">
+                  Please adjust the times to schedule breaks for later in your shift, or they may be missed.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {breaks.some(b => exceedsShiftEnd(b.scheduledStart, b.duration)) && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg bg-orange-500/10 border border-orange-500/30 p-4">
+              <AlertCircle className="h-5 w-5 text-orange-400 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-300 mb-1">
+                  Warning: Some breaks extend past your shift end time
+                </p>
+                <p className="text-xs text-slate-400">
+                  These breaks will end after your scheduled shift. Please adjust to fit within your work hours.
+                </p>
+              </div>
+            </div>
+          )}
           
           <div className="space-y-4 mb-6">
             {breaks.map((b, i) => (
@@ -155,12 +211,30 @@ export function BreakScheduler({ isOpen, timeEntryId, onScheduled, onSkip }: Bre
                         updated[i].scheduledStart = e.target.value
                         setBreaks(updated)
                       }}
-                      className="flex-1 bg-slate-700 text-white rounded px-3 py-2 border border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      className={`flex-1 bg-slate-700 text-white rounded px-3 py-2 border ${
+                        isTimePassed(b.scheduledStart) 
+                          ? 'border-red-500/50' 
+                          : exceedsShiftEnd(b.scheduledStart, b.duration)
+                          ? 'border-orange-500/50'
+                          : 'border-slate-600'
+                      } focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
                     />
                   </div>
+                  {isTimePassed(b.scheduledStart) && (
+                    <div className="flex items-center gap-1 text-xs text-red-400 ml-16">
+                      <AlertCircle className="h-3 w-3" />
+                      <span>⚠️ This time has already passed</span>
+                    </div>
+                  )}
+                  {exceedsShiftEnd(b.scheduledStart, b.duration) && (
+                    <div className="flex items-center gap-1 text-xs text-orange-400 ml-16">
+                      <AlertCircle className="h-3 w-3" />
+                      <span>⚠️ Break extends past your shift end time</span>
+                    </div>
+                  )}
                   <div className="flex gap-2 items-center text-sm">
                     <span className="text-slate-500 w-16">Ends:</span>
-                    <span className="text-slate-300">
+                    <span className={`${exceedsShiftEnd(b.scheduledStart, b.duration) ? 'text-orange-400' : 'text-slate-300'}`}>
                       {calculateEndTime(b.scheduledStart, b.duration)} (auto)
                     </span>
                   </div>

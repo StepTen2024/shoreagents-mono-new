@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       )
       RETURNING *`,
       [
-        bpocCompanyId, // Use the verified company ID
+        companyId, // Use the client's actual company ID
         body.job_title,
         body.job_description,
         body.work_type,
@@ -116,9 +116,16 @@ export async function POST(request: NextRequest) {
       jobRequest: result.rows[0]
     })
   } catch (error) {
-    console.error("Error creating job request:", error)
+    console.error("❌ Error creating job request:", error)
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
-      { error: "Failed to create job request" },
+      { 
+        error: "Failed to create job request",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
@@ -164,7 +171,7 @@ export async function GET(request: NextRequest) {
       `SELECT * FROM job_requests 
        WHERE company_id = $1 
        ORDER BY created_at DESC`,
-      [bpocCompanyId]
+      [companyId]
     )
 
     console.log(`📊 Found ${result.rows.length} job requests for ${clientUser.company.companyName}`)

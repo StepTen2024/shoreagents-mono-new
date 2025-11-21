@@ -126,15 +126,15 @@ export default function ClientOnboardingPage() {
 
   // Separate staff into active vs completed
   const activeStaff = staff.filter(member => {
-    if (!member.profile?.startDate) return true // No start date = still onboarding
-    const daysUntilStart = member.profile.daysUntilStart
-    return daysUntilStart !== null && daysUntilStart >= -30 // Show if starting soon or within 30 days of starting
+    // Show in active if onboarding is not complete AND start date hasn't passed
+    const startDatePassed = member.profile?.daysUntilStart !== null && member.profile.daysUntilStart < 0
+    return !member.onboarding?.isComplete && !startDatePassed
   })
 
   const completedStaff = staff.filter(member => {
-    if (!member.profile?.startDate) return false
-    const daysUntilStart = member.profile.daysUntilStart
-    return daysUntilStart !== null && daysUntilStart < -30 // Already started more than 30 days ago
+    // Show in completed if onboarding is marked as complete OR start date has passed
+    const startDatePassed = member.profile?.daysUntilStart !== null && member.profile.daysUntilStart < 0
+    return member.onboarding?.isComplete === true || startDatePassed
   })
 
   const sections = [

@@ -51,6 +51,133 @@ const autoUpdater = require('./services/autoUpdater')
 let mainWindow = null
 let tray = null
 
+function createApplicationMenu() {
+  // Get current screenshot tracking status
+  const screenshotStatus = screenshotService.getStatus()
+  const isScreenshotEnabled = screenshotStatus.isEnabled
+  
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Quit',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: () => {
+            app.isQuitting = true
+            app.quit()
+          }
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        {
+          label: 'Show Dashboard',
+          click: () => {
+            if (mainWindow) {
+              if (mainWindow.isMinimized()) {
+                mainWindow.restore()
+              }
+              mainWindow.show()
+              mainWindow.focus()
+            }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Documentation',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://docs.shoreagents.com')
+          }
+        },
+        {
+          label: 'Report Issue',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://github.com/shoreagents/support/issues')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: isScreenshotEnabled ? 'Auto Update: Enabled ✓' : 'Auto Update: Disabled',
+          id: 'screenshot-tracking-toggle',
+          click: () => {
+            const status = screenshotService.getStatus()
+            if (status.isEnabled) {
+              // Disable screenshot tracking
+              screenshotService.stop()
+              // Disable URL tracking by stopping application tracking
+              performanceTracker.stopApplicationTracking()
+              console.log('[Main] 📸 Auto Update disabled by user (screenshots + URL tracking)')
+            } else {
+              // Enable screenshot tracking
+              screenshotService.start(screenshotService.sessionToken)
+              // Enable URL tracking by starting application tracking
+              performanceTracker.startApplicationTracking()
+              console.log('[Main] 📸 Auto Update enabled by user (screenshots + URL tracking)')
+            }
+            // Refresh the menu to update the label
+            createApplicationMenu()
+            // Also update tray menu if available
+            if (tray) {
+              updateTrayMenu()
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'About',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('show-about-dialog')
+            }
+          }
+        }
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+  console.log('[Main] Application menu created')
+}
+
 function createWindow() {
   // Set window icon
   const iconPath = path.join(__dirname, '../build/shoreagents-icon.png')
@@ -86,7 +213,7 @@ function createWindow() {
     
     // Load with proper user agent
     mainWindow.loadURL(productionUrl, {
-      userAgent: 'ShoreAgentsAI-Desktop/1.0.2 (Electron)'
+      userAgent: 'ShoreAgentsAI-Desktop/1.0.3 (Electron)'
     })
     
     // Open dev tools in production to debug
@@ -234,6 +361,8 @@ function createTray() {
   const icon = nativeImage.createFromPath(iconPath)
   tray = new Tray(icon)
   
+  const screenshotStatus = screenshotService.getStatus()
+  
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Show Dashboard',
@@ -293,6 +422,28 @@ function createTray() {
     },
     { type: 'separator' },
     {
+      label: screenshotStatus.isEnabled ? 'Auto Update: ON' : 'Auto Update: OFF',
+      click: () => {
+        const status = screenshotService.getStatus()
+        if (status.isEnabled) {
+          // Disable screenshot tracking
+          screenshotService.stop()
+          // Disable URL tracking by stopping application tracking
+          performanceTracker.stopApplicationTracking()
+          console.log('[Main] 📸 Auto Update disabled by user (from tray - screenshots + URL tracking)')
+        } else {
+          // Enable screenshot tracking
+          screenshotService.start(screenshotService.sessionToken)
+          // Enable URL tracking by starting application tracking
+          performanceTracker.startApplicationTracking()
+          console.log('[Main] 📸 Auto Update enabled by user (from tray - screenshots + URL tracking)')
+        }
+        updateTrayMenu()
+        createApplicationMenu()
+      }
+    },
+    { type: 'separator' },
+    {
       label: 'Quit',
       click: () => {
         app.isQuitting = true
@@ -340,6 +491,7 @@ function updateTrayMenu() {
   if (!tray) return
   
   const status = performanceTracker.getStatus()
+  const screenshotStatus = screenshotService.getStatus()
   
   // Recreate the menu with updated labels
   const contextMenu = Menu.buildFromTemplate([
@@ -393,6 +545,27 @@ function updateTrayMenu() {
           performanceTracker.pause()
         }
         updateTrayMenu()
+      }
+    },
+    { type: 'separator' },
+    {
+      label: screenshotStatus.isEnabled ? 'Auto Update: ON' : 'Auto Update: OFF',
+      click: () => {
+        if (screenshotStatus.isEnabled) {
+          // Disable screenshot tracking
+          screenshotService.stop()
+          // Disable URL tracking by stopping application tracking
+          performanceTracker.stopApplicationTracking()
+          console.log('[Main] 📸 Auto Update disabled by user (from tray - screenshots + URL tracking)')
+        } else {
+          // Enable screenshot tracking
+          screenshotService.start(screenshotService.sessionToken)
+          // Enable URL tracking by starting application tracking
+          performanceTracker.startApplicationTracking()
+          console.log('[Main] 📸 Auto Update enabled by user (from tray - screenshots + URL tracking)')
+        }
+        updateTrayMenu()
+        createApplicationMenu()
       }
     },
     { type: 'separator' },
@@ -972,6 +1145,9 @@ app.whenReady().then(async () => {
   
   // Setup IPC first
   setupIPC()
+  
+  // Create application menu
+  createApplicationMenu()
   
   // Create window
   createWindow()

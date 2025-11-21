@@ -2135,14 +2135,22 @@ export default function TimeTracking() {
         }}
       />
       
-      {pendingTimeEntryId && (
-        <BreakScheduler
-          isOpen={showBreakScheduler}
-          timeEntryId={pendingTimeEntryId}
-          onScheduled={handleBreakScheduled}
-          onSkip={handleBreakScheduled}
-        />
-      )}
+      {pendingTimeEntryId && (() => {
+        // Get today's shift end time
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+        const todaySchedule = weeklySchedule.find(s => s.dayOfWeek === today)
+        const shiftEndTime = todaySchedule?.endTime || null
+        
+        return (
+          <BreakScheduler
+            isOpen={showBreakScheduler}
+            timeEntryId={pendingTimeEntryId}
+            shiftEndTime={shiftEndTime}
+            onScheduled={handleBreakScheduled}
+            onSkip={handleBreakScheduled}
+          />
+        )
+      })()}
       
       <ShiftModal
         isOpen={showClockOutModal}

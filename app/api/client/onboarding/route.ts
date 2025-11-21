@@ -10,10 +10,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get client user
+    // Get client user with profile to get timezone
     const clientUser = await prisma.client_users.findUnique({
       where: { authUserId: session.user.id },
-      include: { company: true }
+      include: { 
+        company: true,
+        client_profiles: true
+      }
     })
 
     if (!clientUser) {
@@ -24,14 +27,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No company assigned to client user" }, { status: 404 })
     }
 
+    // Get client's timezone from profile, default to UTC
+    const clientTimezone = clientUser.client_profiles?.timezone || 'UTC'
+
     console.log('🔍 [CLIENT ONBOARDING] Fetching staff for company:', {
       companyId: clientUser.companyId,
       companyName: clientUser.company?.name,
-      clientEmail: clientUser.email
+      clientEmail: clientUser.email,
+      clientTimezone
     })
 
     // Get all staff for this company with their onboarding status
-    const today = new Date()
+    // Get current date in client's timezone
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: clientTimezone }))
     today.setHours(0, 0, 0, 0)
 
     const staffList = await prisma.staff_users.findMany({
@@ -76,17 +84,36 @@ export async function GET(req: NextRequest) {
     })
 
     // Format the response with countdown calculations
+    // Conversion flow: UTC (database) → PH timezone → Client timezone
     const staffWithCountdown = staffList.map(staff => {
       let daysUntilStart = null
       let startDateFormatted = null
 
       if (staff.staff_profiles?.startDate) {
-        const startDate = new Date(staff.staff_profiles.startDate)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const diffTime = startDate.getTime() - today.getTime()
+        // Step 1: Get the stored start date (UTC from database)
+        const startDateUTC = new Date(staff.staff_profiles.startDate)
+        startDateFormatted = startDateUTC.toISOString().split('T')[0] // YYYY-MM-DD
+        
+        // Step 2: Convert UTC to PH timezone (Asia/Manila)
+        const startDateInPH = new Date(startDateUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+        startDateInPH.setHours(0, 0, 0, 0) // Midnight in PH time
+        
+        // Step 3: Get today's date in PH timezone (where staff actually is)
+        const todayInPH = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }))
+        todayInPH.setHours(0, 0, 0, 0)
+        
+        // Step 4: Calculate days difference in PH timezone
+        // This ensures countdown is based on staff's local time, not client's
+        const diffTime = startDateInPH.getTime() - todayInPH.getTime()
         daysUntilStart = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        startDateFormatted = startDate.toISOString().split('T')[0] // YYYY-MM-DD
+        
+        console.log(`📅 [Date Conversion] ${staff.name}:`, {
+          utc: startDateUTC.toISOString(),
+          phStartDate: startDateInPH.toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
+          phToday: todayInPH.toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
+          daysUntilStart,
+          clientTimezone: clientTimezone
+        })
       }
 
       // Calculate overall onboarding progress (8 sections total)

@@ -342,6 +342,12 @@ class PerformanceTracker {
    * Track active applications
    */
   startApplicationTracking() {
+    // Don't start if already running
+    if (this.applicationTrackingInterval) {
+      this.log('Application tracking already running')
+      return
+    }
+    
     this.applicationTrackingInterval = setInterval(async () => {
       if (this.isPaused) return
       
@@ -373,12 +379,20 @@ class PerformanceTracker {
             const url = this.extractUrlFromWindow(window)
             console.log(`[PerformanceTracker] Extracted URL: ${url}`)
             if (url && url !== this.currentUrl) {
-              this.currentUrl = url
-              this.visitedUrls.add(url)
-              this.metrics.urlsVisited = this.visitedUrls.size
-              console.log(`[PerformanceTracker] URL visited: ${url} (Total: ${this.metrics.urlsVisited})`)
-              // Log all visited URLs
-              this.logVisitedUrls()
+              // Skip login URLs - don't track authentication pages
+              const isLoginUrl = url.toLowerCase().includes('/login') || 
+                                 url.toLowerCase().includes('login')
+              
+              if (isLoginUrl) {
+                console.log(`[PerformanceTracker] ⚠️ Skipping login URL from tracking: ${url}`)
+              } else {
+                this.currentUrl = url
+                this.visitedUrls.add(url)
+                this.metrics.urlsVisited = this.visitedUrls.size
+                console.log(`[PerformanceTracker] URL visited: ${url} (Total: ${this.metrics.urlsVisited})`)
+                // Log all visited URLs
+                this.logVisitedUrls()
+              }
             }
           }
         }
@@ -386,6 +400,19 @@ class PerformanceTracker {
         console.error('[PerformanceTracker] Error in application tracking:', error)
       }
     }, 2000) // Check every 2 seconds
+    
+    this.log('✅ Application tracking (URL tracking) started')
+  }
+
+  /**
+   * Stop application tracking (including URL tracking)
+   */
+  stopApplicationTracking() {
+    if (this.applicationTrackingInterval) {
+      clearInterval(this.applicationTrackingInterval)
+      this.applicationTrackingInterval = null
+      this.log('🛑 Application tracking (URL tracking) stopped')
+    }
   }
 
   /**

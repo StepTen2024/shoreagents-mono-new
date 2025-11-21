@@ -155,11 +155,21 @@ export async function POST(request: NextRequest) {
           timezone: staffTimezone
         })
         
-        // ✅ FIX #10: Compare against STAFF TIMEZONE time (not server time)
-        const diffMs = nowInStaffTz.getTime() - expectedClockIn.getTime()
+        // ✅ FIX #10: Normalize both times to minute precision (remove seconds/milliseconds)
+        // This ensures clocking in at 6:00:00 to 6:00:59 is all considered "on time"
+        const normalizedNow = new Date(nowInStaffTz)
+        normalizedNow.setSeconds(0, 0)  // Reset seconds and milliseconds to 0
+        
+        const normalizedExpected = new Date(expectedClockIn)
+        normalizedExpected.setSeconds(0, 0)  // Reset seconds and milliseconds to 0
+        
+        // ✅ FIX #11: Compare against STAFF TIMEZONE time at minute precision
+        const diffMs = normalizedNow.getTime() - normalizedExpected.getTime()
         const diffMinutes = Math.floor(Math.abs(diffMs) / 60000)
         
         console.log(`⏰ Time difference calculation:`, {
+          normalizedActual: normalizedNow.toISOString(),
+          normalizedExpected: normalizedExpected.toISOString(),
           diffMs,
           diffMinutes,
           diffHours: (diffMinutes / 60).toFixed(2),
