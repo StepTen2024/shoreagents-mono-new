@@ -7,13 +7,13 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth()
 
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get StaffUser (only staff have AI conversations)
     const staffUser = await prisma.staff_users.findUnique({
-      where: { id: session.user.id },
+      where: { authUserId: session.user.id }, // Use authUserId, not id
     })
 
     if (!staffUser) {
