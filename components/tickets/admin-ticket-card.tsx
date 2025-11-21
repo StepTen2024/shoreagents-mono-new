@@ -162,7 +162,7 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
           <span className="flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-red-500/20 animate-pulse">
             <AlertTriangle className="w-3 h-3" /> {getOverdueTime()}
           </span>
-        </div>
+      </div>
       )}
 
       {/* Priority Stripe (Left Border) */}
@@ -176,38 +176,38 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
       <div className="p-4 pl-5">
         {/* Header: ID & Badges */}
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-slate-500 font-medium">#{ticket.ticketId}</span>
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${creatorBadge.color} border border-current/10`}>
-              {creatorBadge.label}
-            </span>
-          </div>
+            {creatorBadge.label}
+          </span>
+        </div>
           {!isOverdue && !ticket.status.includes("CANCELLED") && (
              <span className={`rounded px-2 py-0.5 text-[10px] font-bold border ${priorityColor}`}>
-               {priorityConfig[ticket.priority]?.label}
-             </span>
+          {priorityConfig[ticket.priority]?.label}
+        </span>
           )}
-        </div>
+      </div>
 
-        {/* Title */}
+      {/* Title */}
         <h4 className="mb-3 text-sm font-semibold text-slate-200 leading-relaxed group-hover:text-white transition-colors line-clamp-2">
-          {ticket.title}
-        </h4>
+        {ticket.title}
+      </h4>
 
         {/* Tags Row */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <div className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold border ${categoryColor}`}>
-            <CategoryIcon className="h-3 w-3" />
-            <span>{ticket.category}</span>
-          </div>
-          
-          {assignedTo?.department && (
+          <CategoryIcon className="h-3 w-3" />
+          <span>{ticket.category}</span>
+        </div>
+        
+        {assignedTo?.department && (
             <div className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
               <span>To:</span>
               <span className="text-slate-300">{assignedTo.department.replace('_', ' ')}</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
         {/* Footer: Users & Meta */}
         <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-auto">
@@ -233,32 +233,32 @@ export default function AdminTicketCard({ ticket, isDragging, onClick }: AdminTi
                     {assignedInitials}
                   </AvatarFallback>
                 </Avatar>
-              </div>
-            )}
+        </div>
+      )}
           </div>
-
+          
           {/* Stats */}
           <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
             {ticket.responses?.length > 0 && (
               <div className="flex items-center gap-1 text-blue-400">
                 <MessageSquare className="h-3.5 w-3.5" />
                 <span>{ticket.responses.length}</span>
-              </div>
-            )}
-            
+            </div>
+          )}
+          
             {ticket.attachments?.length > 0 && (
-              <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1">
                 <Paperclip className="h-3.5 w-3.5" />
                 <span>{ticket.attachments.length}</span>
-              </div>
-            )}
-
+            </div>
+          )}
+          
             <div className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
               <span>{formatDate(ticket.createdAt).replace(' ago', '')}</span>
             </div>
-          </div>
         </div>
+      </div>
       </div>
     </div>
   )

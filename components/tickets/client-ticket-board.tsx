@@ -35,15 +35,15 @@ export default function ClientTicketBoard({
                   <span className="text-2xl">{column.emoji}</span>
                   <h3 className="text-lg font-bold text-gray-900">{column.label}</h3>
                   <span className="ml-auto rounded-full bg-gray-100 px-3 py-1.5 text-sm font-bold text-gray-700 border border-gray-200">
-                    {columnTickets.length}
-                  </span>
-                </div>
+                  {columnTickets.length}
+                </span>
               </div>
+            </div>
 
-              {/* Tickets Column - NO DRAG, just click to view */}
+            {/* Tickets Column - NO DRAG, just click to view */}
               <div className="flex-1 space-y-3 p-4 overflow-y-auto bg-gray-50">
-                {columnTickets.length === 0 ? (
-                  <div className="flex h-48 items-center justify-center">
+              {columnTickets.length === 0 ? (
+                <div className="flex h-48 items-center justify-center">
                     <div className="text-center">
                       <div className="mb-2">
                         <svg className="h-12 w-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,16 +52,16 @@ export default function ClientTicketBoard({
                       </div>
                       <p className="text-sm text-gray-400 font-medium">No tickets</p>
                     </div>
-                  </div>
-                ) : (
-                  columnTickets.map((ticket) => (
-                    <ClientTicketCard
-                      key={ticket.id}
-                      ticket={ticket}
-                      onClick={() => onTicketClick(ticket)}
-                    />
-                  ))
-                )}
+                </div>
+              ) : (
+                columnTickets.map((ticket) => (
+                  <ClientTicketCard
+                    key={ticket.id}
+                    ticket={ticket}
+                    onClick={() => onTicketClick(ticket)}
+                  />
+                ))
+              )}
               </div>
             </div>
           </div>

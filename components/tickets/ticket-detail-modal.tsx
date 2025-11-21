@@ -344,7 +344,7 @@ export default function TicketDetailModal({
     // Combine date + time
     const [hours, minutes] = dueTime.split(':').map(Number)
     newDate.setHours(hours, minutes)
-    
+
     try {
       const response = await fetch(`/api/tickets/${ticket.id}/due-date`, {
         method: "PATCH",
@@ -481,21 +481,21 @@ export default function TicketDetailModal({
           {/* ROW 1: Metadata & Close */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <span className={`font-mono text-sm font-bold px-3 py-1.5 rounded-lg shadow ${
-                isDark 
-                  ? "text-indigo-300 bg-indigo-500/20 backdrop-blur-sm border border-indigo-500/30 shadow-indigo-500/20"
-                  : "text-blue-700 bg-blue-50 border border-blue-200"
-              }`}>
-                {ticket.ticketId}
-              </span>
-              <span
+                <span className={`font-mono text-sm font-bold px-3 py-1.5 rounded-lg shadow ${
+                  isDark 
+                    ? "text-indigo-300 bg-indigo-500/20 backdrop-blur-sm border border-indigo-500/30 shadow-indigo-500/20"
+                    : "text-blue-700 bg-blue-50 border border-blue-200"
+                }`}>
+                  {ticket.ticketId}
+                </span>
+                <span
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold backdrop-blur-sm ring-1 shadow-lg ${
-                  categoryConfig[ticket.category]?.color
-                }`}
-              >
+                    categoryConfig[ticket.category]?.color
+                  }`}
+                >
                 <CategoryIcon className="h-3.5 w-3.5" />
-                {categoryConfig[ticket.category]?.label}
-              </span>
+                  {categoryConfig[ticket.category]?.label}
+                </span>
             </div>
 
             <button
@@ -557,7 +557,7 @@ export default function TicketDetailModal({
             {/* Priority Control */}
             <div className="flex flex-col gap-1.5">
               <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? "text-slate-500" : "text-gray-500"}`}>Priority</label>
-              {isManagement ? (
+                {isManagement ? (
                 <Select value={selectedPriority} onValueChange={handleChangePriority}>
                   <SelectTrigger className={`h-9 min-w-[120px] text-xs font-bold border-0 ring-1 shadow-sm ${
                     selectedPriority === "URGENT" ? "bg-red-500/20 text-red-400 ring-red-500/40 animate-pulse" :
@@ -574,19 +574,19 @@ export default function TicketDetailModal({
                     <SelectItem value="URGENT">🔴 Urgent</SelectItem>
                   </SelectContent>
                 </Select>
-              ) : (
+                ) : (
                 <span className={`inline-flex items-center h-9 px-3 rounded-md text-xs font-bold ${
-                  ticket.priority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
-                  ticket.priority === "HIGH" ? "bg-orange-500 text-white" :
-                  ticket.priority === "MEDIUM" ? "bg-blue-500 text-white" :
-                  "bg-slate-500 text-white"
-                }`}>
-                  {ticket.priority === "URGENT" ? "🔴 Urgent" :
-                   ticket.priority === "HIGH" ? "🟠 High" :
-                   ticket.priority === "MEDIUM" ? "⚪ Medium" :
-                   "🔵 Low"}
-                </span>
-              )}
+                    ticket.priority === "URGENT" ? "bg-red-500 text-white animate-pulse" :
+                    ticket.priority === "HIGH" ? "bg-orange-500 text-white" :
+                    ticket.priority === "MEDIUM" ? "bg-blue-500 text-white" :
+                    "bg-slate-500 text-white"
+                  }`}>
+                    {ticket.priority === "URGENT" ? "🔴 Urgent" :
+                     ticket.priority === "HIGH" ? "🟠 High" :
+                     ticket.priority === "MEDIUM" ? "⚪ Medium" :
+                     "🔵 Low"}
+                  </span>
+                )}
             </div>
 
             {/* Due Date Control */}
@@ -595,7 +595,7 @@ export default function TicketDetailModal({
               {isManagement ? (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
+                  <Button
                       variant={"outline"}
                       className={cn(
                         "h-9 text-xs font-bold border-0 ring-1 shadow-sm px-3 gap-2 min-w-[140px] justify-start",
@@ -603,10 +603,10 @@ export default function TicketDetailModal({
                           ? "bg-purple-500/20 text-purple-400 ring-purple-500/40 hover:bg-purple-500/30 hover:text-purple-300" 
                           : "bg-slate-800/50 text-slate-400 ring-slate-700 hover:text-white hover:bg-slate-800"
                       )}
-                    >
+                  >
                       <CalendarIcon className="h-3.5 w-3.5" />
                       {dueDate ? format(dueDate, "MMM d, HH:mm") : "Set Due Date"}
-                    </Button>
+                  </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-800" align="start">
                     <div className="p-3 border-b border-slate-800">
@@ -640,10 +640,10 @@ export default function TicketDetailModal({
                     No due date
                   </span>
                 )
-              )}
+                )}
+              </div>
             </div>
-          </div>
-
+            
           {/* ROW 4: Action Buttons */}
           <div className="flex items-center gap-3 pb-6 border-b border-white/5">
             {/* Video Call Button (Primary) */}
@@ -661,34 +661,34 @@ export default function TicketDetailModal({
 
             {/* Edit Button - CLIENTS CAN EDIT TOO (if not resolved/closed/cancelled)! */}
             {(isManagement || isClient || (!isManagement && !isClient)) && ticket.status !== "RESOLVED" && ticket.status !== "CLOSED" && ticket.status !== "CANCELLED" && (
-              <Button
-                onClick={() => setShowEditModal(true)}
+                <Button
+                  onClick={() => setShowEditModal(true)}
                 variant="secondary"
                 className={`flex items-center gap-2 rounded-xl px-5 h-10 ${
-                  isDark
+                    isDark
                     ? "bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700"
                     : "bg-gray-100 text-gray-700 hover:text-gray-900 hover:bg-gray-200 border border-gray-300"
-                }`}
-              >
-                <Edit3 className="h-4 w-4" />
-                Edit
-              </Button>
-            )}
+                  }`}
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Edit
+                </Button>
+              )}
 
             {/* Reassign Button (Management) */}
             {isManagement && (
-              <Button
-                onClick={() => {
-                  setShowReassignModal(true)
-                  fetchAvailableManagers()
-                }}
+                  <Button
+                    onClick={() => {
+                      setShowReassignModal(true)
+                      fetchAvailableManagers()
+                    }}
                 variant="secondary"
                 className="flex items-center gap-2 rounded-xl px-5 h-10 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700"
-              >
-                <Users className="h-4 w-4" />
-                Reassign
-              </Button>
-            )}
+                  >
+                    <Users className="h-4 w-4" />
+                    Reassign
+                  </Button>
+              )}
 
             <div className="ml-auto">
               {/* Cancel Button (Destructive) - CLIENTS CAN CANCEL TOO! */}

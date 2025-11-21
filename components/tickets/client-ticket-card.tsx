@@ -119,13 +119,13 @@ export default function ClientTicketCard({ ticket, onClick }: ClientTicketCardPr
               </span>
               {/* Only show priority pill if NOT overdue/cancelled (stripe shows priority) */}
               {!isOverdue && ticket.status !== "CANCELLED" && (
-                <span
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
-                    priorityColors[ticket.priority]
-                  }`}
-                >
-                  {priorityEmojis[ticket.priority]} {ticket.priority}
-                </span>
+              <span
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg ${
+                  priorityColors[ticket.priority]
+                }`}
+              >
+                {priorityEmojis[ticket.priority]} {ticket.priority}
+              </span>
               )}
             </div>
             <h3 className="text-base font-bold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-all">

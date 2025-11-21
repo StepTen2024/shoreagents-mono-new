@@ -180,28 +180,28 @@ export default function TicketKanban({
           const columnTickets = getTicketsByStatus(column.id)
 
           return (
-            <SortableContext
+              <SortableContext
               key={column.id}
-              id={column.id}
-              items={columnTickets.map((t) => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
+                id={column.id}
+                items={columnTickets.map((t) => t.id)}
+                strategy={verticalListSortingStrategy}
+              >
               <KanbanColumn 
                 id={column.id} 
                 isActive={overId === column.id}
                 column={column}
                 count={columnTickets.length}
               >
-                {columnTickets.map((ticket) => (
-                  <AdminTicketCard
-                    key={ticket.id}
-                    ticket={ticket}
-                    isDragging={activeId === ticket.id}
-                    onClick={() => onTicketClick(ticket)}
-                  />
-                ))}
+                  {columnTickets.map((ticket) => (
+              <AdminTicketCard
+                key={ticket.id}
+                ticket={ticket}
+                isDragging={activeId === ticket.id}
+                onClick={() => onTicketClick(ticket)}
+              />
+                  ))}
               </KanbanColumn>
-            </SortableContext>
+              </SortableContext>
           )
         })}
       </div>

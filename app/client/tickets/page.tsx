@@ -239,7 +239,7 @@ export default function ClientTicketsPage() {
 
           {/* Board skeleton (always show board during load since it's default) */}
           <div className="mt-8">
-            <TicketKanbanSkeleton count={3} />
+              <TicketKanbanSkeleton count={3} />
           </div>
         </div>
       </div>

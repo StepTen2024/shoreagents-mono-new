@@ -52,15 +52,22 @@ export async function PATCH(
       where: { authUserId: session.user.id }
     })
 
+    // Check if user is management/admin with broad permissions
+    const isManagement = managementUser && [
+      'ADMIN',
+      'SUPER_ADMIN', 
+      'CEO_EXECUTIVE',
+      'MANAGEMENT'
+    ].includes(managementUser.role as string)
+
     const isAuthorized = 
       (staffUser && ticket.staffUserId === staffUser.id) ||
       (clientUser && ticket.clientUserId === clientUser.id) ||  // CLIENT CAN ADD TO THEIR OWN TICKET!
-      (managementUser && (
-        ticket.managementUserId === managementUser.id ||
-        managementUser.role === 'CEO_EXECUTIVE'
-      ))
+      (managementUser && ticket.managementUserId === managementUser.id) ||
+      isManagement  // MANAGEMENT/ADMIN CAN ADD TO ANY TICKET
 
     if (!isAuthorized) {
+      console.log(`❌ [TICKET ATTACHMENTS] Unauthorized: staffUser=${!!staffUser}, clientUser=${!!clientUser}, managementUser=${!!managementUser}, role=${managementUser?.role}`)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
