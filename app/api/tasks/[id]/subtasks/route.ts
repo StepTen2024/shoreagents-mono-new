@@ -97,6 +97,7 @@ export async function POST(
         taskId: id,
         title,
         order: nextOrder,
+        updatedAt: new Date(),
       },
     })
 
@@ -143,7 +144,9 @@ export async function PUT(
     }
 
     // Update subtask
-    const updateData: any = {}
+    const updateData: any = {
+      updatedAt: new Date(), // Always update the timestamp
+    }
     
     if (typeof completed === 'boolean') {
       updateData.completed = completed
