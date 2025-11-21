@@ -172,36 +172,37 @@ model documents {
   rejectionNote       String?
   status              DocumentStatus        @default(PENDING)
   uploadedByRole      DocumentSource        @default(STAFF)
-  staff_users         staff_users           @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   document_embeddings document_embeddings[]
+  staff_users         staff_users           @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
 }
 
 model document_embeddings {
-  id         String                     @id @default(uuid())
+  id         String                 @id @default(dbgenerated("(gen_random_uuid())::text"))
   documentId String
   chunkIndex Int
   chunkText  String
-  embedding  Unsupported("vector(1536)")
+  embedding  Unsupported("vector")?
   metadata   Json?
-  createdAt  DateTime                   @default(now())
-  documents  documents                  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime?              @default(now()) @db.Timestamp(6)
+  documents  documents              @relation(fields: [documentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "document_embeddings_documentid_fkey")
 
-  @@unique([documentId, chunkIndex])
-  @@index([documentId])
+  @@unique([documentId, chunkIndex], map: "document_embeddings_documentid_chunkindex_key")
+  @@index([documentId], map: "document_embeddings_documentid_idx")
+  @@index([embedding])
 }
 
 model ai_conversations {
-  id          String      @id @default(uuid())
+  id          String      @id @default(dbgenerated("(gen_random_uuid())::text"))
   staffUserId String
   message     String
   role        String
-  isPinned    Boolean     @default(false)
+  isPinned    Boolean?    @default(false)
   contextUsed Json?
-  createdAt   DateTime    @default(now())
-  staff_users staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  createdAt   DateTime?   @default(now()) @db.Timestamp(6)
+  staff_users staff_users @relation(fields: [staffUserId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ai_conversations_staffuserid_fkey")
 
-  @@index([staffUserId, createdAt])
-  @@index([staffUserId, isPinned])
+  @@index([staffUserId, createdAt], map: "ai_conversations_staffuserid_createdat_idx")
+  @@index([staffUserId, isPinned], map: "ai_conversations_staffuserid_ispinned_idx")
 }
 
 model employment_contracts {
@@ -783,12 +784,12 @@ model tickets {
   createdByType    String            @default("STAFF")
   managementUserId String?
   clientUserId     String?
-  dueDate          DateTime?         // ✨ NEW: Admin-set deadline
-  cancelledReason  String?           // ✨ NEW: Why cancelled
-  cancelledBy      String?           // ✨ NEW: Who cancelled (staff/admin ID)
-  cancelledAt      DateTime?         // ✨ NEW: When cancelled
-  lastEditedAt     DateTime?         // ✨ NEW: Last edit timestamp
-  lastEditedBy     String?           // ✨ NEW: Who last edited (for audit)
+  cancelledAt      DateTime?
+  cancelledBy      String?
+  cancelledReason  String?
+  dueDate          DateTime?
+  lastEditedAt     DateTime?
+  lastEditedBy     String?
   client_users     client_users?     @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
   management_users management_users? @relation(fields: [managementUserId], references: [id], onDelete: Cascade)
   staff_users      staff_users?      @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
@@ -806,12 +807,10 @@ model time_entries {
   breaksScheduled  Boolean         @default(false)
   clockOutReason   ClockOutReason?
   expectedClockIn  DateTime?
-  expectedClockOut DateTime?
   lateBy           Int?
   wasLate          Boolean         @default(false)
   earlyBy          Int?
   earlyClockOutBy  Int?
-  overtimeMinutes  Int?
   lateReason       LateReason?
   wasEarly         Boolean         @default(false)
   wasEarlyClockOut Boolean         @default(false)
@@ -819,6 +818,8 @@ model time_entries {
   workedFullShift  Boolean         @default(false)
   shiftDate        DateTime?
   shiftDayOfWeek   String?
+  expectedClockOut DateTime?
+  overtimeMinutes  Int?
   breaks           breaks[]
   staff_users      staff_users     @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
   work_schedules   work_schedules? @relation(fields: [workScheduleId], references: [id])
@@ -1142,7 +1143,7 @@ enum TicketStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
-  CANCELLED // ✨ NEW: For tickets cancelled by staff or admin
+  CANCELLED
 }
 
 enum WorkLocationType {
