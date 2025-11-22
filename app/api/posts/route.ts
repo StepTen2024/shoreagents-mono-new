@@ -23,13 +23,67 @@ export async function GET(request: NextRequest) {
     const validLimit = Math.min(Math.max(1, limit), 50) // Max 50 posts per page
     const skip = (validPage - 1) * validLimit
 
-    // Build where clause based on audience filter
-    // If filtering by a specific audience, show posts for that audience AND posts for ALL
-    const whereClause: any = {}
-    if (audienceFilter && audienceFilter !== 'ALL_FILTER') {
-      whereClause.audience = {
-        in: [audienceFilter, 'ALL']
+    // 🔒 SECURITY: Determine user type and apply role-based filtering
+    const staffUser = await prisma.staff_users.findUnique({
+      where: { authUserId: session.user.id },
+      include: { company: { select: { id: true } } }
+    })
+
+    const clientUser = await prisma.client_users.findUnique({
+      where: { authUserId: session.user.id },
+      include: { company: { select: { id: true } } }
+    })
+
+    const managementUser = await prisma.management_users.findUnique({
+      where: { authUserId: session.user.id },
+      select: { id: true, authUserId: true, department: true }
+    })
+
+    if (!staffUser && !clientUser && !managementUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Build where clause based on user type and audience filter
+    let whereClause: any = {}
+
+    // 👨‍💼 STAFF USER - Can see staff posts, their team, and their client's posts
+    if (staffUser) {
+      const allowedAudiences = ['ALL_STAFF', 'ALL', 'EVERYONE', 'MY_TEAM', 'ALL_STAFF_MGMT']
+      
+      if (audienceFilter && audienceFilter !== 'ALL_FILTER') {
+        // If filtering by specific audience, check if staff can access it
+        if (audienceFilter === 'MANAGEMENT_ONLY') {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+        whereClause.audience = { in: [audienceFilter, 'ALL', 'EVERYONE'] }
+      } else {
+        // Default: Show all staff-visible posts
+        whereClause.audience = { in: allowedAudiences }
       }
+    }
+
+    // 🏢 CLIENT USER - Can see their team's posts and client-targeted posts
+    else if (clientUser) {
+      const allowedAudiences = ['MY_TEAM_AND_MANAGEMENT', 'MY_CLIENT', 'ALL_CLIENTS', 'EVERYONE', 'ALL']
+      
+      if (audienceFilter && audienceFilter !== 'ALL_FILTER') {
+        // If filtering by specific audience, check if client can access it
+        if (['ALL_STAFF', 'ALL_STAFF_MGMT', 'MANAGEMENT_ONLY', 'MY_TEAM'].includes(audienceFilter)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+        whereClause.audience = { in: [audienceFilter, 'ALL', 'EVERYONE'] }
+      } else {
+        // Default: Show all client-visible posts
+        whereClause.audience = { in: allowedAudiences }
+      }
+    }
+
+    // 👔 MANAGEMENT USER - Can see EVERYTHING
+    else if (managementUser) {
+      if (audienceFilter && audienceFilter !== 'ALL_FILTER') {
+        whereClause.audience = { in: [audienceFilter, 'ALL'] }
+      }
+      // No filtering for management - they see everything
     }
 
     // Get total count for pagination

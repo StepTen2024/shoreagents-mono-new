@@ -1045,9 +1045,6 @@ enum OnboardingStatus {
 }
 
 enum PostAudience {
-  STAFF
-  CLIENT
-  MANAGEMENT
   ALL
   ALL_STAFF
   MY_TEAM

@@ -8,19 +8,20 @@ import { CreatePostModal } from "@/components/posts/create-post-modal"
 export default function ClientPostsPage() {
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState("my_team")
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPosts()
-  }, [])
+  }, [filter])
 
   async function fetchPosts() {
     setLoading(true)
     setError(null)
     try {
-      // SIMPLIFIED: Just fetch all posts for now
-      const response = await fetch(`/api/posts?page=1&limit=20`)
+      // ✅ USE SECURE FEED API WITH ROLE-BASED FILTERING
+      const response = await fetch(`/api/posts/feed?filter=${filter}&page=1&limit=20`)
       
       console.log("📡 Response status:", response.status)
       
@@ -113,6 +114,30 @@ export default function ClientPostsPage() {
             >
               <Plus className="w-5 h-5" />
               Create Post
+            </button>
+          </div>
+
+          {/* Filter tabs */}
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            <button
+              onClick={() => setFilter("my_team")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+                filter === "my_team"
+                  ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              👥 My Team
+            </button>
+            <button
+              onClick={() => setFilter("all_clients")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+                filter === "all_clients"
+                  ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              🌍 All Clients
             </button>
           </div>
         </div>

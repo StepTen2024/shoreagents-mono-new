@@ -116,15 +116,18 @@ export async function GET(request: NextRequest) {
       const companyId = clientUser.company?.id
 
       if (filterType === 'my_team' && companyId) {
-        // Posts from my team (staff assigned to my company) OR posts from management
+        // Posts from my team (staff assigned to my company) OR posts targeted to me
         whereClause.OR = [
           { audience: 'MY_TEAM_AND_MANAGEMENT', clientUserId: clientUser.id },
-          { audience: 'ALL_CLIENTS' },
+          { audience: 'MY_CLIENT', staffUserId: { in: await prisma.staff_users.findMany({ where: { companyId }, select: { id: true } }).then(s => s.map(u => u.id)) } },
           { audience: 'EVERYONE' }
         ]
+      } else if (filterType === 'all_clients') {
+        // Posts shared with all clients
+        whereClause.audience = { in: ['ALL_CLIENTS', 'EVERYONE'] }
       } else {
         // Default: Show all client-visible posts
-        whereClause.audience = { in: ['MY_TEAM_AND_MANAGEMENT', 'ALL_CLIENTS', 'EVERYONE', 'ALL'] }
+        whereClause.audience = { in: ['MY_TEAM_AND_MANAGEMENT', 'MY_CLIENT', 'ALL_CLIENTS', 'EVERYONE', 'ALL'] }
       }
     }
 

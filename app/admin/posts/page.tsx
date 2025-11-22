@@ -76,9 +76,9 @@ export default function AdminPostsPage() {
   }
 
   const filterOptions = [
-    { value: "everyone", label: "🌍 Everyone", description: "All users" },
-    { value: "all_clients", label: "🏢 All Clients", description: "Client posts" },
-    { value: "all_staff", label: "👥 All Staff", description: "Staff posts" },
+    { value: "everyone", label: "🌍 Everyone", description: "All users (Staff + Clients + Management)" },
+    { value: "all_clients", label: "🏢 All Clients", description: "Client posts only" },
+    { value: "all_staff", label: "👥 All Staff", description: "Staff posts only" },
     { value: "management_only", label: "👔 Management", description: "Management only" },
   ]
 

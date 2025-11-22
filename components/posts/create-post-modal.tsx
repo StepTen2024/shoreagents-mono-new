@@ -289,7 +289,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit, userType, isDark = 
 function getDefaultAudience(userType: "STAFF" | "CLIENT" | "MANAGEMENT"): string {
   switch (userType) {
     case "STAFF":
-      return "ALL_STAFF"
+      return "MY_TEAM"
     case "CLIENT":
       return "MY_TEAM_AND_MANAGEMENT"
     case "MANAGEMENT":
@@ -301,19 +301,20 @@ function getAudienceOptions(userType: "STAFF" | "CLIENT" | "MANAGEMENT") {
   switch (userType) {
     case "STAFF":
       return [
-        { value: "ALL_STAFF", label: "👥 All Staff" },
         { value: "MY_TEAM", label: "👨‍👩‍👧‍👦 My Team (Department)" },
-        { value: "MY_CLIENT", label: "🏢 My Client + Management" },
+        { value: "ALL_STAFF", label: "👥 All Staff (Colleagues)" },
+        { value: "ALL_STAFF_MGMT", label: "👥 All Staff + Management" },
+        { value: "MY_CLIENT", label: "🏢 My Client's Feed" },
       ]
     case "CLIENT":
       return [
-        { value: "MY_TEAM_AND_MANAGEMENT", label: "👥 My Team & Management" },
+        { value: "MY_TEAM_AND_MANAGEMENT", label: "👥 My Team (Staff Only)" },
       ]
     case "MANAGEMENT":
       return [
         { value: "EVERYONE", label: "🌍 Everyone (Staff + Clients + Management)" },
-        { value: "ALL_CLIENTS", label: "🏢 All Clients + Management" },
-        { value: "ALL_STAFF_MGMT", label: "👥 All Staff + Management" },
+        { value: "ALL_CLIENTS", label: "🏢 Just Clients" },
+        { value: "ALL_STAFF_MGMT", label: "👥 Just Staff (+ Management)" },
         { value: "MANAGEMENT_ONLY", label: "👔 Management Only" },
       ]
   }

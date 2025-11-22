@@ -81,7 +81,7 @@ export default function StaffPostsPage() {
   }
 
   const filterOptions = [
-    { value: "all_staff", label: "👥 All Staff", description: "See posts from all staff" },
+    { value: "all_staff", label: "👥 All Staff", description: "Posts from all staff colleagues" },
     { value: "my_team", label: "👨‍👩‍👧‍👦 My Team", description: "Your department only" },
     { value: "my_client", label: "🏢 My Client", description: "Posts from your assigned client" },
   ]
