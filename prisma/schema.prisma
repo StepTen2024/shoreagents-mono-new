@@ -126,6 +126,24 @@ model comments {
   @@index([parentId])
 }
 
+model mentions {
+  id                String   @id
+  mentionableType   String
+  mentionableId     String
+  mentionedUserId   String
+  mentionedUserType String
+  mentionerUserId   String
+  mentionerUserType String
+  createdAt         DateTime @default(now())
+  notificationSent  Boolean  @default(false)
+
+  @@index([mentionableType, mentionableId])
+  @@index([mentionedUserId, mentionedUserType])
+  @@index([mentionerUserId, mentionerUserType])
+  @@index([createdAt])
+  @@index([mentionedUserId, mentionableType, createdAt])
+}
+
 model company {
   id                   String                 @id
   companyName          String
