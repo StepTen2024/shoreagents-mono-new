@@ -514,12 +514,12 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
       for (const toolUse of toolUses) {
         console.log(`🔧 [TOOL-USE] Executing: ${toolUse.name}`, toolUse.input)
         
-        // If creating a task and user sent an image, add it to the tool input
+        // If creating a task, ticket, or post and user sent an image, add it to the tool input
         const toolInput = toolUse.input
-        if (toolUse.name === 'create_task' && hasImage) {
+        if ((toolUse.name === 'create_task' || toolUse.name === 'create_ticket' || toolUse.name === 'create_post') && hasImage) {
           toolInput.image = lastUserMessage.image
           toolInput.imageType = lastUserMessage.imageType
-          console.log('📸 [TOOL-USE] Image attached to task creation')
+          console.log(`📸 [TOOL-USE] Image attached to ${toolUse.name}`)
         }
         
         const result = await executeAIAction(

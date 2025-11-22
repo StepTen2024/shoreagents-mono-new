@@ -255,6 +255,25 @@ async function addTaskSubtask(input: any, userId: string, userType: string): Pro
 async function createTicket(input: any, userId: string, userType: string): Promise<ActionResult> {
   const ticketNumber = `TKT-${Date.now().toString().slice(-6)}`
   
+  // Handle image upload if provided
+  let attachments: string[] = []
+  if (input.image && input.imageType && userType === 'STAFF') {
+    console.log('📸 [CREATE-TICKET] Image provided, uploading to Supabase...')
+    const uploadResult = await uploadTaskImage(
+      input.image,
+      input.imageType,
+      userId,
+      'ai_chat_ticket_image'
+    )
+    
+    if (uploadResult) {
+      attachments.push(uploadResult.url)
+      console.log(`✅ [CREATE-TICKET] Image attached: ${uploadResult.url}`)
+    } else {
+      console.warn('⚠️ [CREATE-TICKET] Failed to upload image, ticket will be created without attachment')
+    }
+  }
+  
   const ticket = await prisma.tickets.create({
     data: {
       id: randomUUID(),
@@ -264,6 +283,7 @@ async function createTicket(input: any, userId: string, userType: string): Promi
       category: input.category,
       priority: input.priority,
       status: 'OPEN',
+      attachments: attachments,
       createdByType: userType,
       staffUserId: userType === 'STAFF' ? userId : null,
       clientUserId: userType === 'CLIENT' ? userId : null,
@@ -273,10 +293,12 @@ async function createTicket(input: any, userId: string, userType: string): Promi
     }
   })
 
+  const attachmentMsg = attachments.length > 0 ? ' with image attached' : ''
+
   return {
     success: true,
-    message: `✅ Created ticket ${ticketNumber} "${input.title}" (${input.category}, ${input.priority} priority)`,
-    data: { ticketId: ticket.id, ticketNumber }
+    message: `✅ Created ticket ${ticketNumber} "${input.title}" (${input.category}, ${input.priority} priority)${attachmentMsg}`,
+    data: { ticketId: ticket.id, ticketNumber, attachments }
   }
 }
 
@@ -320,6 +342,25 @@ async function updateTicketStatus(input: any, userId: string, userType: string):
 // ========================================
 
 async function createPost(input: any, userId: string, userType: string): Promise<ActionResult> {
+  // Handle image upload if provided
+  let images: string[] = []
+  if (input.image && input.imageType && userType === 'STAFF') {
+    console.log('📸 [CREATE-POST] Image provided, uploading to Supabase...')
+    const uploadResult = await uploadTaskImage(
+      input.image,
+      input.imageType,
+      userId,
+      'ai_chat_post_image'
+    )
+    
+    if (uploadResult) {
+      images.push(uploadResult.url)
+      console.log(`✅ [CREATE-POST] Image attached: ${uploadResult.url}`)
+    } else {
+      console.warn('⚠️ [CREATE-POST] Failed to upload image, post will be created without image')
+    }
+  }
+  
   const post = await prisma.activity_posts.create({
     data: {
       id: randomUUID(),
@@ -329,17 +370,19 @@ async function createPost(input: any, userId: string, userType: string): Promise
       clientUserId: userType === 'CLIENT' ? userId : null,
       managementUserId: userType === 'MANAGEMENT' ? userId : null,
       audience: 'ALL',
-      images: [],
+      images: images,
       taggedUserIds: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     }
   })
 
+  const imageMsg = images.length > 0 ? ' with image' : ''
+
   return {
     success: true,
-    message: `✅ Posted to activity feed: "${input.content.substring(0, 50)}${input.content.length > 50 ? '...' : ''}"`,
-    data: { postId: post.id, type: input.type }
+    message: `✅ Posted to activity feed: "${input.content.substring(0, 50)}${input.content.length > 50 ? '...' : ''}"${imageMsg}`,
+    data: { postId: post.id, type: input.type, images }
   }
 }
 

@@ -87,7 +87,7 @@ export const AI_TOOLS = [
   // ========================================
   {
     name: "create_ticket",
-    description: "Create a support/issue ticket. Use when user reports a bug, requests a feature, or needs help with something.",
+    description: "Create a support/issue ticket. Use when user reports a bug, requests equipment, needs IT help, HR assistance, or any workplace support.",
     input_schema: {
       type: "object",
       properties: {
@@ -97,12 +97,12 @@ export const AI_TOOLS = [
         },
         description: {
           type: "string",
-          description: "Detailed description of the issue, request, or question. Include steps to reproduce if it's a bug."
+          description: "Detailed description of the issue, request, or question. Include all relevant details."
         },
         category: {
           type: "string",
-          enum: ["BUG", "FEATURE_REQUEST", "SUPPORT", "QUESTION", "OTHER"],
-          description: "Ticket category"
+          enum: ["IT", "HR", "MANAGEMENT", "EQUIPMENT", "OTHER", "STATION", "SURROUNDINGS", "COMPENSATION", "TRANSPORT", "ONBOARDING"],
+          description: "Ticket category: IT (tech issues), HR (people/policy), MANAGEMENT (leadership), EQUIPMENT (tools/supplies), STATION (workspace), SURROUNDINGS (environment), COMPENSATION (pay/benefits), TRANSPORT (travel), ONBOARDING (new hire), OTHER (misc)"
         },
         priority: {
           type: "string",
