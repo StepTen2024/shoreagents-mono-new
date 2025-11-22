@@ -547,22 +547,61 @@ export default function CommentThread({
 
                     {/* Show mentioned users if any */}
                     {comment.mentions && comment.mentions.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5 items-center">
-                        <span className={`text-xs ${isDark ? "text-slate-400" : "text-gray-500"}`}>
-                          Mentioned:
-                        </span>
-                        {comment.mentions.map((mention) => (
-                          <div
-                            key={mention.id}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                              isDark 
-                                ? "bg-indigo-500/20 text-indigo-300" 
-                                : "bg-blue-100 text-blue-700"
-                            }`}
-                          >
-                            <span>@{mention.mentionedUser?.name || 'Unknown'}</span>
-                          </div>
-                        ))}
+                      <div className={`mt-3 p-3 rounded-lg border ${
+                        isDark 
+                          ? "bg-indigo-500/10 border-indigo-500/30" 
+                          : "bg-blue-50 border-blue-200"
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-semibold uppercase tracking-wide ${
+                            isDark ? "text-indigo-300" : "text-blue-700"
+                          }`}>
+                            👤 Mentioned
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {comment.mentions.map((mention) => (
+                            <div
+                              key={mention.id}
+                              className={`inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-lg transition-all ${
+                                isDark 
+                                  ? "bg-slate-800 hover:bg-slate-750 border border-indigo-500/30" 
+                                  : "bg-white hover:bg-blue-50 border border-blue-300 shadow-sm"
+                              }`}
+                            >
+                              {/* Avatar */}
+                              {mention.mentionedUser?.avatar ? (
+                                <img
+                                  src={mention.mentionedUser.avatar}
+                                  alt={mention.mentionedUser.name}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                  isDark 
+                                    ? "bg-gradient-to-br from-indigo-500 to-purple-500 text-white" 
+                                    : "bg-gradient-to-br from-blue-500 to-cyan-500 text-white"
+                                }`}>
+                                  {mention.mentionedUser?.name?.charAt(0) || '?'}
+                                </div>
+                              )}
+                              
+                              {/* Name & Role */}
+                              <div className="flex flex-col">
+                                <span className={`text-sm font-medium ${
+                                  isDark ? "text-white" : "text-gray-900"
+                                }`}>
+                                  @{mention.mentionedUser?.name || 'Unknown'}
+                                </span>
+                                <span className={`text-xs ${
+                                  isDark ? "text-slate-400" : "text-gray-500"
+                                }`}>
+                                  {mention.mentionedUser?.type || 'USER'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
