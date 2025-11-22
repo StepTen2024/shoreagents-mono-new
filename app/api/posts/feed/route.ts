@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
       const companyId = staffUser.company?.id
 
       if (filterType === 'all_staff') {
-        whereClause.audience = { in: ['ALL_STAFF', 'ALL', 'EVERYONE'] }
+        // FIXED: Include MY_TEAM and MY_CLIENT so staff see their own posts too!
+        whereClause.audience = { in: ['ALL_STAFF', 'ALL', 'EVERYONE', 'MY_TEAM', 'MY_CLIENT', 'ALL_STAFF_MGMT'] }
       } else if (filterType === 'my_team' && companyId) {
         // Posts from same company/team (staff assigned to same client)
         const teamStaffIds = await prisma.staff_users.findMany({

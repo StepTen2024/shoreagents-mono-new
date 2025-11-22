@@ -92,3 +92,16 @@ Import trace for requested module:
 ./node_modules/date-fns/formatDistanceToNow.js
 ./components/posts/post-card-staff.tsx
 ./app/posts/page.tsx
+ ⨯ ./node_modules/date-fns/_lib/defaultLocale.js:1:1
+Module not found: Can't resolve '../locale/en-US.js'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./node_modules/date-fns/formatDistance.js
+./node_modules/date-fns/formatDistanceToNow.js
+./components/posts/post-card-staff.tsx
+./app/posts/page.tsx
+[Break Auto-Start] Checking 6 active sessions
+ GET /posts 500 in 31ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 7ms
