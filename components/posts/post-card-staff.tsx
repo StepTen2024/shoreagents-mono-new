@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Heart, MessageCircle, Share2, MoreVertical, User } from "lucide-react"
 import Image from "next/image"
 import CommentThread from "@/components/universal/comment-thread"
@@ -50,6 +50,24 @@ interface PostCardStaffProps {
 export function PostCardStaff({ post, onReshare, onUpdate }: PostCardStaffProps) {
   const [showComments, setShowComments] = useState(false)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const [mentions, setMentions] = useState<any[]>([])
+
+  // Fetch mentions for this post
+  useEffect(() => {
+    fetchMentions()
+  }, [post.id])
+
+  async function fetchMentions() {
+    try {
+      const response = await fetch(`/api/mentions?mentionableType=POST&mentionableId=${post.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setMentions(data.mentions || [])
+      }
+    } catch (error) {
+      console.error("Error fetching mentions:", error)
+    }
+  }
 
   // Group reactions by type with counts
   const reactionCounts = post.reactions.reduce((acc, r) => {
@@ -185,7 +203,51 @@ export function PostCardStaff({ post, onReshare, onUpdate }: PostCardStaffProps)
 
       {/* Post content */}
       {!post.isReshare && (
-        <p className="text-white mb-4 leading-relaxed">{post.content}</p>
+        <>
+          <p className="text-white mb-4 leading-relaxed">{post.content}</p>
+          
+          {/* Show mentioned users if any */}
+          {mentions.length > 0 && (
+            <div className="mb-4 p-3 rounded-lg border bg-indigo-500/10 border-indigo-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-indigo-300">
+                  👤 Mentioned
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {mentions.map((mention) => (
+                  <div
+                    key={mention.id}
+                    className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-lg transition-all bg-slate-800 hover:bg-slate-750 border border-indigo-500/30"
+                  >
+                    {/* Avatar */}
+                    {mention.mentionedUser?.avatar ? (
+                      <img
+                        src={mention.mentionedUser.avatar}
+                        alt={mention.mentionedUser.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-indigo-500 to-purple-500 text-white">
+                        {mention.mentionedUser?.name?.charAt(0) || '?'}
+                      </div>
+                    )}
+                    
+                    {/* Name & Role */}
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-white">
+                        @{mention.mentionedUser?.name || 'Unknown'}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {mention.mentionedUser?.type || 'USER'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Images (if not reshare) */}
