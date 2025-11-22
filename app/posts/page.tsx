@@ -18,16 +18,20 @@ export default function StaffPostsPage() {
   }, [filter])
 
   async function fetchPosts() {
+    console.log('📡 [fetchPosts] Starting to fetch posts...')
     setLoading(true)
     try {
       const response = await fetch(`/api/posts/feed?filter=${filter}&page=1&limit=20`)
       if (response.ok) {
         const data = await response.json()
+        console.log(`✅ [fetchPosts] Got ${data.posts?.length || 0} posts`)
         setPosts(data.posts || [])
         setHasMore(data.pagination?.hasMore || false)
+      } else {
+        console.error('❌ [fetchPosts] Response not OK:', response.status)
       }
     } catch (error) {
-      console.error("Error fetching posts:", error)
+      console.error("❌ [fetchPosts] Error:", error)
     } finally {
       setLoading(false)
     }
@@ -39,14 +43,19 @@ export default function StaffPostsPage() {
     audience: string
     images: string[]
   }) {
+    console.log('🎯 [handleCreatePost] Called with data:', { content: data.content?.substring(0, 20), hasContent: !!data.content })
+    
     // If content is empty, it means the post was already created by the modal
     // Just refresh the feed
     if (!data.content) {
-      fetchPosts()
+      console.log('✅ [handleCreatePost] Post already created by modal, refreshing feed...')
+      await fetchPosts()
+      console.log('✅ [handleCreatePost] Feed refreshed!')
       return
     }
 
     // Otherwise, create the post (legacy behavior for modals that don't create their own)
+    console.log('📝 [handleCreatePost] Creating post via parent...')
     const response = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,7 +67,9 @@ export default function StaffPostsPage() {
     }
 
     // Refresh feed
-    fetchPosts()
+    console.log('✅ [handleCreatePost] Post created, refreshing feed...')
+    await fetchPosts()
+    console.log('✅ [handleCreatePost] Feed refreshed!')
   }
 
   async function handleReshare(postId: string) {
