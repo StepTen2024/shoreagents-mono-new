@@ -1,8 +1,17 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { X, Upload, Image as ImageIcon, Loader2, Paperclip } from "lucide-react"
 import Image from "next/image"
+import { MentionPicker } from "@/components/universal/mention-picker"
+
+interface MentionedUser {
+  id: string
+  name: string
+  avatar: string | null
+  email?: string
+  type: 'STAFF' | 'CLIENT' | 'MANAGEMENT'
+}
 
 interface CreatePostModalProps {
   isOpen: boolean
@@ -24,7 +33,31 @@ export function CreatePostModal({ isOpen, onClose, onSubmit, userType, isDark = 
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [mentionedUsers, setMentionedUsers] = useState<MentionedUser[]>([])
+  const [userInfo, setUserInfo] = useState<{type: string, companyId?: string} | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Fetch current user info for MentionPicker
+  useEffect(() => {
+    if (isOpen) {
+      fetchUserInfo()
+    }
+  }, [isOpen])
+
+  async function fetchUserInfo() {
+    try {
+      const response = await fetch('/api/user/me')
+      if (response.ok) {
+        const data = await response.json()
+        setUserInfo({
+          type: data.userType,
+          companyId: data.companyId
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching user info:", error)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -73,6 +106,55 @@ export function CreatePostModal({ isOpen, onClose, onSubmit, userType, isDark = 
 
     setSubmitting(true)
     try {
+      // Create the post first
+      const postResponse = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: content.trim(),
+          type: postType,
+          audience,
+          images,
+        }),
+      })
+
+      if (!postResponse.ok) {
+        throw new Error("Failed to create post")
+      }
+
+      const { post } = await postResponse.json()
+
+      // Create mentions if any users are mentioned
+      if (mentionedUsers.length > 0 && post?.id) {
+        console.log(`📢 Creating ${mentionedUsers.length} mentions for post ${post.id}`)
+        
+        const mentionPromises = mentionedUsers.map(async (user) => {
+          try {
+            const response = await fetch("/api/mentions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                mentionableType: "POST",
+                mentionableId: post.id,
+                mentionedUserId: user.id,
+                mentionedUserType: user.type
+              })
+            })
+            
+            if (!response.ok) {
+              console.error(`Failed to create mention for ${user.name}`)
+            } else {
+              console.log(`✅ Mentioned ${user.name} in post`)
+            }
+          } catch (error) {
+            console.error(`Error mentioning ${user.name}:`, error)
+          }
+        })
+
+        await Promise.all(mentionPromises)
+      }
+
+      // Call original onSubmit (for parent to refresh)
       await onSubmit({
         content: content.trim(),
         type: postType,
@@ -85,6 +167,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit, userType, isDark = 
       setImages([])
       setPostType("UPDATE")
       setAudience(getDefaultAudience(userType))
+      setMentionedUsers([])
       onClose()
     } catch (error) {
       console.error("Error creating post:", error)
@@ -191,6 +274,22 @@ export function CreatePostModal({ isOpen, onClose, onSubmit, userType, isDark = 
               } focus:outline-none focus:ring-2 ${isDark ? "focus:ring-indigo-500/50" : "focus:ring-blue-500/50"}`}
             />
           </div>
+
+          {/* Mention Picker */}
+          {userInfo && (
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? "text-white" : "text-gray-900"}`}>
+                Tag People
+              </label>
+              <MentionPicker
+                onMentionSelect={setMentionedUsers}
+                selectedMentions={mentionedUsers}
+                isDark={isDark}
+                userType={userInfo.type as any}
+                companyId={userInfo.companyId}
+              />
+            </div>
+          )}
 
           {/* Image Upload */}
           <div>
