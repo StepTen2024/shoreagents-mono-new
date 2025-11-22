@@ -192,59 +192,68 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [MENTIONS] Created mention: ${mentionerUserType} mentioned ${mentionedUserType} in ${mentionableType}`)
 
-    // 🔔 Create notification
-    const mentioner = staffUser || clientUser || managementUser
-    const mentionerName = mentioner?.name || 'Someone'
+    // 🔔 Create notification (ONLY for STAFF users - notifications table is staff-only)
+    if (mentionedUserType === 'STAFF') {
+      const mentioner = staffUser || clientUser || managementUser
+      const mentionerName = mentioner?.name || 'Someone'
 
-    // Get entity name for notification
-    let entityName = ''
-    let actionUrl = ''
+      // Get entity name for notification
+      let entityName = ''
+      let actionUrl = ''
 
-    switch (mentionableType) {
-      case 'POST':
-        entityName = 'a post'
-        actionUrl = `/posts?postId=${mentionableId}`
-        break
-      case 'TICKET':
-        entityName = 'a ticket'
-        actionUrl = `/tickets?ticketId=${mentionableId}`
-        break
-      case 'TASK':
-        entityName = 'a task'
-        actionUrl = `/tasks?taskId=${mentionableId}`
-        break
-      case 'COMMENT':
-        entityName = 'a comment'
-        actionUrl = `/activity?commentId=${mentionableId}`
-        break
-      case 'DOCUMENT':
-        entityName = 'a document'
-        actionUrl = `/documents?documentId=${mentionableId}`
-        break
-      case 'REVIEW':
-        entityName = 'a performance review'
-        actionUrl = `/performance-reviews?reviewId=${mentionableId}`
-        break
-    }
-
-    await prisma.notifications.create({
-      data: {
-        userId: mentionedUserId,
-        type: 'MENTION',
-        title: `${mentionerName} mentioned you in ${entityName}`,
-        message: `You were mentioned in ${entityName}`,
-        actionUrl,
-        read: false
+      switch (mentionableType) {
+        case 'POST':
+          entityName = 'a post'
+          actionUrl = `/posts?postId=${mentionableId}`
+          break
+        case 'TICKET':
+          entityName = 'a ticket'
+          actionUrl = `/tickets?ticketId=${mentionableId}`
+          break
+        case 'TASK':
+          entityName = 'a task'
+          actionUrl = `/tasks?taskId=${mentionableId}`
+          break
+        case 'COMMENT':
+          entityName = 'a comment'
+          actionUrl = `/activity?commentId=${mentionableId}`
+          break
+        case 'DOCUMENT':
+          entityName = 'a document'
+          actionUrl = `/documents?documentId=${mentionableId}`
+          break
+        case 'REVIEW':
+          entityName = 'a performance review'
+          actionUrl = `/performance-reviews?reviewId=${mentionableId}`
+          break
       }
-    })
 
-    // Update notification sent flag
-    await prisma.mentions.update({
-      where: { id: mention.id },
-      data: { notificationSent: true }
-    })
+      try {
+        await prisma.notifications.create({
+          data: {
+            userId: mentionedUserId,
+            type: 'MENTION',
+            title: `${mentionerName} mentioned you in ${entityName}`,
+            message: `You were mentioned in ${entityName}`,
+            actionUrl,
+            read: false
+          }
+        })
 
-    console.log(`🔔 [MENTIONS] Notification sent to ${mentionedUserId}`)
+        // Update notification sent flag
+        await prisma.mentions.update({
+          where: { id: mention.id },
+          data: { notificationSent: true }
+        })
+
+        console.log(`🔔 [MENTIONS] Notification sent to ${mentionedUserId}`)
+      } catch (notifError) {
+        console.error(`⚠️ [MENTIONS] Failed to create notification (non-fatal):`, notifError)
+        // Don't fail the whole request if notification fails
+      }
+    } else {
+      console.log(`ℹ️ [MENTIONS] Skipped notification for ${mentionedUserType} user (notifications are staff-only)`)
+    }
 
     return NextResponse.json({ success: true, mention }, { status: 201 })
   } catch (error) {
