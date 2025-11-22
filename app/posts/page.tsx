@@ -39,6 +39,14 @@ export default function StaffPostsPage() {
     audience: string
     images: string[]
   }) {
+    // If content is empty, it means the post was already created by the modal
+    // Just refresh the feed
+    if (!data.content) {
+      fetchPosts()
+      return
+    }
+
+    // Otherwise, create the post (legacy behavior for modals that don't create their own)
     const response = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

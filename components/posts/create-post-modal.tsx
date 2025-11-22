@@ -154,21 +154,29 @@ export function CreatePostModal({ isOpen, onClose, onSubmit, userType, isDark = 
         await Promise.all(mentionPromises)
       }
 
-      // Call original onSubmit (for parent to refresh)
-      await onSubmit({
-        content: content.trim(),
-        type: postType,
-        audience,
-        images,
-      })
-
       // Reset form
       setContent("")
       setImages([])
       setPostType("UPDATE")
       setAudience(getDefaultAudience(userType))
       setMentionedUsers([])
+      
+      // Close modal
       onClose()
+      
+      // Trigger parent to refresh feed (with empty data as signal)
+      try {
+        await onSubmit({
+          content: "",
+          type: "",
+          audience: "",
+          images: []
+        })
+      } catch (err) {
+        // Parent might try to create post - ignore that error since we already created it
+        console.log("Note: Post already created, just refreshing feed")
+      }
+      
     } catch (error) {
       console.error("Error creating post:", error)
       alert("Failed to create post")
