@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "@/components/ui/use-toast"
 import { getAllPriorities } from "@/lib/task-utils"
+import { MentionPicker } from "@/components/universal/mention-picker"
 
 interface StaffUser {
   id: string
@@ -61,12 +62,22 @@ export default function CreateTaskModal({
   const [showPreview, setShowPreview] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [focusedField, setFocusedField] = useState<string | null>(null)
+  const [mentionedUsers, setMentionedUsers] = useState<any[]>([])
+  const [userInfo, setUserInfo] = useState<any>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
   const priorities = getAllPriorities()
   const isDark = !isClient // Staff and Management use dark theme
+
+  // Fetch user info for mentions
+  useEffect(() => {
+    fetch('/api/user/me')
+      .then(res => res.json())
+      .then(data => setUserInfo(data))
+      .catch(err => console.error("Error fetching user info:", err))
+  }, [])
 
   // Enhanced keyboard navigation
   useEffect(() => {
@@ -303,6 +314,8 @@ export default function CreateTaskModal({
       }
 
       // Create tasks
+      const createdTaskIds: string[] = []
+      
       if (isClient) {
         // Client: Create bulk tasks for selected staff
         const endpoint = "/api/client/tasks/bulk"
@@ -321,6 +334,12 @@ export default function CreateTaskModal({
         if (!response.ok) {
           const errorData = await response.json()
           throw new Error(errorData.error || "Failed to create tasks")
+        }
+        
+        const data = await response.json()
+        // Bulk API returns array of created tasks
+        if (data.tasks && Array.isArray(data.tasks)) {
+          createdTaskIds.push(...data.tasks.map((t: any) => t.id))
         }
       } else {
         // Staff: Create tasks for themselves (one at a time)
@@ -346,6 +365,33 @@ export default function CreateTaskModal({
             const errorData = await response.json()
             throw new Error(errorData.error || "Failed to create task")
           }
+          
+          const data = await response.json()
+          if (data.task?.id) {
+            createdTaskIds.push(data.task.id)
+          }
+        }
+      }
+
+      // Create mentions for all created tasks
+      if (mentionedUsers.length > 0 && createdTaskIds.length > 0) {
+        console.log(`📢 Creating mentions for ${createdTaskIds.length} tasks`)
+        
+        for (const taskId of createdTaskIds) {
+          await Promise.all(
+            mentionedUsers.map(user =>
+              fetch("/api/mentions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  mentionableType: "TASK",
+                  mentionableId: taskId,
+                  mentionedUserId: user.id,
+                  mentionedUserType: user.type
+                })
+              }).catch(err => console.error(`Failed to mention ${user.name}:`, err))
+            )
+          )
         }
       }
 
@@ -702,6 +748,22 @@ export default function CreateTaskModal({
                 ))}
               </div>
             </div>
+
+          {/* Mention Picker */}
+          {userInfo && (
+            <div>
+              <label className={`mb-2 block text-sm font-semibold ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                Tag People (Optional)
+              </label>
+              <MentionPicker
+                onMentionSelect={setMentionedUsers}
+                selectedMentions={mentionedUsers}
+                isDark={isDark}
+                userType={userInfo.userType}
+                companyId={userInfo.companyId}
+              />
+            </div>
+          )}
 
           {/* Staff Selection (Client only) */}
           {isClient && (

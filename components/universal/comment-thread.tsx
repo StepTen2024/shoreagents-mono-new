@@ -21,6 +21,7 @@ import {
   X,
   Image as ImageIcon
 } from "lucide-react"
+import { MentionPicker } from "@/components/universal/mention-picker"
 
 /**
  * UNIVERSAL COMMENT THREAD COMPONENT
@@ -115,6 +116,8 @@ export default function CommentThread({
   const [showReactionPicker, setShowReactionPicker] = useState(false)
   const [attachments, setAttachments] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [mentionedUsers, setMentionedUsers] = useState<any[]>([])
+  const [userInfo, setUserInfo] = useState<any>(null)
 
   // Styling based on portal variant
   // DARK for STAFF and MANAGEMENT, LIGHT for CLIENT only
@@ -180,6 +183,14 @@ export default function CommentThread({
     
     loadData()
   }, [commentableType, commentableId])
+
+  // Fetch user info for mentions
+  useEffect(() => {
+    fetch('/api/user/me')
+      .then(res => res.json())
+      .then(data => setUserInfo(data))
+      .catch(err => console.error("Error fetching user info:", err))
+  }, [])
 
   // Handle image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -250,8 +261,29 @@ export default function CommentThread({
       const data = await response.json()
 
       if (data.success) {
+        const commentId = data.comment?.id
+
+        // Create mentions if any
+        if (mentionedUsers.length > 0 && commentId) {
+          await Promise.all(
+            mentionedUsers.map(user =>
+              fetch("/api/mentions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  mentionableType: "COMMENT",
+                  mentionableId: commentId,
+                  mentionedUserId: user.id,
+                  mentionedUserType: user.type
+                })
+              }).catch(err => console.error(`Failed to mention ${user.name}:`, err))
+            )
+          )
+        }
+
         setNewComment("")
         setAttachments([])
+        setMentionedUsers([])
         await fetchComments()
         onUpdate?.()  // Trigger parent refresh
         toast({
@@ -530,6 +562,19 @@ export default function CommentThread({
               }
             }}
           />
+
+          {/* Mention Picker */}
+          {userInfo && (
+            <div className="px-1">
+              <MentionPicker
+                onMentionSelect={setMentionedUsers}
+                selectedMentions={mentionedUsers}
+                isDark={isDark}
+                userType={userInfo.userType}
+                companyId={userInfo.companyId}
+              />
+            </div>
+          )}
 
           {/* Attachment Previews */}
           {attachments.length > 0 && (

@@ -11,6 +11,7 @@ import { getCategoriesForUserType, getCategoryLabel, getCategoryIcon } from "@/l
 import StaffTicketBoard from "@/components/tickets/staff-ticket-board"
 import { mapCategoryToDepartment, getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import { TicketListSkeleton, TicketKanbanSkeleton } from "@/components/tickets/ticket-skeleton"
+import { MentionPicker } from "@/components/universal/mention-picker"
 
 export default function TicketsPage() {
   const [view, setView] = useState<"kanban" | "list">("kanban")
@@ -298,7 +299,16 @@ function CreateTicketModal({
   const [attachments, setAttachments] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [mentionedUsers, setMentionedUsers] = useState<any[]>([])
+  const [userInfo, setUserInfo] = useState<any>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    fetch('/api/user/me')
+      .then(res => res.json())
+      .then(data => setUserInfo(data))
+      .catch(err => console.error("Error fetching user info:", err))
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -399,6 +409,26 @@ function CreateTicketModal({
       })
 
       if (!response.ok) throw new Error("Failed to create ticket")
+
+      const { ticket } = await response.json()
+
+      // Create mentions if any
+      if (mentionedUsers.length > 0 && ticket?.id) {
+        await Promise.all(
+          mentionedUsers.map(user =>
+            fetch("/api/mentions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                mentionableType: "TICKET",
+                mentionableId: ticket.id,
+                mentionedUserId: user.id,
+                mentionedUserType: user.type
+              })
+            })
+          )
+        )
+      }
 
       toast({
         title: "✅ Success!",
@@ -529,6 +559,22 @@ function CreateTicketModal({
               required
             />
           </div>
+
+          {/* Mention Picker */}
+          {userInfo && (
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-300">
+                Tag People (Optional)
+              </label>
+              <MentionPicker
+                onMentionSelect={setMentionedUsers}
+                selectedMentions={mentionedUsers}
+                isDark={true}
+                userType={userInfo.userType}
+                companyId={userInfo.companyId}
+              />
+            </div>
+          )}
 
           {/* File Upload */}
           <div>
