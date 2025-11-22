@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   X,
@@ -19,6 +19,7 @@ import {
   XCircle,
   AlertTriangle,
   Check,
+  Loader2,
 } from "lucide-react"
 import { Ticket, TicketResponse } from "@/types/ticket"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -28,6 +29,7 @@ import ImageLightbox from "@/components/ui/image-lightbox"
 import { getDepartmentLabel, getDepartmentEmoji } from "@/lib/category-department-map"
 import CommentThread from "@/components/universal/comment-thread"
 import StaffUploadPreloader from "@/components/uploads/staff-upload-preloader"
+import { MentionDisplay } from "@/components/universal/mention-display"
 import {
   Select,
   SelectContent,
@@ -144,7 +146,30 @@ export default function TicketDetailModal({
   const [editDescription, setEditDescription] = useState(ticket.description)
   const [editing, setEditing] = useState(false)
 
+  // 🏷️ MENTIONS STATE
+  const [ticketMentions, setTicketMentions] = useState<any[]>([])
+  const [loadingMentions, setLoadingMentions] = useState(true)
+
   const CategoryIcon = categoryConfig[ticket.category]?.icon || HelpCircle
+
+  // Fetch mentions for this ticket
+  useEffect(() => {
+    fetchMentions()
+  }, [ticket.id])
+
+  async function fetchMentions() {
+    try {
+      const response = await fetch(`/api/mentions?mentionableType=TICKET&mentionableId=${ticket.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setTicketMentions(data.mentions || [])
+      }
+    } catch (error) {
+      console.error("Error fetching ticket mentions:", error)
+    } finally {
+      setLoadingMentions(false)
+    }
+  }
 
   const openLightbox = (images: string[], index: number) => {
     setLightboxImages(images)
@@ -927,6 +952,17 @@ export default function TicketDetailModal({
             }`}>
               <p className={`whitespace-pre-wrap leading-relaxed ${isDark ? "text-slate-200" : "text-gray-900"}`}>{ticket.description}</p>
             </div>
+
+            {/* Mentions Display */}
+            {loadingMentions ? (
+              <div className={`flex items-center gap-2 text-sm ${isDark ? "text-slate-400" : "text-gray-600"}`}>
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading mentions...
+              </div>
+            ) : ticketMentions.length > 0 && (
+              <div className="mt-4">
+                <MentionDisplay mentions={ticketMentions} isDark={isDark} />
+              </div>
+            )}
 
             {(ticketAttachments.length > 0 || uploadingAttachments) && (
               <div className="mt-6 space-y-4">

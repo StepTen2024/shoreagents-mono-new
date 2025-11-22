@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { getPriorityConfig, getSourceConfig, formatDeadline } from "@/lib/task-utils"
 import { useToast } from "@/hooks/use-toast"
 import CommentThread from "@/components/universal/comment-thread"
+import { MentionDisplay } from "@/components/universal/mention-display"
 
 interface Task {
   id: string
@@ -77,6 +78,10 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
   const [editedPriority, setEditedPriority] = useState(task.priority)
   const [savingTask, setSavingTask] = useState(false)
 
+  // 🏷️ MENTIONS STATE
+  const [taskMentions, setTaskMentions] = useState<any[]>([])
+  const [loadingMentions, setLoadingMentions] = useState(true)
+
   // Get all assigned staff
   const allAssignedStaff = []
   if (task.assignedStaff) {
@@ -89,6 +94,25 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
   useEffect(() => {
     fetchSubtasks()
   }, [task.id])
+
+  // Fetch mentions on mount
+  useEffect(() => {
+    fetchMentions()
+  }, [task.id])
+
+  async function fetchMentions() {
+    try {
+      const response = await fetch(`/api/mentions?mentionableType=TASK&mentionableId=${task.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setTaskMentions(data.mentions || [])
+      }
+    } catch (error) {
+      console.error("Error fetching task mentions:", error)
+    } finally {
+      setLoadingMentions(false)
+    }
+  }
 
   const fetchSubtasks = async () => {
     try {
@@ -416,6 +440,17 @@ export default function TaskDetailModal({ task, onClose, isDarkTheme = false, on
               <p className={`text-base ${isDarkTheme ? "text-slate-300" : "text-slate-600"}`}>
                 {task.description}
               </p>
+            )}
+            
+            {/* Mentions Display */}
+            {loadingMentions ? (
+              <div className={`flex items-center gap-2 text-sm mt-3 ${isDarkTheme ? "text-slate-400" : "text-gray-600"}`}>
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading mentions...
+              </div>
+            ) : taskMentions.length > 0 && (
+              <div className="mt-4">
+                <MentionDisplay mentions={taskMentions} isDark={isDarkTheme} />
+              </div>
             )}
           </div>
           <button
