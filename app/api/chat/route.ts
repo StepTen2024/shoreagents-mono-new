@@ -504,15 +504,27 @@ WHEN NO DOCUMENTS/TASKS ARE REFERENCED:
     const toolUses = response.content.filter((block: any) => block.type === 'tool_use')
     const actionsExecuted: any[] = []
     
+    // Extract image data from last user message (if any)
+    const lastUserMessage = messages[messages.length - 1]
+    const hasImage = lastUserMessage?.image && lastUserMessage?.imageType
+    
     if (toolUses.length > 0) {
       console.log(`🤖 [TOOL-USE] Claude wants to execute ${toolUses.length} action(s)`)
       
       for (const toolUse of toolUses) {
         console.log(`🔧 [TOOL-USE] Executing: ${toolUse.name}`, toolUse.input)
         
+        // If creating a task and user sent an image, add it to the tool input
+        const toolInput = toolUse.input
+        if (toolUse.name === 'create_task' && hasImage) {
+          toolInput.image = lastUserMessage.image
+          toolInput.imageType = lastUserMessage.imageType
+          console.log('📸 [TOOL-USE] Image attached to task creation')
+        }
+        
         const result = await executeAIAction(
           toolUse.name,
-          toolUse.input,
+          toolInput,
           user.id,
           userType as 'STAFF' | 'CLIENT' | 'MANAGEMENT'
         )

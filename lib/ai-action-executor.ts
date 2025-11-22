@@ -5,6 +5,7 @@
 
 import { prisma } from './prisma'
 import { randomUUID } from 'crypto'
+import { uploadTaskImage } from './supabase-upload'
 
 type ActionResult = {
   success: boolean
@@ -107,6 +108,25 @@ async function createTask(input: any, userId: string, userType: string): Promise
     }
   }
 
+  // Handle image upload if provided
+  let attachments: string[] = []
+  if (input.image && input.imageType && userType === 'STAFF') {
+    console.log('📸 [CREATE-TASK] Image provided, uploading to Supabase...')
+    const uploadResult = await uploadTaskImage(
+      input.image,
+      input.imageType,
+      userId,
+      'ai_chat_image'
+    )
+    
+    if (uploadResult) {
+      attachments.push(uploadResult.url)
+      console.log(`✅ [CREATE-TASK] Image attached: ${uploadResult.url}`)
+    } else {
+      console.warn('⚠️ [CREATE-TASK] Failed to upload image, task will be created without attachment')
+    }
+  }
+
   const task = await prisma.tasks.create({
     data: {
       id: randomUUID(),
@@ -116,6 +136,7 @@ async function createTask(input: any, userId: string, userType: string): Promise
       status: 'TODO',
       deadline: deadline,
       tags: input.tags || [],
+      attachments: attachments, // Add uploaded image URL
       staffUserId: userType === 'STAFF' ? userId : null,
       clientUserId: userType === 'CLIENT' ? userId : null,
       createdById: userId,
@@ -157,10 +178,12 @@ async function createTask(input: any, userId: string, userType: string): Promise
     }
   }
 
+  const attachmentMsg = attachments.length > 0 ? ' with image attached' : ''
+
   return {
     success: true,
-    message: `✅ Created task "${input.title}" with ${input.priority} priority${deadline ? ` (due ${deadline.toLocaleDateString()})` : ''}${subtasksCreated > 0 ? ` and ${subtasksCreated} subtask(s)` : ''}`,
-    data: { taskId: task.id, title: task.title, subtasksCreated }
+    message: `✅ Created task "${input.title}" with ${input.priority} priority${deadline ? ` (due ${deadline.toLocaleDateString()})` : ''}${subtasksCreated > 0 ? ` and ${subtasksCreated} subtask(s)` : ''}${attachmentMsg}`,
+    data: { taskId: task.id, title: task.title, subtasksCreated, attachments }
   }
 }
 

@@ -1,115 +1,112 @@
-import { supabaseAdmin } from '@/lib/supabase'
+/**
+ * SUPABASE STORAGE UPLOAD HELPERS
+ * Upload files to Supabase Storage buckets
+ */
 
-export async function uploadCompanyFile(
-  file: File,
-  companyId: string,
-  type: 'logo' | 'cover' | 'asset'
-): Promise<string> {
-  const fileExt = file.name.split('.').pop()
-  const timestamp = Date.now()
-  const fileName = `company_${timestamp}.${fileExt}`
-  
-  let folder: string
-  if (type === 'logo') {
-    folder = `company_logo/${companyId}`
-  } else if (type === 'cover') {
-    folder = `company_cover/${companyId}`
-  } else {
-    folder = `company_asset/${companyId}`
-  }
-  
-  const filePath = `${folder}/${fileName}`
+import { createClient } from '@supabase/supabase-js'
 
-  const { data, error } = await supabaseAdmin.storage
-    .from('company')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true
-    })
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-  if (error) {
-    throw new Error(`Failed to upload file: ${error.message}`)
-  }
+// Create Supabase client with service role key for server-side uploads
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // Get public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('company')
-    .getPublicUrl(filePath)
-
-  return publicUrl
-}
-
-export async function deleteCompanyFile(fileUrl: string): Promise<void> {
+/**
+ * Upload a task image (from AI chat) to Supabase Storage
+ * Path: staff/staff_task/{staffUserId}/{timestamp}_{filename}
+ */
+export async function uploadTaskImage(
+  base64Data: string,
+  mimeType: string,
+  staffUserId: string,
+  originalFilename?: string
+): Promise<{ url: string; path: string } | null> {
   try {
-    // Extract path from URL
-    const urlParts = fileUrl.split('/storage/v1/object/public/company/')
-    if (urlParts.length < 2) {
-      console.warn('Invalid file URL format:', fileUrl)
-      return
-    }
-
-    const filePath = urlParts[1]
-    console.log('Attempting to delete file:', filePath)
-
-    const { error } = await supabase.storage
-      .from('company')
-      .remove([filePath])
-
+    // Convert base64 to buffer
+    const buffer = Buffer.from(base64Data, 'base64')
+    
+    // Generate filename
+    const timestamp = Date.now()
+    const extension = mimeType.split('/')[1] || 'png'
+    const filename = originalFilename 
+      ? `${timestamp}_${originalFilename.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      : `${timestamp}_task_image.${extension}`
+    
+    // Upload path: staff/staff_task/{staffUserId}/{filename}
+    const filePath = `staff_task/${staffUserId}/${filename}`
+    
+    console.log(`📤 [UPLOAD] Uploading to: staff/${filePath}`)
+    console.log(`📤 [UPLOAD] Size: ${(buffer.length / 1024).toFixed(2)} KB`)
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('staff')
+      .upload(filePath, buffer, {
+        contentType: mimeType,
+        upsert: false, // Don't overwrite existing files
+      })
+    
     if (error) {
-      console.error('Failed to delete file:', error)
-      throw error
-    } else {
-      console.log('File deleted successfully:', filePath)
+      console.error('❌ [UPLOAD] Supabase error:', error)
+      return null
+    }
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('staff')
+      .getPublicUrl(filePath)
+    
+    console.log(`✅ [UPLOAD] Success! URL: ${urlData.publicUrl}`)
+    
+    return {
+      url: urlData.publicUrl,
+      path: filePath,
     }
   } catch (error) {
-    console.error('Error in deleteCompanyFile:', error)
-    throw error
+    console.error('❌ [UPLOAD] Failed to upload image:', error)
+    return null
   }
 }
 
-export async function uploadClientFile(
-  file: File,
-  clientUserId: string,
-  type: 'avatar' | 'cover'
-): Promise<string> {
-  const fileExt = file.name.split('.').pop()
-  const timestamp = Date.now()
-  const folder = type === 'avatar' ? 'client_avatar' : 'client_cover'
-  const fileName = type === 'avatar' ? `avatar_${timestamp}.${fileExt}` : `cover_${timestamp}.${fileExt}`
-  const filePath = `${folder}/${clientUserId}/${fileName}`
-
-  const { data, error } = await supabaseAdmin.storage
-    .from('client')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: true
-    })
-
-  if (error) {
-    throw new Error(`Failed to upload file: ${error.message}`)
-  }
-
-  // Get public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('client')
-    .getPublicUrl(filePath)
-
-  return publicUrl
-}
-
-export async function deleteClientFile(fileUrl: string): Promise<void> {
-  // Extract path from URL
-  const urlParts = fileUrl.split('/storage/v1/object/public/client/')
-  if (urlParts.length < 2) return
-
-  const filePath = urlParts[1]
-
-  const { error } = await supabase.storage
-    .from('client')
-    .remove([filePath])
-
-  if (error) {
-    console.error('Failed to delete file:', error)
+/**
+ * Delete a task image from Supabase Storage
+ */
+export async function deleteTaskImage(filePath: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.storage
+      .from('staff')
+      .remove([filePath])
+    
+    if (error) {
+      console.error('❌ [DELETE] Failed to delete image:', error)
+      return false
+    }
+    
+    console.log(`✅ [DELETE] Deleted: ${filePath}`)
+    return true
+  } catch (error) {
+    console.error('❌ [DELETE] Error:', error)
+    return false
   }
 }
 
+/**
+ * Get signed URL for a private file (if needed in future)
+ */
+export async function getSignedUrl(filePath: string, expiresIn = 3600): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.storage
+      .from('staff')
+      .createSignedUrl(filePath, expiresIn)
+    
+    if (error) {
+      console.error('❌ [SIGNED-URL] Failed:', error)
+      return null
+    }
+    
+    return data.signedUrl
+  } catch (error) {
+    console.error('❌ [SIGNED-URL] Error:', error)
+    return null
+  }
+}
