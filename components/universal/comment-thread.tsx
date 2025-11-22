@@ -61,6 +61,15 @@ interface Comment {
   parentId: string | null
   createdAt: string
   updatedAt: string
+  mentions?: Array<{
+    id: string
+    mentionedUser: {
+      id: string
+      name: string
+      avatar: string | null
+      type: string
+    }
+  }>
 }
 
 interface ReactionData {
@@ -145,7 +154,31 @@ export default function CommentThread({
       const data = await response.json()
       
       if (data.success) {
-        setComments(data.comments || [])
+        const comments = data.comments || []
+        
+        // Fetch mentions for each comment
+        const commentsWithMentions = await Promise.all(
+          comments.map(async (comment: Comment) => {
+            try {
+              const mentionsResponse = await fetch(
+                `/api/mentions?mentionableType=COMMENT&mentionableId=${comment.id}`
+              )
+              const mentionsData = await mentionsResponse.json()
+              return {
+                ...comment,
+                mentions: mentionsData.mentions || []
+              }
+            } catch (error) {
+              console.error(`Failed to fetch mentions for comment ${comment.id}:`, error)
+              return {
+                ...comment,
+                mentions: []
+              }
+            }
+          })
+        )
+        
+        setComments(commentsWithMentions)
       }
     } catch (error) {
       console.error("Failed to fetch comments:", error)
@@ -511,6 +544,27 @@ export default function CommentThread({
                     }`}>
                       {comment.content}
                     </p>
+
+                    {/* Show mentioned users if any */}
+                    {comment.mentions && comment.mentions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                        <span className={`text-xs ${isDark ? "text-slate-400" : "text-gray-500"}`}>
+                          Mentioned:
+                        </span>
+                        {comment.mentions.map((mention) => (
+                          <div
+                            key={mention.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
+                              isDark 
+                                ? "bg-indigo-500/20 text-indigo-300" 
+                                : "bg-blue-100 text-blue-700"
+                            }`}
+                          >
+                            <span>@{mention.mentionedUser?.name || 'Unknown'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Comment Attachments */}
                     {comment.attachments && comment.attachments.length > 0 && (
