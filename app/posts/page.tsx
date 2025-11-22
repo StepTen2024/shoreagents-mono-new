@@ -49,6 +49,8 @@ export default function StaffPostsPage() {
     // Just refresh the feed
     if (!data.content) {
       console.log('✅ [handleCreatePost] Post already created by modal, refreshing feed...')
+      // Small delay to ensure database commit is complete
+      await new Promise(resolve => setTimeout(resolve, 500))
       await fetchPosts()
       console.log('✅ [handleCreatePost] Feed refreshed!')
       return
@@ -68,6 +70,7 @@ export default function StaffPostsPage() {
 
     // Refresh feed
     console.log('✅ [handleCreatePost] Post created, refreshing feed...')
+    await new Promise(resolve => setTimeout(resolve, 500))
     await fetchPosts()
     console.log('✅ [handleCreatePost] Feed refreshed!')
   }
