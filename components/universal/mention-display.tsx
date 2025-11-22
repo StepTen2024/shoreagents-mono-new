@@ -8,10 +8,24 @@ interface MentionedUser {
   name: string
   avatar: string | null
   type?: 'STAFF' | 'CLIENT' | 'MANAGEMENT'
+  email?: string
+}
+
+interface Mention {
+  id: string
+  mentionableType: string
+  mentionableId: string
+  mentionedUserId: string
+  mentionedUserType: string
+  mentionerUserId: string
+  mentionerUserType: string
+  createdAt: string
+  notificationSent: boolean
+  mentionedUser?: MentionedUser | null
 }
 
 interface MentionDisplayProps {
-  mentions: MentionedUser[]
+  mentions: Mention[] | MentionedUser[]
   isDark?: boolean
   compact?: boolean
 }
@@ -21,11 +35,29 @@ export function MentionDisplay({ mentions, isDark = true, compact = false }: Men
     return null
   }
 
+  // Transform mentions to extract user data (handles both API response format and direct user format)
+  const users: MentionedUser[] = mentions.map((item: any) => {
+    // If it's already a user object (has name directly)
+    if (item.name) {
+      return item as MentionedUser
+    }
+    // If it's a mention object (has mentionedUser)
+    if (item.mentionedUser) {
+      return item.mentionedUser as MentionedUser
+    }
+    // Invalid format
+    return null
+  }).filter((user): user is MentionedUser => user !== null && user.name !== undefined)
+
+  if (users.length === 0) {
+    return null
+  }
+
   if (compact) {
     // Compact display (just names with @ symbol)
     return (
       <div className="flex flex-wrap gap-1">
-        {mentions.map((user) => (
+        {users.map((user) => (
           <span
             key={user.id}
             className={`inline-flex items-center gap-1 text-sm ${
@@ -43,7 +75,7 @@ export function MentionDisplay({ mentions, isDark = true, compact = false }: Men
   // Full display with avatars
   return (
     <div className="flex flex-wrap gap-2">
-      {mentions.map((user) => (
+      {users.map((user) => (
         <div
           key={user.id}
           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors ${
@@ -66,10 +98,17 @@ export function MentionDisplay({ mentions, isDark = true, compact = false }: Men
                 ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
                 : "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
             }`}>
-              {user.name.charAt(0)}
+              {user.name?.charAt(0).toUpperCase() || '?'}
             </div>
           )}
           <span className="font-medium">{user.name}</span>
+          {user.type && (
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              isDark ? "bg-slate-700 text-slate-300" : "bg-gray-200 text-gray-600"
+            }`}>
+              {user.type}
+            </span>
+          )}
         </div>
       ))}
     </div>
