@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Heart, MessageCircle, Share2, MoreVertical, User } from "lucide-react"
 import Image from "next/image"
 import CommentThread from "@/components/universal/comment-thread"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 
 interface PostCardStaffProps {
   post: {

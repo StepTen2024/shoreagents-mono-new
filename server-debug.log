@@ -1,0 +1,94 @@
+
+> ShoreAgentsAI@1.0.2 dev
+> rm -rf .next && npx prisma generate && cross-env NODE_ENV=development node server.js
+
+warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
+For more information, see: https://pris.ly/prisma-config
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v6.19.0) to ./node_modules/@prisma/client in 365ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+
+[dotenv@17.2.3] injecting env (17) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+✅ Socket server registered globally
+> Ready on http://localhost:3000
+> WebSocket server ready on ws://localhost:3000/api/socketio
+[Break Auto-Start] Background job started
+[WebSocket] Client connected: WXkjTmGNC3PLiMPtAAAB
+[WebSocket] Client connected: 4sHN4rplulgNR9UXAAAD
+[WebSocket] User identified: Steve Batcheler UserID: 5ad8b60a-a6cf-4e48-a43c-583e21716b20
+[WebSocket] User Steve Batcheler joined room: user:5ad8b60a-a6cf-4e48-a43c-583e21716b20
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 1602ms (72 modules)
+ ○ Compiling /posts ...
+ ⨯ ./node_modules/date-fns/_lib/defaultLocale.js:1:1
+Module not found: Can't resolve '../locale/en-US.js'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./node_modules/date-fns/formatDistance.js
+./node_modules/date-fns/formatDistanceToNow.js
+__barrel_optimize__?names=formatDistanceToNow!=!./node_modules/date-fns/index.js
+./components/posts/post-card-staff.tsx
+./app/posts/page.tsx
+ ⨯ ./node_modules/date-fns/_lib/defaultLocale.js:1:1
+Module not found: Can't resolve '../locale/en-US.js'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./node_modules/date-fns/formatDistance.js
+./node_modules/date-fns/formatDistanceToNow.js
+__barrel_optimize__?names=formatDistanceToNow!=!./node_modules/date-fns/index.js
+./components/posts/post-card-staff.tsx
+./app/posts/page.tsx
+ ⨯ ./node_modules/date-fns/_lib/defaultLocale.js:1:1
+Module not found: Can't resolve '../locale/en-US.js'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./node_modules/date-fns/formatDistance.js
+./node_modules/date-fns/formatDistanceToNow.js
+__barrel_optimize__?names=formatDistanceToNow!=!./node_modules/date-fns/index.js
+./components/posts/post-card-staff.tsx
+./app/posts/page.tsx
+ GET /posts 500 in 4067ms
+[WebSocket] Client disconnected: WXkjTmGNC3PLiMPtAAAB
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/stephenatcheler/Documents/GitHub/shoreagents-mono-new/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/stephenatcheler/Documents/GitHub/shoreagents-mono-new/.next/cache/webpack/client-development-fallback/0.pack.gz'
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 15ms
+[Break Auto-Start] Checking 6 active sessions
+[WebSocket] Client connected: 9wSpF8It97hZ1-PcAAAF
+Error handling upgrade request TypeError: Cannot read properties of undefined (reading 'bind')
+    at DevServer.handleRequestImpl (/Users/stephenatcheler/Documents/GitHub/shoreagents-mono-new/node_modules/next/dist/server/base-server.js:476:50)
+[WebSocket] User identified: Steve Batcheler UserID: 2c2dec35-93bb-4b72-a829-3b6e7669e54e
+[WebSocket] User Steve Batcheler joined room: user:2c2dec35-93bb-4b72-a829-3b6e7669e54e
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+[Break Auto-Start] Checking 6 active sessions
+ GET /posts 500 in 49ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 8ms
+ GET /posts 500 in 20ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 8ms
+[Break Auto-Start] Checking 6 active sessions
+ ⨯ ./node_modules/date-fns/_lib/defaultLocale.js:1:1
+Module not found: Can't resolve '../locale/en-US.js'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./node_modules/date-fns/formatDistance.js
+./node_modules/date-fns/formatDistanceToNow.js
+./components/posts/post-card-staff.tsx
+./app/posts/page.tsx
